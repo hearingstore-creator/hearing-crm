@@ -127,66 +127,6 @@
         </aside>
         <!-- /.control-sidebar -->
 
-        <!-- Modal -->
-        {{-- <div class="modal fade" id="eBookModal" role="dialog">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h4 class="modal-title"></h4>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div> --}}
-                    {{-- <div class="modal-body">
-                        <div class="mb-4">
-                            <h4 class="text-center">Date Expired</h4>
-                        </div>
-                        <table class="table table-bordered table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th class="text-center"> Name</th>
-                                    <th class="text-center">Manufacturer Name</th>
-                                    <th class="text-center">Batch No</th>
-                                    <th class="text-center">Expiry Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                
-                            </tbody>
-                        </table>
-
-                        @if (isset($stockOut))
-                            <div class="mt-4 mb-4">
-                                <h4 class="text-center">Out of Stock Medicine</h4>
-                            </div>
-
-                            <table class="table table-bordered table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th class="text-center">Medicine Name</th>
-                                        <th class="text-center">Manufacturer Name</th>
-                                        <th class="text-center">Stock</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($stockOut as $item)
-                                        <tr>
-                                            <td class="text-center">
-                                                {{ $item->medicine_name }} ({{ $item->strength }})
-                                            </td>
-                                            <td class="text-center">{{ $item->manufacturer_name }}</td>
-                                            <td class="text-center">
-                                                <span class="text-danger">{{ $item->stock }}</span>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        @endif
-                    </div> --}}
-                {{-- </div>
-            </div>
-        </div> --}}
     </div>
     <!-- ./wrapper -->
 

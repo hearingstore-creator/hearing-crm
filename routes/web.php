@@ -32,24 +32,6 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 |
 */
 
-Route::get('/migrate', function () {
-    Artisan::call('migrate');
-    return ("Migration is done");
-});
-
-Route::get('/seed', function () {
-    Artisan::call('db:seed');
-    return ("DB seed is done");
-});
-
-Route::get('/clear', function () {
-    Artisan::call('cache:clear');
-    Artisan::call('view:clear');
-    Artisan::call('route:clear'); 
-    Artisan::call('config:clear');
-    return ("Cache is cleared");
-});
-
 Route::get('/', [AuthenticatedSessionController::class, 'create'])
                 ->name('login');
 
@@ -83,8 +65,6 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('product-search', [ProductController::class, 'productSearch'])->name('product.search');
     Route::get('product-info/{id}', [ProductController::class, 'productInfo']);
 
-
-    //Route::resource('/customer', [CustomerController::class]);
     Route::resource('customers', 'CustomerController');
     Route::post('customers-import', 'CustomerController@importCustomers')->name('customers.import');
     Route::get('customer-search', [CustomerController::class, 'customerSearch'])->name('customer.search');
@@ -121,7 +101,6 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
 
     Route::resource('vendors', 'VendorController');
 
-    Route::resource('doctor', 'DoctorController');
     Route::get('doctors-payment', [SaleController::class, 'doctorPaymentIndex'])->name('doctors.payment.index');
     Route::get('doctors-payment/create', [SaleController::class, 'doctorPaymentCreate'])->name('doctors.payment.create');
     Route::post('doctors-payment', [SaleController::class, 'doctorPaymentStore'])->name('doctors.payment.store');
