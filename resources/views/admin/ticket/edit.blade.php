@@ -1,0 +1,221 @@
+@extends('admin.layouts.master')
+@push('css')
+    <link rel="stylesheet" href="{{ asset('assets/plugins/select2/css/select2.min.css') }}">
+    <!-- Summernote CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.1/dist/summernote.min.css" rel="stylesheet">
+    <style>
+        #description-editor {
+            min-height: 300px;
+        }
+        .note-editor {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        .note-toolbar {
+            background-color: #f8f9fa;
+            border-radius: 4px 4px 0 0;
+        }
+        .note-editable {
+            background-color: white;
+        }
+        /* Table styles */
+        .note-editable table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        .note-editable table td,
+        .note-editable table th {
+            border: 1px solid #ddd;
+            padding: 8px;
+            min-width: 2em;
+        }
+        .note-editable table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            text-align: left;
+        }
+    </style>
+@endpush
+
+@section('content')
+    <!-- Main content -->
+    <section class="content pt-3">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card card-outline card-primary">
+                        <div class="card-header">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5>Edit Ticket</h5>
+                                </div>
+                                @can('permission', 'ticket_list.index')
+                                <div class="col-md-6 text-right">
+                                    <a href="{{ url('admin/ticket') }}" class="btn-primary btn-cs-primary btn-sm">
+                                        <i class="fas fa-align-justify mr-1"></i>Ticket List
+                                    </a>
+                                </div>
+                                @endcan
+                            </div>
+                        </div>
+
+                        @include('admin.alert_message')
+
+                        <div class="card-body">
+                            <form action="{{ url('admin/ticket/'.$ticket->id) }}" method="post">
+                                @csrf
+                                @method('PUT')
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="form-group row">
+                                            <label for="subject" class="col-sm-3 col-form-label">Subject <i class="text-danger">*</i>:</label>
+                                            <div class="col-sm-6">
+                                                <input type="text" class="form-control" id="subject" placeholder="Ticket Subject" name="subject" autocomplete="off" required value="{{ $ticket->subject }}">
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group row">
+                                            <label for="description" class="col-sm-3 col-form-label">Description <i class="text-danger">*</i>:</label>
+                                            <div class="col-sm-6">
+                                                <input type="hidden" name="description" id="description" value="{{ old('description', $ticket->description) }}">
+                                                <div id="description-editor"></div>
+                                                <small class="form-text text-muted">Rich text editor for ticket description</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group row">
+                                            <label for="customer_id" class="col-sm-3 col-form-label">Customer <i class="text-danger">*</i>:</label>
+                                            <div class="col-sm-6">
+                                                <select class="form-control select" name="customer_id" required>
+                                                    <option value="">Select Customer</option>
+                                                    @foreach ($customers ?? [] as $customer)
+                                                        <option value="{{ $customer->id }}" {{ $ticket->customer_id == $customer->id ? 'selected' : '' }}>
+                                                             {{ $customer->lead->full_name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group row">
+                                            <label for="assigned_to" class="col-sm-3 col-form-label">Assigned To:</label>
+                                            <div class="col-sm-6">
+                                                <select class="form-control select" name="assigned_to">
+                                                    <option value="">Select User</option>
+                                                    @foreach ($users ?? [] as $user)
+                                                        <option value="{{ $user->id }}" {{ $ticket->assigned_to == $user->id ? 'selected' : '' }}>
+                                                            {{ $user->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group row">
+                                            <label for="status" class="col-sm-3 col-form-label">Status <i class="text-danger">*</i>:</label>
+                                            <div class="col-sm-6">
+                                                <select class="form-control" name="status" required>
+                                                    @foreach ($statuses ?? [] as $status)
+                                                        <option value="{{ $status->value }}"
+                                                            {{ $ticket->status->value === $status->value ? 'selected' : '' }}>
+                                                            {{ $status->value }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group row">
+                                            <label for="priority" class="col-sm-3 col-form-label">Priority <i class="text-danger">*</i>:</label>
+                                            <div class="col-sm-6">
+                                                <select class="form-control" name="priority" required>
+                                                    @foreach ($priorities ?? [] as $priority)
+                                                        <option value="{{ $priority->value }}"
+                                                            {{ $ticket->priority->value === $priority->value ? 'selected' : '' }}>
+                                                            {{ $priority->value }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        @if($ticket->resolved_at)
+                                        <div class="form-group row">
+                                            <label class="col-sm-3 col-form-label">Resolved At:</label>
+                                            <div class="col-sm-6">
+                                                <p class="form-control-static">{{ $ticket->resolved_at->format('d M Y H:i:s') }}</p>
+                                            </div>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-md-6 text-right">
+                                    </div>
+                                    <div class="col-md-6 text-right">
+                                        <div>
+                                            <button type="submit" class="btn btn-success">Update</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
+@push('scripts')
+    <script src="{{ asset('assets/plugins/select2/js/select2.full.min.js') }}"></script>
+    <!-- Summernote Library (jQuery already loaded in master layout) -->
+    <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.1/dist/summernote.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2
+            $('.select').select2();
+
+            // Get initial content from database
+            var initialContent = $('#description').val() || '';
+
+            // Initialize Summernote Editor
+            $('#description-editor').summernote({
+                placeholder: 'Compose your ticket description here...',
+                tabsize: 2,
+                height: 300,
+                toolbar: [
+                    // [groupName, [list of button]]
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['fontname', ['fontname']],
+                    ['fontsize', ['fontsize']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['insert', ['link', 'table', 'hr']],
+                    ['view', ['fullscreen', 'codeview', 'help']]
+                ],
+                tableClassName: 'table table-bordered',
+                callbacks: {
+                    onChange: function(contents, $editable) {
+                        // Update hidden input on content change
+                        $('#description').val(contents);
+                    }
+                }
+            });
+
+            // Load initial content into editor
+            if (initialContent) {
+                $('#description-editor').summernote('code', initialContent);
+            }
+
+            // Update hidden input when form submits
+            $('form').on('submit', function(e) {
+                var content = $('#description-editor').summernote('code');
+                $('#description').val(content);
+            });
+        });
+    </script>
+@endpush
+@endsection

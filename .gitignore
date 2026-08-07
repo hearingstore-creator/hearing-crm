@@ -1,0 +1,51 @@
+# Dependencies
+/node_modules
+/vendor
+
+# Laravel
+/public/hot
+/public/storage
+/storage/*.key
+/bootstrap/cache/*.php
+
+# Environment
+.env
+.env.backup
+.env.production
+
+# Testing
+.phpunit.result.cache
+.phpunit.cache
+
+# Docker
+docker-compose.override.yml
+
+# Homestead
+Homestead.json
+Homestead.yaml
+
+# IDE & Editors
+/.idea
+/.vscode
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+npm-debug.log
+yarn-error.log
+storage/logs/*.log
+
+# Build artifacts
+/public/build
+/public/mix-manifest.json
+
+# Zip archives
+*.zip

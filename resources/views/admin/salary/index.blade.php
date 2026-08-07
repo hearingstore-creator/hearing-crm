@@ -1,0 +1,57 @@
+@extends('admin.layouts.master')
+
+@push('css')
+    <!-- DataTables -->
+    @include('admin.partials.datatables-css')
+@endpush
+
+@section('content')
+    <!-- Main content -->
+    <section class="content pt-3">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card card-outline card-primary">
+                        <div class="card-header">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5> Salary Setup List</h5>
+                                </div>
+                                <div class="col-md-6 text-right">
+                                    <a href="{{ url('admin/salary/create') }}" class="btn-primary btn-cs-primary btn-sm"><i
+                                            class="fas fa-plus mr-1"></i>Add Salary Setup</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        @include('admin.alert_message')
+
+                        <div class="card-body">
+                            <table class="table table-bordered table-striped yajra-datatable" data-datatable="salary-list"
+                                data-ajax-url="{{ route('salary.list') }}">
+                                <thead>
+                                    <tr>
+                                        <th>SL</th>
+                                        <th>Name</th>
+                                        <th>Month Year</th>
+                                        <th>Setup Date</th>
+                                        <th>Gross Salary</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
+@endsection
+
+@push('scripts')
+    @include('admin.partials.datatables-scripts')
+@endpush
