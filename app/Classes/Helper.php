@@ -68,7 +68,8 @@ class Helper
     public static function fileUpload(?UploadedFile $file, string $uploadPath): ?string
     {
         if ($file) {
-            $name = time() . $file->getClientOriginalName();
+            $extension = $file->getClientOriginalExtension();
+            $name = Str::uuid() . '.' . $extension;
             $file->move(public_path($uploadPath), $name);
             $fileUrl = $uploadPath . $name;
 

@@ -76,13 +76,26 @@ class Customer extends Model
 
     /**
      * Generate a unique customer UID
-     * Format: C--YYYYMMDD-XXXX (where XXXX is a 4-digit padded number)
+     * Format: C-YYYYMMDD-XXXX (where XXXX is a 4-digit padded number)
      *
      * @return string
      */
     private function generateCustomerUID(): string
     {
-        return 'C-' . date('Ymd').Customer::count();
+        $prefix = 'C-' . date('Ymd');
+        $lastCustomer = Customer::withTrashed()
+            ->where('customer_uid', 'LIKE', $prefix . '%')
+            ->orderByDesc('customer_uid')
+            ->value('customer_uid');
+
+        if ($lastCustomer) {
+            $lastNumber = (int) substr($lastCustomer, strlen($prefix));
+            $nextNumber = $lastNumber + 1;
+        } else {
+            $nextNumber = 1;
+        }
+
+        return $prefix . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     /**

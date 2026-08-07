@@ -36,7 +36,7 @@
                             <table class="table table-bordered table-striped yajra-datatable"
                                 data-datatable="stock-report-list"
                                 data-ajax-url="{{ url('admin/report/stock-list?stockType=') }}
-                                 {{ $_GET['stockType'] ?? '' }}">
+                                 {{ request('stockType', '') }}">
                                 <thead>
                                     <tr>
                                         <th>SL</th>

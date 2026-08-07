@@ -29,13 +29,13 @@
                            <div class="row">
                               <div class="col-md-2">
                                  <input type="text" name="search" class="form-control" placeholder="Phone / Message"
-                                    value="{{ isset($_GET['search']) ? $_GET['search'] : '' }}">
+                                    value="{{ request('search', '') }}">
                               </div>
                               <div class="col-md-2">
                                  <select name="status" class="form-control">
                                     <option value="">All Status</option>
                                     @foreach(\App\Enums\SmsStatus::cases() as $status)
-                                    <option value="{{ $status->value }}" {{ isset($_GET['status']) && $_GET['status'] == $status->value ? 'selected' : '' }}>
+                                    <option value="{{ $status->value }}" {{ request('status') == $status->value ? 'selected' : '' }}>
                                        {{ $status->label() }}
                                     </option>
                                     @endforeach
@@ -45,7 +45,7 @@
                                  <select name="type" class="form-control">
                                     <option value="">All Types</option>
                                     @foreach(\App\Enums\SmsType::cases() as $type)
-                                    <option value="{{ $type->value }}" {{ isset($_GET['type']) && $_GET['type'] == $type->value ? 'selected' : '' }}>
+                                    <option value="{{ $type->value }}" {{ request('type') == $type->value ? 'selected' : '' }}>
                                        {{ $type->label() }}
                                     </option>
                                     @endforeach
@@ -53,11 +53,11 @@
                               </div>
                               <div class="col-md-2">
                                  <input type="date" name="date_from" class="form-control"
-                                    value="{{ isset($_GET['date_from']) ? $_GET['date_from'] : '' }}">
+                                    value="{{ request('date_from', '') }}">
                               </div>
                               <div class="col-md-2">
                                  <input type="date" name="date_to" class="form-control"
-                                    value="{{ isset($_GET['date_to']) ? $_GET['date_to'] : '' }}">
+                                    value="{{ request('date_to', '') }}">
                               </div>
                               <div class="col-md-2">
                                  <button class="btn btn-info" type="submit"><i class="fas fa-search"></i> </button>

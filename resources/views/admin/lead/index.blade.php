@@ -41,29 +41,29 @@
                                     <div class="row">
                                        <div class="col-md-2">
                                           <input type="text" name="phone_number" class="form-control form-control is-valid" id="phone_number" placeholder="Phone Number"
-                                             value="{{ isset($_GET['phone_number'])? $_GET['phone_number']:'' }}">
+                                             value="{{ request('phone_number', '') }}">
                                        </div>
                                        <div class="col-md-2">
                                           <input type="text" name="lead_uid" class="form-control form-control is-valid" id="lead_uid" placeholder="Lead ID"
-                                             value="{{ isset($_GET['lead_uid'])? $_GET['lead_uid']:'' }}">
+                                             value="{{ request('lead_uid', '') }}">
                                        </div>
                                        <div class="col-md-2">
                                           <input type="text" name="email" class="form-control form-control is-valid" id="email" placeholder="Email"
-                                             value="{{ isset($_GET['email'])? $_GET['email']:'' }}">
+                                             value="{{ request('email', '') }}">
                                        </div>
                                        <div class="col-md-2">
                                           <input type="date" name="start_date" onfocus="(this.type='date')" class="form-control form-control is-valid" id="start_date"
-                                             value="{{ isset($_GET['start_date'])? $_GET['start_date']:$start_date }}">
+                                             value="{{ request('start_date', $start_date) }}">
                                        </div>
                                        <div class="col-md-2">
                                           <input type="date" name="end_date" class="form-control form-control is-valid" id="end_date"
-                                             value="{{ isset($_GET['end_date'])? $_GET['end_date']:$end_date }}">
+                                             value="{{ request('end_date', $end_date) }}">
                                        </div>
                                        <div class="col-md-2">
                                           <select class="form-control select" name="lead_status" id="lead_status">
                                              <option value="">Select Lead Status</option>
                                              @foreach ($leadStatus as $status)
-                                                <option {{ isset($_GET['lead_status']) && $_GET['lead_status'] == $status->value ? 'selected':'' }} value="{{ $status->value }}">{{ $status->label() }}</option>
+                                                <option {{ request('lead_status') == $status->value ? 'selected':'' }} value="{{ $status->value }}">{{ $status->label() }}</option>
                                              @endforeach
                                           </select>
                                        </div>
@@ -71,7 +71,7 @@
                                           <select class="form-control select" name="source_of_entry" id="source_of_entry">
                                              <option value="">Select Source of Entry</option>
                                              @foreach ($sourceOfEntries as $entry)
-                                                <option {{ isset($_GET['source_of_entry']) && $_GET['source_of_entry'] == $entry->value ? 'selected':'' }} value="{{ $entry->value }}">{{ $entry->label() }}</option>
+                                                <option {{ request('source_of_entry') == $entry->value ? 'selected':'' }} value="{{ $entry->value }}">{{ $entry->label() }}</option>
                                              @endforeach
                                           </select>
                                        </div>
@@ -79,7 +79,7 @@
                                           <select class="form-control select" name="vendor_id" id="vendor_id">
                                              <option value="">Select Vendor</option>
                                              @foreach ($vendors as $vendor)
-                                                <option {{ isset($_GET['vendor_id']) && $_GET['vendor_id'] == $vendor->id ? 'selected':'' }} value="{{ $vendor->id }}">{{ $vendor->name }}</option>
+                                                <option {{ request('vendor_id') == $vendor->id ? 'selected':'' }} value="{{ $vendor->id }}">{{ $vendor->name }}</option>
                                              @endforeach
                                           </select>
                                        </div>

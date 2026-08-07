@@ -31,23 +31,23 @@
                                     <div class="row">
                                        <div class="col-md-2">
                                           <input type="text" name="phone_number" class="form-control form-control is-valid" id="phone_number" placeholder="Phone Number"
-                                             value="{{ isset($_GET['phone_number'])? $_GET['phone_number']:'' }}">
+                                             value="{{ request('phone_number', '') }}">
                                        </div>
                                        <div class="col-md-2">
                                           <input type="text" name="lead_uid" class="form-control form-control is-valid" id="lead_uid" placeholder="Lead ID"
-                                             value="{{ isset($_GET['lead_uid'])? $_GET['lead_uid']:'' }}">
+                                             value="{{ request('lead_uid', '') }}">
                                        </div>
                                        <div class="col-md-2">
                                           <input type="text" name="email" class="form-control form-control is-valid" id="email" placeholder="Email"
-                                             value="{{ isset($_GET['email'])? $_GET['email']:'' }}">
+                                             value="{{ request('email', '') }}">
                                        </div>
                                        <div class="col-md-2">
                                           <input type="date" name="start_date" onfocus="(this.type='date')" class="form-control form-control is-valid" id="start_date"
-                                             value="{{ isset($_GET['start_date'])? $_GET['start_date']:$start_date }}">
+                                             value="{{ request('start_date', $start_date) }}">
                                        </div>
                                        <div class="col-md-2">
                                           <input type="date" name="end_date" class="form-control form-control is-valid" id="end_date"
-                                             value="{{ isset($_GET['end_date'])? $_GET['end_date']:$end_date }}">
+                                             value="{{ request('end_date', $end_date) }}">
                                        </div>
                                        <div class="col-md-2">
                                           <button class="btn btn-info" title="Search" type="submit"><i class="fas fa-search"></i> </button>

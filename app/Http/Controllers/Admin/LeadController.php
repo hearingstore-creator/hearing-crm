@@ -51,7 +51,20 @@ class LeadController extends Controller
 
     private function generateLeadUID(): string
     {
-        return 'L-' . date('Ymd').Lead::count();
+        $prefix = 'L-' . date('Ymd');
+        $lastLead = Lead::withTrashed()
+            ->where('lead_uid', 'LIKE', $prefix . '%')
+            ->orderByDesc('lead_uid')
+            ->value('lead_uid');
+
+        if ($lastLead) {
+            $lastNumber = (int) substr($lastLead, strlen($prefix));
+            $nextNumber = $lastNumber + 1;
+        } else {
+            $nextNumber = 1;
+        }
+
+        return $prefix . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     /**
