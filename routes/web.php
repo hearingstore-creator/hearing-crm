@@ -163,6 +163,8 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::resource('customers', 'CustomerController');
     Route::post('customers-import', 'CustomerController@importCustomers')->name('customers.import');
     Route::get('customer-search', [CustomerController::class, 'customerSearch'])->name('customer.search');
+    // Header search (Ctrl+K): each group checks its own permission
+    Route::get('global-search', [\App\Http\Controllers\Admin\GlobalSearchController::class, 'search'])->name('global.search')->middleware('throttle:120,1,global-search');
     Route::get('customer-lookup', [\App\Http\Controllers\Admin\CustomerLookupController::class, 'index'])->name('customer.lookup');
 
     Route::get('customer-list', [CustomerController::class, 'customerList'])->name('customer.list');

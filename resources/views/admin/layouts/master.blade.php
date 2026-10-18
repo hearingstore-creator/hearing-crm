@@ -53,7 +53,7 @@
             <!-- Search Bar -->
             <div class="navbar-search mx-4 d-none d-md-block">
                 <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                <input type="text" placeholder="Search across CRM..." aria-label="Search">
+                <input type="text" placeholder="Search patients, phone, invoice, serial..." aria-label="Search across CRM" data-endpoint="{{ route('global.search') }}">
                 <span class="search-shortcut">Ctrl+K</span>
             </div>
 
@@ -230,6 +230,7 @@
     
     <!-- Theme System Scripts -->
     <script src="{{ asset('assets/js/theme-toggle.js') }}"></script>
+    <script src="{{ asset('assets/js/global-search.js') }}"></script>
     
     <!-- Live Clock Script -->
     <script>
