@@ -48,7 +48,7 @@ class RoleController extends Controller
     public function edit(int $id)
     {
         $role = Role::findOrFail($id);
-        $menus = Menu::with(['children.permissions'])->whereNull('parent_id')->get();
+        $menus = Menu::with(['children.permissions'])->whereNull('parent_id')->orderBy('order', 'asc')->get();
         $rolePermissions = $role->permissions->pluck('id')->toArray();
 
         return view('admin.roles.edit', compact('role', 'menus', 'rolePermissions'));

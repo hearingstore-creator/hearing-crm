@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ServiceType;
+use App\Models\AppointmentService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -28,9 +29,9 @@ class ServiceTypeController extends Controller
      *
      * @return View
      */
-    public function index()
+    public function index(): View
     {
-        $serviceTypes = ServiceType::orderBy('id', 'desc')->get();
+        $serviceTypes = ServiceType::with('appointmentService')->orderBy('id', 'desc')->get();
         return view('admin.service_type.index', compact('serviceTypes'));
     }
 
@@ -41,7 +42,8 @@ class ServiceTypeController extends Controller
      */
     public function create(): View
     {
-        return view('admin.service_type.create');
+        $appointmentServices = AppointmentService::where('status', 1)->orderBy('name')->get();
+        return view('admin.service_type.create', compact('appointmentServices'));
     }
 
     /**
@@ -50,20 +52,22 @@ class ServiceTypeController extends Controller
      * @param Request $request HTTP request containing service type data
      * @return RedirectResponse Redirects to service type list or back with warning
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $this->validate($request, [
-            'service_type_name'  => 'required|string|unique:service_types',
-            'price' => 'nullable|numeric|min:0',
+            'service_type_name'      => 'required|string|unique:service_types',
+            'booking_type'           => 'required|string|in:walk_in,appointment_required,either',
+            'appointment_service_id' => 'nullable|integer|exists:appointment_services,id',
+            'price'                  => 'nullable|numeric|min:0',
         ]);
 
         $serviceType = new ServiceType($request->all());
 
         if ($serviceType->save()) {
-            return redirect('admin/service-type')->with('success', 'Saved Successfully');
+            return redirect('admin/service-type')->with('success', 'Service saved successfully.');
         }
 
-        return redirect()->back()->with('warning', 'Not Saved');
+        return redirect()->back()->with('warning', 'Could not save service type.')->withInput();
     }
 
     /**
@@ -75,7 +79,8 @@ class ServiceTypeController extends Controller
     public function edit(int $id): View
     {
         $serviceType = ServiceType::findOrFail($id);
-        return view('admin.service_type.edit', compact('serviceType'));
+        $appointmentServices = AppointmentService::where('status', 1)->orderBy('name')->get();
+        return view('admin.service_type.edit', compact('serviceType', 'appointmentServices'));
     }
 
     /**
@@ -88,18 +93,20 @@ class ServiceTypeController extends Controller
     public function update(Request $request, int $id): RedirectResponse
     {
         $this->validate($request, [
-            'service_type_name'  => 'required|unique:service_types,service_type_name,'.$id,
-            'price' => 'nullable|numeric|min:0',
+            'service_type_name'      => 'required|unique:service_types,service_type_name,'.$id,
+            'booking_type'           => 'required|string|in:walk_in,appointment_required,either',
+            'appointment_service_id' => 'nullable|integer|exists:appointment_services,id',
+            'price'                  => 'nullable|numeric|min:0',
         ]);
 
         $serviceType = ServiceType::findOrFail($id);
         $serviceType->fill($request->all());
 
         if ($serviceType->save()) {
-            return redirect('admin/service-type')->with('success', 'Updated Successfully');
+            return redirect('admin/service-type')->with('success', 'Service updated successfully.');
         }
 
-        return redirect()->back()->with('warning', 'Not Updated');
+        return redirect()->back()->with('warning', 'Could not update service type.')->withInput();
     }
 
     /**
@@ -113,6 +120,6 @@ class ServiceTypeController extends Controller
         $serviceType = ServiceType::findOrFail($id);
         $serviceType->delete();
 
-        return redirect('/admin/service-type')->with('success', 'Deleted Successfully');
+        return redirect('/admin/service-type')->with('success', 'Service deleted successfully.');
     }
 }

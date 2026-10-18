@@ -1,332 +1,242 @@
 @extends('admin.layouts.master')
+@section('page_title', 'Edit Professional')
+@push('css')
+<link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/plugins/select2/css/select2.min.css') }}">
+<style>
+    /* Day card */
+    .day-card {
+        border: 1px solid var(--card-border, #e3e6ea);
+        border-radius: 10px;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+    .day-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .day-card.has-slots {
+        border-color: var(--accent-400, #80bdff);
+    }
+    .day-card.has-slots .card-header {
+        background: var(--accent-50, #eef6ff);
+    }
 
+    /* Slot chip */
+    .slot-chip {
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+        margin: 2px;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+        background: #fff;
+        transition: all 0.15s ease;
+        user-select: none;
+    }
+    .slot-chip:hover {
+        border-color: var(--accent-400, #80bdff);
+        background: #f8fbff;
+    }
+    .slot-chip input[type="checkbox"] {
+        display: none;
+    }
+    .slot-chip-label {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 0.78rem;
+        color: #495057;
+        white-space: nowrap;
+    }
+    .slot-chip input:checked + .slot-chip-label {
+        background: var(--accent-500, #007bff);
+        color: #fff;
+        border-radius: 5px;
+    }
+
+    .day-indicator { transition: background 0.2s ease; }
+    .day-indicator.active { background: var(--success-500, #28a745) !important; }
+    .card .card-header { transition: background 0.2s ease; }
+    .schedule-summary { background: #f8f9fa; border-radius: 8px; padding: 0.75rem 1rem; }
+</style>
+@endpush
 @section('content')
-<section class="content pt-3">
-    <div class="container-fluid card card-outline card-primary p-3">
-        <!-- Page Header -->
-        <div class="row mb-3">
-            <div class="col-md-8">
-                <div class="d-flex align-items-center">
-                    <div>
-                        <h4 class="mb-0">Edit Professional</h4>
-                        <small class="text-muted">Update professional information and schedule</small>
-                    </div>
-                </div>
-            </div>
+<div class="container-fluid" style="padding: 0 24px;">
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-user-md" style="color: var(--accent-500); margin-right: 8px;"></i>Edit Professional</h1>
+            <p>Update professional information and schedule</p>
+        </div>
+        <div class="header-actions">
             @can('permission', 'professional_list.index')
-            <div class="col-md-4 text-right">
-                <a href="{{ url('admin/professionals') }}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-list-ul mr-1"></i> Professional List
-                </a>
-            </div>
+            <a href="{{ url('admin/professionals') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i>Professional List</a>
             @endcan
         </div>
-
-        @include('admin.alert_message')
-
-        <form action="{{ route('professionals.update', $professional->id) }}" method="post" id="professional-form">
-            @csrf
-            @method('PUT')
-
-            <!-- Row 1: Basic Info (left) + Services (right) -->
-            <div class="row">
-
-                <!-- Basic Information Card -->
-                <div class="col-lg-7">
-                    <div class="card">
-                        <div class="card-header bg-white border-bottom">
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3" style="width:36px;height:36px;font-size:14px;">
-                                    <i class="fas fa-user-md"></i>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0 font-weight-bold">Basic Information</h6>
-                                    <small class="text-muted">Personal & account details</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="small font-weight-bold text-muted mb-1">Full Name <span class="text-danger">*</span></label>
-                                        <div class="input-group input-group-sm">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text bg-light border-right-0"><i class="fas fa-user text-muted"></i></span>
-                                            </div>
-                                            <input type="text" class="form-control border-left-0 pl-0" name="name" value="{{ $professional->name }}" placeholder="Enter full name" required>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="small font-weight-bold text-muted mb-1">Email <span class="text-danger">*</span></label>
-                                        <div class="input-group input-group-sm">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text bg-light border-right-0"><i class="fas fa-envelope text-muted"></i></span>
-                                            </div>
-                                            <input type="email" class="form-control border-left-0 pl-0" name="email" value="{{ $professional->email }}" placeholder="email@example.com" required>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="small font-weight-bold text-muted mb-1">Password</label>
-                                        <div class="input-group input-group-sm">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text bg-light border-right-0"><i class="fas fa-lock text-muted"></i></span>
-                                            </div>
-                                            <input type="password" class="form-control border-left-0 pl-0" name="password" placeholder="Leave blank to keep current">
-                                            <div class="input-group-append">
-                                                <span class="input-group-text bg-light border-left-0" style="cursor:pointer" onclick="togglePassword(this)">
-                                                    <i class="fas fa-eye text-muted"></i>
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <small class="text-muted">Leave blank to keep current password</small>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="small font-weight-bold text-muted mb-1">Phone Number</label>
-                                        <div class="input-group input-group-sm">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text bg-light border-right-0"><i class="fas fa-phone text-muted"></i></span>
-                                            </div>
-                                            <input type="text" class="form-control border-left-0 pl-0" name="mobile_no" value="{{ $professional->mobile_no }}" placeholder="Phone number">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="small font-weight-bold text-muted mb-1">Designation <span class="text-danger">*</span></label>
-                                        <select class="form-control form-control-sm" name="designation" required>
-                                            <option value="">Select Designation</option>
-                                            @foreach ($designations as $designation)
-                                                <option value="{{ $designation->value }}" {{ $professional->designation?->value === $designation->value ? 'selected' : '' }}>{{ $designation->label() }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="small font-weight-bold text-muted mb-1">Status <span class="text-danger">*</span></label>
-                                        <div class="d-flex pt-1">
-                                            <div class="custom-control custom-radio custom-control-inline mr-4">
-                                                <input type="radio" id="status_active" name="status" value="1" class="custom-control-input" {{ $professional->status ? 'checked' : '' }}>
-                                                <label class="custom-control-label" for="status_active">
-                                                    <span class="badge badge-success mr-1">Active</span>
-                                                </label>
-                                            </div>
-                                            <div class="custom-control custom-radio custom-control-inline">
-                                                <input type="radio" id="status_inactive" name="status" value="0" class="custom-control-input" {{ !$professional->status ? 'checked' : '' }}>
-                                                <label class="custom-control-label" for="status_inactive">
-                                                    <span class="badge badge-secondary mr-1">Inactive</span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Services Card -->
-                <div class="col-lg-5">
-                    <div class="card">
-                        <div class="card-header bg-white border-bottom">
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center mr-3" style="width:36px;height:36px;font-size:14px;">
-                                    <i class="fas fa-briefcase-medical"></i>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0 font-weight-bold">Services</h6>
-                                    <small class="text-muted">Select offered services</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <select class="form-control form-control-sm select2-services" name="services[]" multiple required>
-                                    @foreach ($appointmentServices as $service)
-                                        <option value="{{ $service->id }}" {{ $professional->appointmentServices->contains($service->id) ? 'selected' : '' }}>{{ $service->name }} ({{ $service->category->label() }})</option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted mt-1 d-block">Hold <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> to select multiple</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Schedule Section -->
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header bg-white border-bottom">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div class="d-flex align-items-center">
-                                    <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center mr-3" style="width:36px;height:36px;font-size:14px;">
-                                        <i class="fas fa-calendar-week"></i>
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-0 font-weight-bold">Weekly Schedule</h6>
-                                        <small class="text-muted">Assign time slots for each working day</small>
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-center">
-                                    <button type="button" class="btn btn-outline-secondary btn-xs mr-2" onclick="selectAllSlots()">
-                                        <i class="fas fa-check-double mr-1"></i> Select All Slots
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-xs" onclick="clearAllSlots()">
-                                        <i class="fas fa-times mr-1"></i> Clear All
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div id="schedule-container">
-                                <!-- Summary bar appears dynamically -->
-                            </div>
-                            <div class="row">
-                                @foreach ($days as $day)
-                                @php
-                                    $daySlotIds = $professional->professionalTimeSlots
-                                        ->where('day_id', $day->id)
-                                        ->pluck('time_slot_id')
-                                        ->toArray();
-                                @endphp
-                                <div class="col-lg-6 col-xl-4 mb-3">
-                                    <div class="card day-card mb-0 has-slots-{{ count($daySlotIds) > 0 ? 'true' : 'false' }}" id="day-card-{{ $day->id }}">
-                                        <div class="card-header py-2 d-flex align-items-center justify-content-between" id="day-header-{{ $day->id }}">
-                                            <div class="d-flex align-items-center">
-                                                <div class="day-indicator mr-2 {{ count($daySlotIds) > 0 ? 'active' : '' }}" id="day-indicator-{{ $day->id }}" style="width:8px;height:8px;border-radius:50%;background:{{ count($daySlotIds) > 0 ? '#28a745' : '#d1d5db' }};"></div>
-                                                <strong class="mb-0" style="font-size:0.9rem;">{{ $day->label() }}</strong>
-                                                <span class="badge {{ count($daySlotIds) > 0 ? 'badge-primary' : 'badge-light' }} ml-2 day-count" id="day-count-{{ $day->id }}" style="font-size:0.7rem;">{{ count($daySlotIds) }}</span>
-                                            </div>
-                                            <div class="d-flex align-items-center">
-                                                <small>
-                                                    <a href="javascript:void(0)" onclick="toggleDaySlots({{ $day->id }})" class="text-primary font-weight-bold" style="font-size:0.75rem;">Toggle</a>
-                                                </small>
-                                            </div>
-                                        </div>
-                                        <div class="card-body py-2">
-                                            <div class="d-flex flex-wrap">
-                                                @foreach ($timeSlots as $slot)
-                                                <label class="slot-chip" id="chip-{{ $day->id }}-{{ $slot->id }}">
-                                                    <input type="checkbox" name="time_slots[{{ $day->id }}][]" value="{{ $slot->id }}" class="day-slot" data-day="{{ $day->id }}" {{ in_array($slot->id, $daySlotIds) ? 'checked' : '' }} onchange="updateDayCount({{ $day->id }})">
-                                                    <span class="slot-chip-label">{{ $slot->start_time->format('g:i A') }} - {{ $slot->end_time->format('g:i A') }}</span>
-                                                </label>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Submit Section -->
-            <div class="row mt-3 mb-4">
-                <div class="col-12">
-                    <div class="d-flex justify-content-end">
-                        <a href="{{ url('admin/professionals') }}" class="btn btn-light mr-2">
-                            <i class="fas fa-times mr-1"></i> Cancel
-                        </a>
-                        <button type="submit" class="btn btn-primary px-4">
-                            <i class="fas fa-save mr-1"></i> Update Professional
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </form>
     </div>
-</section>
+    @include('admin.alert_message')
+    <form action="{{ route('professionals.update', $professional->id) }}" method="post" id="professional-form">
+        @csrf
+        @method('PUT')
+        <div class="row">
+            <div class="col-lg-7">
+                <div class="crm-form-section crm-animate-in delay-1">
+                    <div class="crm-form-section-header">
+                        <div class="section-icon" style="background: var(--accent-500);"><i class="fas fa-user-md"></i></div>
+                        <h6>Basic Information</h6>
+                    </div>
+                    <div class="crm-form-section-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Full Name <span style="color: var(--danger-500);">*</span></label>
+                                    <input type="text" class="form-control" name="name" value="{{ $professional->name }}" placeholder="Enter full name" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Email <span style="color: var(--danger-500);">*</span></label>
+                                    <input type="email" class="form-control" name="email" value="{{ $professional->email }}" placeholder="email@example.com" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Password</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" name="password" placeholder="Leave blank to keep current">
+                                        <div class="input-group-append">
+                                            <span class="input-group-text" style="cursor:pointer" onclick="togglePassword(this)">
+                                                <i class="fas fa-eye text-muted"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <small class="form-text text-muted">Leave blank to keep current password</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="text" class="form-control" name="mobile_no" value="{{ $professional->mobile_no }}" placeholder="Phone number">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                @include('admin.partials.branch_select', ['selected' => $professional->vendor_id])
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Designation <span style="color: var(--danger-500);">*</span></label>
+                                    <select class="form-control" name="designation" required>
+                                        <option value="">Select Designation</option>
+                                        @foreach ($designations as $designation)
+                                            <option value="{{ $designation->value }}" {{ $professional->designation?->value === $designation->value ? 'selected' : '' }}>{{ $designation->label() }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Status <span style="color: var(--danger-500);">*</span></label>
+                                    <div class="mt-1">
+                                        <label class="radio-inline my-2"><input type="radio" name="status" value="1" {{ $professional->status ? 'checked' : '' }}> Active</label>
+                                        <label class="radio-inline my-2 ml-3"><input type="radio" name="status" value="0" {{ !$professional->status ? 'checked' : '' }}> Inactive</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="crm-form-section crm-animate-in delay-2">
+                    <div class="crm-form-section-header">
+                        <div class="section-icon" style="background: var(--info-500, #17a2b8);"><i class="fas fa-briefcase-medical"></i></div>
+                        <h6>Services</h6>
+                    </div>
+                    <div class="crm-form-section-body">
+                        <div class="form-group">
+                            <select class="form-control select2-services" name="services[]" multiple required>
+                                @foreach ($appointmentServices as $service)
+                                    <option value="{{ $service->id }}" {{ $professional->appointmentServices->contains($service->id) ? 'selected' : '' }}>{{ $service->name }} ({{ $service->category->label() }})</option>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted">Hold <kbd>Ctrl</kbd> / <kbd>Cmd</kbd> to select multiple</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule Section -->
+        <div class="crm-form-section crm-animate-in delay-3">
+            <div class="crm-form-section-header">
+                <div class="section-icon" style="background: var(--success-500);"><i class="fas fa-calendar-alt"></i></div>
+                <h6>Working Shifts & Clinic Rosters</h6>
+                <div style="margin-left: auto;">
+                    <a href="{{ url('admin/roster') }}" target="_blank" class="btn btn-outline-primary btn-xs">
+                        <i class="fas fa-user-clock mr-1"></i>Open Staff Rosters & Leave
+                    </a>
+                </div>
+            </div>
+            <div class="crm-form-section-body">
+                @php
+                    $schedules = $professional->staffSchedules()->with('branch')->get();
+                @endphp
+                @if($schedules->isNotEmpty())
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0" style="font-size: 13px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th style="width: 150px;">Day of Week</th>
+                                    <th>Clinic Branch</th>
+                                    <th>Shift Hours</th>
+                                    <th style="width: 100px; text-align: center;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($schedules as $shift)
+                                <tr>
+                                    <td><strong>{{ \App\Models\BranchSchedule::isoDayName($shift->day_of_week) }}</strong></td>
+                                    <td>{{ $shift->branch?->company_name ?? $shift->branch?->name ?? 'Default Branch' }}</td>
+                                    <td>
+                                        <span class="text-primary font-weight-600">
+                                            <i class="far fa-clock mr-1"></i>{{ date('g:i A', strtotime($shift->start_time)) }} - {{ date('g:i A', strtotime($shift->end_time)) }}
+                                        </span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        @if($shift->is_active)
+                                            <span class="badge badge-success px-2 py-1">Active Shift</span>
+                                        @else
+                                            <span class="badge badge-secondary px-2 py-1">Inactive</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="alert alert-light border mb-0 text-muted d-flex align-items-center" style="border-radius: 8px; background: #f8fafc;">
+                        <i class="fas fa-calendar-times mr-3 text-warning" style="font-size: 20px;"></i>
+                        <div>
+                            No weekly roster shifts assigned yet. 
+                            <a href="{{ url('admin/roster') }}" target="_blank" class="font-weight-600 text-primary">Assign weekly shifts in Staff Rosters & Leave &rarr;</a>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <div class="crm-form-submit-bar">
+            <a href="{{ url('admin/professionals') }}" class="btn btn-secondary btn-sm">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i>Update Professional</button>
+        </div>
+    </form>
+</div>
 @endsection
-
-@push('css')
-    <link rel="stylesheet" href="{{ asset('assets/plugins/select2/css/select2.min.css') }}">
-    <style>
-        /* Day card */
-        .day-card {
-            border: 1px solid #e3e6ea;
-            border-radius: 10px;
-            overflow: hidden;
-            transition: all 0.2s ease;
-        }
-        .day-card:hover {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-        .day-card.has-slots {
-            border-color: #80bdff;
-        }
-        .day-card.has-slots .card-header {
-            background: #eef6ff;
-        }
-
-        /* Slot chip */
-        .slot-chip {
-            display: inline-flex;
-            align-items: center;
-            cursor: pointer;
-            margin: 2px;
-            border-radius: 6px;
-            border: 1px solid #dee2e6;
-            background: #fff;
-            transition: all 0.15s ease;
-            user-select: none;
-        }
-        .slot-chip:hover {
-            border-color: #80bdff;
-            background: #f8fbff;
-        }
-        .slot-chip input[type="checkbox"] {
-            display: none;
-        }
-        .slot-chip-label {
-            display: inline-block;
-            padding: 4px 10px;
-            font-size: 0.78rem;
-            color: #495057;
-            white-space: nowrap;
-        }
-        .slot-chip input:checked + .slot-chip-label {
-            background: #007bff;
-            color: #fff;
-            border-radius: 5px;
-        }
-
-        /* Day indicator dot */
-        .day-indicator {
-            transition: background 0.2s ease;
-        }
-        .day-indicator.active {
-            background: #28a745 !important;
-        }
-
-        /* Card headers */
-        .card .card-header {
-            transition: background 0.2s ease;
-        }
-
-        /* Summary bar */
-        .schedule-summary {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-        }
-    </style>
-@endpush
 
 @push('scripts')
     <script src="{{ asset('assets/plugins/select2/js/select2.full.min.js') }}"></script>
@@ -338,7 +248,6 @@
                 allowClear: true
             });
 
-            // Update count on change
             $(document).on('change', '.day-slot', function() {
                 updateDayCount($(this).data('day'));
             });
@@ -350,20 +259,14 @@
                 $card.addClass('has-slots');
             });
 
-            // Initialize summary
             updateSummary();
         });
 
         function updateDayCount(dayId) {
             const count = $(`.day-slot[data-day="${dayId}"]:checked`).length;
-            const total = $(`.day-slot[data-day="${dayId}"]`).length;
-
             $(`#day-count-${dayId}`).text(count);
-
-            // Update visual states
             const $card = $(`#day-card-${dayId}`);
             const $indicator = $(`#day-indicator-${dayId}`);
-
             if (count > 0) {
                 $card.addClass('has-slots');
                 $indicator.addClass('active');
@@ -373,7 +276,6 @@
                 $indicator.removeClass('active');
                 $(`#day-count-${dayId}`).removeClass('badge-primary').addClass('badge-light');
             }
-
             updateSummary();
         }
 
@@ -389,10 +291,7 @@
             const dayIds = [];
             $('.day-slot').each(function() {
                 const dayId = $(this).data('day');
-                if (!dayIds.includes(dayId)) {
-                    dayIds.push(dayId);
-                    updateDayCount(dayId);
-                }
+                if (!dayIds.includes(dayId)) { dayIds.push(dayId); updateDayCount(dayId); }
             });
         }
 
@@ -401,53 +300,36 @@
             const dayIds = [];
             $('.day-slot').each(function() {
                 const dayId = $(this).data('day');
-                if (!dayIds.includes(dayId)) {
-                    dayIds.push(dayId);
-                    updateDayCount(dayId);
-                }
+                if (!dayIds.includes(dayId)) { dayIds.push(dayId); updateDayCount(dayId); }
             });
         }
 
         function updateSummary() {
             const activeDays = new Set();
             let totalSlots = 0;
-            $('.day-slot:checked').each(function() {
-                activeDays.add($(this).data('day'));
-                totalSlots++;
-            });
-
+            $('.day-slot:checked').each(function() { activeDays.add($(this).data('day')); totalSlots++; });
             if (activeDays.size > 0) {
                 if (!$('#schedule-summary').length) {
                     $('#schedule-container').html(`
-                        <div class="schedule-summary d-flex align-items-center justify-content-between mb-3" id="schedule-summary">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-info-circle text-primary mr-2"></i>
-                                <span class="text-muted" style="font-size:0.85rem;">
-                                    <strong class="text-dark" id="summary-days">${activeDays.size}</strong> working day(s) configured with
-                                    <strong class="text-dark" id="summary-slots">${totalSlots}</strong> time slot(s)
-                                </span>
-                            </div>
-                        </div>
-                    `);
+                        <div class="schedule-summary d-flex align-items-center mb-3" id="schedule-summary">
+                            <i class="fas fa-info-circle text-primary mr-2"></i>
+                            <span class="text-muted" style="font-size:0.85rem;">
+                                <strong class="text-dark" id="summary-days">${activeDays.size}</strong> working day(s) with
+                                <strong class="text-dark" id="summary-slots">${totalSlots}</strong> time slot(s)
+                            </span>
+                        </div>`);
                 } else {
                     $('#summary-days').text(activeDays.size);
                     $('#summary-slots').text(totalSlots);
                 }
-            } else {
-                $('#schedule-summary').remove();
-            }
+            } else { $('#schedule-summary').remove(); }
         }
 
         function togglePassword(el) {
             const input = $(el).closest('.input-group').find('input');
             const icon = $(el).find('i');
-            if (input.attr('type') === 'password') {
-                input.attr('type', 'text');
-                icon.removeClass('fa-eye').addClass('fa-eye-slash');
-            } else {
-                input.attr('type', 'password');
-                icon.removeClass('fa-eye-slash').addClass('fa-eye');
-            }
+            if (input.attr('type') === 'password') { input.attr('type', 'text'); icon.removeClass('fa-eye').addClass('fa-eye-slash'); }
+            else { input.attr('type', 'password'); icon.removeClass('fa-eye-slash').addClass('fa-eye'); }
         }
     </script>
 @endpush

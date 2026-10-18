@@ -30,7 +30,7 @@ class ProfessionalController extends Controller
     public function index(): View
     {
         $data['professionals'] = User::where('type', 'professional')
-            ->with('workingDays.day', 'timeSlots', 'appointmentServices')
+            ->with('workingDays.day', 'timeSlots', 'appointmentServices', 'branch:id,name')
             ->orderBy('id', 'desc')
             ->get();
 
@@ -62,8 +62,8 @@ class ProfessionalController extends Controller
             'status'       => 'nullable|in:0,1',
             'services'     => 'required|array|min:1',
             'services.*'   => 'exists:appointment_services,id',
-            'time_slots'   => 'required|array',
-            'time_slots.*'   => 'array',
+            'time_slots'   => 'nullable|array',
+            'time_slots.*' => 'array',
         ]);
 
         DB::transaction(function () use ($request, $days) {
@@ -76,6 +76,7 @@ class ProfessionalController extends Controller
                 'designation' => $request->designation,
                 'mobile_no'   => $request->mobile_no,
                 'status'      => $request->status ?? 1,
+                'vendor_id'   => \App\Classes\Helper::staffBranchFromRequest($request->vendor_id),
             ]);
 
             // Sync services
@@ -83,14 +84,16 @@ class ProfessionalController extends Controller
 
             // Save day-wise time slots
             ProfessionalTimeSlot::where('user_id', $user->id)->delete();
-            foreach ($request->time_slots as $dayId => $slotIds) {
-                if (!in_array($dayId, $days) || empty($slotIds)) continue;
-                foreach ($slotIds as $slotId) {
-                    ProfessionalTimeSlot::create([
-                        'user_id'     => $user->id,
-                        'time_slot_id' => $slotId,
-                        'day_id'      => $dayId,
-                    ]);
+            if (!empty($request->time_slots)) {
+                foreach ($request->time_slots as $dayId => $slotIds) {
+                    if (!in_array($dayId, $days) || empty($slotIds)) continue;
+                    foreach ($slotIds as $slotId) {
+                        ProfessionalTimeSlot::create([
+                            'user_id'     => $user->id,
+                            'time_slot_id' => $slotId,
+                            'day_id'      => $dayId,
+                        ]);
+                    }
                 }
             }
 
@@ -134,8 +137,8 @@ class ProfessionalController extends Controller
             'status'       => 'nullable|in:0,1',
             'services'     => 'required|array|min:1',
             'services.*'   => 'exists:appointment_services,id',
-            'time_slots'   => 'required|array',
-            'time_slots.*'   => 'array',
+            'time_slots'   => 'nullable|array',
+            'time_slots.*' => 'array',
         ]);
 
         DB::transaction(function () use ($request, $professional, $days) {
@@ -145,6 +148,7 @@ class ProfessionalController extends Controller
                 'designation' => $request->designation,
                 'mobile_no'   => $request->mobile_no,
                 'status'      => $request->status ?? 1,
+                'vendor_id'   => \App\Classes\Helper::staffBranchFromRequest($request->vendor_id),
             ]);
 
             if ($request->password) {
@@ -157,14 +161,16 @@ class ProfessionalController extends Controller
 
             // Save day-wise time slots
             ProfessionalTimeSlot::where('user_id', $professional->id)->delete();
-            foreach ($request->time_slots as $dayId => $slotIds) {
-                if (!in_array($dayId, $days) || empty($slotIds)) continue;
-                foreach ($slotIds as $slotId) {
-                    ProfessionalTimeSlot::create([
-                        'user_id'     => $professional->id,
-                        'time_slot_id' => $slotId,
-                        'day_id'      => $dayId,
-                    ]);
+            if (!empty($request->time_slots)) {
+                foreach ($request->time_slots as $dayId => $slotIds) {
+                    if (!in_array($dayId, $days) || empty($slotIds)) continue;
+                    foreach ($slotIds as $slotId) {
+                        ProfessionalTimeSlot::create([
+                            'user_id'     => $professional->id,
+                            'time_slot_id' => $slotId,
+                            'day_id'      => $dayId,
+                        ]);
+                    }
                 }
             }
 

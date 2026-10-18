@@ -36,6 +36,8 @@ $(function () {
             $('.neworderbody').closest('table').find('thead').not('.service-head').show();
             $('.service-head').hide();
 
+            totalCalculation();
+
         } else if (saleType === 'service') {
             // Show service commission checkbox and add service button
             $('#product_commission_div').hide();
@@ -53,6 +55,8 @@ $(function () {
             // Show service head, hide product table head
             $('.service-head').show();
             $('.neworderbody').closest('table').find('thead').not('.service-head').hide();
+
+            totalCalculation();
         }
     });
 
@@ -263,43 +267,163 @@ $(function () {
         calculateDoctorCommission(grandTotal);
     }
 
-    // Calculate doctor commission based on selected doctor and grand total
+    // Calculate doctor commission based on category-wise overrides & service overrides
     function calculateDoctorCommission(grandTotal) {
-        var selectedDoctor = $('#reference_by option:selected');
-        var referenceAmount = 0;
-
-        if (selectedDoctor.val() && !isNaN(grandTotal)) {
-            // Get commission values from selected doctor
-            var productCommissionPercent = parseFloat(selectedDoctor.data('product-commission-percent')) || 0;
-            var productCommissionAmount = parseFloat(selectedDoctor.data('product-commission-amount')) || 0;
-            var serviceCommissionPercent = parseFloat(selectedDoctor.data('service-commission-percent')) || 0;
-            var serviceCommissionAmount = parseFloat(selectedDoctor.data('service-commission-amount')) || 0;
-
-            // Check which checkboxes are selected
-            var isProductPercent = $('#is_percent_product_commission').is(':checked');
-            var isServicePercent = $('#is_percent_service_commission').is(':checked');
-
-            // Only calculate commission based on which sale type is active
-            // If Product checkbox is visible and checked, use product commission
-            if ($('#is_percent_product_commission').is(':visible')) {
-                if (isProductPercent) {
-                    referenceAmount = (grandTotal * productCommissionPercent) / 100;
-                } else {
-                    referenceAmount = productCommissionAmount;
-                }
-            }
-            // If Service checkbox is visible and checked, use service commission
-            else if ($('#is_percent_service_commission').is(':visible')) {
-                if (isServicePercent) {
-                    referenceAmount = (grandTotal * serviceCommissionPercent) / 100;
-                } else {
-                    referenceAmount = serviceCommissionAmount;
-                }
-            }
-
-            $('.reference-amount').val(referenceAmount.toFixed(2));
-        } else {
+        var doctorId = $('#reference_by').val();
+        if (!doctorId) {
             $('.reference-amount').val('0.00');
+            $('#doc-comm-breakdown').hide();
+            return;
+        }
+
+        var rules = (window.crmDoctorRules && window.crmDoctorRules[doctorId]) ? window.crmDoctorRules[doctorId] : null;
+        var selectedDoctor = $('#reference_by option:selected');
+
+        var defaultProdPercent = rules ? rules.product_default.percent : (parseFloat(selectedDoctor.data('product-commission-percent')) || 0);
+        var defaultProdFixed   = rules ? rules.product_default.amount  : (parseFloat(selectedDoctor.data('product-commission-amount')) || 0);
+        var defaultSrvPercent  = rules ? rules.service_default.percent : (parseFloat(selectedDoctor.data('service-commission-percent')) || 0);
+        var defaultSrvFixed    = rules ? rules.service_default.amount  : (parseFloat(selectedDoctor.data('service-commission-amount')) || 0);
+
+        var categoryOverrides = (rules && rules.category_overrides) ? rules.category_overrides : {};
+        var serviceOverrides  = (rules && rules.service_overrides)  ? rules.service_overrides  : {};
+
+        var isProductPercent = $('#is_percent_product_commission').is(':checked');
+        var isServicePercent = $('#is_percent_service_commission').is(':checked');
+
+        var totalProductCommission = 0;
+        var totalServiceCommission = 0;
+        var catOverrideCount = 0;
+        var srvOverrideCount = 0;
+
+        // 1. Calculate Product Commissions
+        $('.neworderbody tr').each(function () {
+            var tr = $(this);
+            var catId = tr.attr('data-category-id') || tr.data('category-id');
+            var qty = parseFloat(tr.find('.qty').val()) || 0;
+            var lineTotal = parseFloat(tr.find('.total-price').val()) || 0;
+
+            if (qty <= 0 && lineTotal <= 0) return;
+
+            if (catId && categoryOverrides[catId]) {
+                var catRule = categoryOverrides[catId];
+                catOverrideCount++;
+                if (catRule.type === 'percent') {
+                    totalProductCommission += (lineTotal * catRule.value) / 100;
+                } else {
+                    totalProductCommission += (qty * catRule.value);
+                }
+            } else {
+                if (isProductPercent && defaultProdPercent > 0) {
+                    totalProductCommission += (lineTotal * defaultProdPercent) / 100;
+                } else if (defaultProdFixed > 0) {
+                    totalProductCommission += (qty * defaultProdFixed);
+                } else if (defaultProdPercent > 0) {
+                    totalProductCommission += (lineTotal * defaultProdPercent) / 100;
+                }
+            }
+        });
+
+        // 2. Calculate Service Commissions
+        $('.service-body tr').each(function () {
+            var tr = $(this);
+            var srvId = tr.find('.service-type').val();
+            var qty = parseFloat(tr.find('.service-qty').val()) || 1;
+            var unitPrice = parseFloat(tr.find('.service-price').val()) || 0;
+            var discount = parseFloat(tr.find('.service-discount-taka').val()) || 0;
+            var lineTotal = parseFloat(tr.find('.service-total-price').val());
+            if (isNaN(lineTotal) || lineTotal <= 0) {
+                lineTotal = (qty * unitPrice) - discount;
+            }
+
+            if (qty <= 0 && lineTotal <= 0) return;
+
+            if (srvId && serviceOverrides[srvId]) {
+                var srvRule = serviceOverrides[srvId];
+                srvOverrideCount++;
+                if (srvRule.type === 'percent') {
+                    totalServiceCommission += (lineTotal * srvRule.value) / 100;
+                } else {
+                    totalServiceCommission += (qty * srvRule.value);
+                }
+            } else {
+                if (isServicePercent && defaultSrvPercent > 0) {
+                    totalServiceCommission += (lineTotal * defaultSrvPercent) / 100;
+                } else if (defaultSrvFixed > 0) {
+                    totalServiceCommission += (qty * defaultSrvFixed);
+                } else if (defaultSrvPercent > 0) {
+                    totalServiceCommission += (lineTotal * defaultSrvPercent) / 100;
+                }
+            }
+        });
+
+        var totalCommission = totalProductCommission + totalServiceCommission;
+        $('.reference-amount').val(totalCommission.toFixed(2));
+
+        var $breakdown = $('#doc-comm-breakdown');
+        if ($breakdown.length) {
+            var parts = [];
+            if (totalProductCommission > 0) {
+                parts.push('Products: ৳' + totalProductCommission.toFixed(2) + (catOverrideCount > 0 ? ' (' + catOverrideCount + ' cat overrides)' : ''));
+            }
+            if (totalServiceCommission > 0) {
+                parts.push('Services: ৳' + totalServiceCommission.toFixed(2) + (srvOverrideCount > 0 ? ' (' + srvOverrideCount + ' srv overrides)' : ''));
+            }
+            if (parts.length > 0) {
+                $breakdown.html('<i class="fas fa-calculator mr-1"></i>' + parts.join(' &nbsp;|&nbsp; ')).slideDown(100);
+            } else {
+                $breakdown.slideUp(100);
+            }
+        }
+    }
+
+    // Populate and sync chamber dropdown based on selected doctor
+    function syncDoctorChambers(doctorId, preselectedChamberId) {
+        var $chamberWrap = $('#doctor-chamber-wrap');
+        var $chamberSelect = $('#doctor_chamber_id');
+
+        if (!doctorId) {
+            $chamberWrap.slideUp(150);
+            $chamberSelect.empty().append('<option value="">Select Chamber (Optional)</option>');
+            return;
+        }
+
+        function populateChambers(rules) {
+            $chamberSelect.empty().append('<option value="">Select Chamber (Optional)</option>');
+            var chambers = (rules && rules.chambers) ? rules.chambers : [];
+
+            if (chambers.length > 0) {
+                chambers.forEach(function (c) {
+                    var isSelected = preselectedChamberId ? (c.id == preselectedChamberId) : c.is_primary;
+                    var label = c.chamber_name + (c.address ? ' — ' + c.address : '');
+                    var $opt = $('<option></option>').val(c.id).text(label);
+                    if (isSelected) {
+                        $opt.prop('selected', true);
+                    }
+                    $chamberSelect.append($opt);
+                });
+                $chamberWrap.slideDown(150);
+            } else {
+                $chamberWrap.slideUp(150);
+            }
+        }
+
+        if (window.crmDoctorRules && window.crmDoctorRules[doctorId]) {
+            populateChambers(window.crmDoctorRules[doctorId]);
+        } else {
+            $.ajax({
+                url: '/admin/doctor/' + doctorId + '/commission-rules',
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    if (!window.crmDoctorRules) window.crmDoctorRules = {};
+                    window.crmDoctorRules[doctorId] = data;
+                    populateChambers(data);
+                    calculateDoctorCommission();
+                },
+                error: function () {
+                    $chamberWrap.slideUp(150);
+                }
+            });
         }
     }
 
@@ -559,8 +683,8 @@ $(function () {
     });
 
     // Delete service row handler
-    $('.service-body').delegate('.delete-service, .delete', 'click', function () {
-        var tr = $(this).parent().parent();
+    $(document).on('click', '.service-body .delete-service, .service-body .delete', function () {
+        var tr = $(this).closest('tr');
         tr.remove();
 
         // Hide service header if no service rows left
@@ -572,20 +696,22 @@ $(function () {
     });
 
     // Service type dropdown change handler
-    $('.service-body').delegate('.service-type', 'change', function () {
-        var tr = $(this).parent().parent();
+    $(document).on('change', '.service-body .service-type', function () {
+        var tr = $(this).closest('tr');
         var selectedOption = $(this).find('option:selected');
-        var price = selectedOption.data('price') || 0;
+        var price = selectedOption.data('price') !== undefined ? selectedOption.data('price') : (selectedOption.attr('data-price') || 0);
 
         tr.find('.service-price').val(price);
-        tr.find('.service-qty').val(1);
+        if (!tr.find('.service-qty').val() || tr.find('.service-qty').val() == 0) {
+            tr.find('.service-qty').val(1);
+        }
         serviceTotal(tr);
         totalCalculation();
     });
 
-    // Service input change handlers
-    $('.service-body').delegate('.service-qty, .service-price, .service-discount, .service-discount-taka', 'keyup', function () {
-        var tr = $(this).parent().parent();
+    // Service input change handlers (support keyup, input, and change for real-time recalculation)
+    $(document).on('keyup input change', '.service-body .service-qty, .service-body .service-price, .service-body .service-discount, .service-body .service-discount-taka', function () {
+        var tr = $(this).closest('tr');
         serviceTotal(tr);
         totalCalculation();
     });
@@ -618,7 +744,10 @@ $(function () {
             url: urls.productInfo + '/' + productId,
             datatype: 'json',
             success: function (data) {
-               let batchSelect = tr.find('.batch');
+                if (data?.product?.category_id) {
+                    tr.attr('data-category-id', data.product.category_id);
+                }
+                let batchSelect = tr.find('.batch');
 
                 batchSelect.empty();
                 batchSelect.append(
@@ -855,17 +984,25 @@ $(function () {
         this.submit();
     });
 
-    // Recalculate doctor commission when doctor selection changes
+    // Recalculate doctor commission and sync chambers when doctor selection changes
     $('#reference_by').on('change', function() {
-        var grandTotal = parseFloat($('.grand-total').val()) || 0;
-        calculateDoctorCommission(grandTotal);
+        var docId = $(this).val();
+        syncDoctorChambers(docId);
+        calculateDoctorCommission();
     });
 
     // Recalculate doctor commission when commission checkboxes change
     $('#is_percent_product_commission, #is_percent_service_commission').on('change', function() {
-        var grandTotal = parseFloat($('.grand-total').val()) || 0;
-        calculateDoctorCommission(grandTotal);
+        calculateDoctorCommission();
     });
+
+    // Initial check on page load for chambers and commission
+    var initialDocId = $('#reference_by').val();
+    if (initialDocId) {
+        var preselectedChamberId = $('#doctor_chamber_id').data('initial-chamber') || $('#doctor_chamber_id').val();
+        syncDoctorChambers(initialDocId, preselectedChamberId);
+        calculateDoctorCommission();
+    }
 
     // Initialize calculations for the first row and count pre-selected serial numbers
     $('.neworderbody tr').each(function() {
@@ -972,54 +1109,45 @@ $(function () {
                 'X-Requested-With': 'XMLHttpRequest'
             },
             success: function (response) {
-                // If we get here, customer was created successfully
-                // We need to get the latest customer from the server
-                $.ajax({
-                    url: customerSearchUrl,
-                    method: 'GET',
-                    data: { search: '' },
-                    dataType: 'json',
-                    success: function (customerData) {
-                        // Update the customer dropdown with the new data
-                        var $customerSelect = $('.customer');
-                        $customerSelect.empty().append('<option value="">Select</option>');
+                if (response.success && response.customer_id) {
+                    var $customerSelect = $('.customer');
+                    var custId = response.customer_id;
+                    var custPhone = response.phone || response.phone_number || phoneNumber;
+                    var custText = (response.customer_name || fullName) +
+                        (custPhone ? ' - ' + custPhone : '') +
+                        (response.customer_uid ? ' (' + response.customer_uid + ')' : '');
 
-                        $.each(customerData, function (key, value) {
-                            $customerSelect.append('<option value="' + value.id + '">' + value.text + '</option>');
-                        });
-
-                        // Select the newly created customer
-                        if (response.customer_id) {
-                            $customerSelect.val(response.customer_id).trigger('change');
-                        } else if (customerData.length > 0) {
-                            $customerSelect.val(customerData[0].id).trigger('change');
-                        }
-
-                        // Close the modal and reset the form
-                        $('#customerModal').modal('hide');
-
-                        // Remove focus from any focused element in the modal
-                        $('#customerModal').find(':focus').blur();
-
-                        // Reset form after modal is fully hidden
-                        $('#customerModal').one('hidden.bs.modal', function () {
-                            $form[0].reset();
-                            // Reset Select2 dropdowns
-                            $form.find('select').each(function() {
-                                $(this).val(null).trigger('change');
-                            });
-                        });
-
-                        // Show success message
-                        alert('Customer created successfully!');
-                    },
-                    error: function () {
-                        alert('Error loading customer list. Please refresh the page.');
-                        // Remove focus before hiding modal
-                        $('#customerModal').find(':focus').blur();
-                        $('#customerModal').modal('hide');
+                    // Create Select2 option if it doesn't already exist, and select it
+                    if ($customerSelect.find("option[value='" + custId + "']").length) {
+                        $customerSelect.val(custId).trigger('change');
+                    } else {
+                        var newOption = new Option(custText, custId, true, true);
+                        $customerSelect.append(newOption).trigger('change');
                     }
-                });
+
+                    // Trigger select2:select so redeem points and any linked listeners update
+                    $customerSelect.trigger({
+                        type: 'select2:select',
+                        params: {
+                            data: { id: custId, text: custText }
+                        }
+                    });
+
+                    // Close the modal and remove focus
+                    $('#customerModal').modal('hide');
+                    $('#customerModal').find(':focus').blur();
+
+                    // Alert or toast message
+                    var message = response.message || (response.already_exists ? 'Existing customer selected.' : 'Customer created successfully!');
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success(message);
+                    } else {
+                        alert(message);
+                    }
+                } else {
+                    alert(response.message || 'Customer saved, but could not be selected automatically.');
+                    $('#customerModal').modal('hide');
+                }
             },
             error: function (xhr) {
                 // Handle validation errors

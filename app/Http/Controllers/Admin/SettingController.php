@@ -51,8 +51,10 @@ class SettingController extends Controller
         $this->validate(
             $request,
             [
-                'company_name' => ['required', 'string'],
-                'mobile' => ['required']
+                'company_name'   => ['required', 'string'],
+                'mobile'         => ['required'],
+                'website_url'    => ['nullable', 'string', 'max:255'],
+                'partner_slogan' => ['nullable', 'string', 'max:255'],
             ]
         );
 

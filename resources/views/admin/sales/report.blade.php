@@ -76,8 +76,8 @@
                                                 <tr>
                                                     <td class="text-center">{{ ++$key }}</td>
                                                     <td class="text-center">{{ $val->sale_invoice_no }}</td>
+                                                    <td class="text-center">{{ $val->customer?->name ?? 'N/A' }}</td>
                                                     <td class="text-center">{{ $val->date }}</td>
-                                                    <td class="text-center">{{ $val->customer->name }}</td>
                                                     <td class="text-center">{{ $val->details }}</td>
                                                     <td class="text-right">{{ $val->total_amount }}</td>
                                                     <td class="text-right">{{ $val->paid }}</td>

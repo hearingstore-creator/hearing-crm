@@ -1,341 +1,710 @@
 @extends('admin.layouts.master')
+@section('page_title', 'Appointment Calendar')
+@section('breadcrumb_parent', 'Appointments')
+@section('breadcrumb_parent_url', url('admin/appointments'))
+
+@push('css')
+    <link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
+    <style>
+        .cal-container {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+        .stats-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 14px 18px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .stat-mini {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            min-width: 140px;
+            flex: 1;
+        }
+        .stat-mini-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 14px;
+        }
+        .stat-mini-val {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.1;
+        }
+        .stat-mini-lbl {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .cal-top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 18px;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .cal-nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #334155;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .cal-nav-btn:hover {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+        }
+        .cal-today-btn {
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid #2563eb;
+            background: transparent;
+            color: #2563eb;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .cal-today-btn:hover {
+            background: #2563eb;
+            color: #ffffff;
+        }
+        .cal-month-label {
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-left: 8px;
+        }
+        .cal-view-tabs {
+            display: flex;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .cal-view-tab {
+            padding: 5px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            background: #ffffff;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .cal-view-tab.active {
+            background: #2563eb;
+            color: #ffffff;
+        }
+        .cal-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .cal-table th {
+            background: #f8fafc;
+            color: #334155;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 10px 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        .cal-table th.resource-col-header {
+            background: #f0fdf4;
+            color: #166534;
+            border-left: 2px solid #22c55e;
+        }
+        .cal-table td {
+            border: 1px solid #e2e8f0;
+            padding: 4px;
+            height: 54px;
+            vertical-align: top;
+            font-size: 11px;
+            position: relative;
+        }
+        .td-time {
+            width: 85px;
+            background: #f8fafc;
+            text-align: right;
+            padding: 8px 10px !important;
+            font-weight: 600;
+            color: #475569;
+            font-size: 11px;
+        }
+        .appt-card {
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin-bottom: 2px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border-left: 3px solid #2563eb;
+            font-size: 11px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .appt-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+        }
+        .empty-slot-btn {
+            width: 100%;
+            height: 100%;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            border: 1px dashed transparent;
+            border-radius: 4px;
+            background: transparent;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .empty-slot-btn:hover {
+            border-color: #93c5fd;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+    </style>
+@endpush
 
 @section('content')
-<section class="content pt-3">
-    <div class="container-fluid">
-        <!-- Calendar Card -->
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card card-outline card-primary">
-                    <div class="stats-strip" id="stats-strip">
-                        <div class="stat-mini">
-                            <div class="stat-mini-icon" style="background:#007bff"><i class="fas fa-calendar-check"></i></div>
-                            <div class="stat-mini-body">
-                                <div class="stat-mini-val" id="stat-total">0</div>
-                                <div class="stat-mini-lbl">Total</div>
-                            </div>
-                        </div>
-                        <div class="stat-mini">
-                            <div class="stat-mini-icon" style="background:#fd7e14"><i class="fas fa-calendar-day"></i></div>
-                            <div class="stat-mini-body">
-                                <div class="stat-mini-val" id="stat-today">0</div>
-                                <div class="stat-mini-lbl">Today</div>
-                            </div>
-                        </div>
-                        <div class="stat-mini">
-                            <div class="stat-mini-icon" style="background:#007bff"><i class="fas fa-clock"></i></div>
-                            <div class="stat-mini-body">
-                                <div class="stat-mini-val" id="stat-scheduled">0</div>
-                                <div class="stat-mini-lbl">Scheduled</div>
-                            </div>
-                        </div>
-                        <div class="stat-mini">
-                            <div class="stat-mini-icon" style="background:#dc3545"><i class="fas fa-times-circle"></i></div>
-                            <div class="stat-mini-body">
-                                <div class="stat-mini-val" id="stat-cancelled">0</div>
-                                <div class="stat-mini-lbl">Cancelled</div>
-                            </div>
-                        </div>
-                        <div class="stat-mini">
-                            <div class="stat-mini-icon" style="background:#28a745"><i class="fas fa-check-circle"></i></div>
-                            <div class="stat-mini-body">
-                                <div class="stat-mini-val" id="stat-completed">0</div>
-                                <div class="stat-mini-lbl">Completed</div>
-                            </div>
-                        </div>
+<div class="container-fluid" style="padding: 0 24px;">
+
+    {{-- Page Header --}}
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-calendar-alt" style="color: var(--accent-500); margin-right: 8px;"></i>Appointment Calendar</h1>
+            <p>Multi-column specialist and sound booth schedule & availability</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ route('appointments.today') }}" class="btn btn-warning btn-sm" style="font-weight: 600;">
+                <i class="fas fa-user-clock mr-1"></i>Today's Queue
+            </a>
+            @can('permission', 'appointment_list.index')
+                <a href="{{ url('admin/appointments') }}" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-list mr-1"></i>List View
+                </a>
+            @endcan
+            @can('permission', 'add_appointment.create')
+                <a href="{{ route('appointments.create') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus mr-1"></i>Book Appointment
+                </a>
+            @endcan
+        </div>
+    </div>
+
+    @include('admin.alert_message')
+
+    <div class="cal-container crm-animate-in delay-1">
+        {{-- Stats Strip --}}
+        <div class="stats-strip">
+            <div class="stat-mini">
+                <div class="stat-mini-icon" style="background:#2563eb"><i class="fas fa-calendar-check"></i></div>
+                <div>
+                    <div class="stat-mini-val" id="stat-total">0</div>
+                    <div class="stat-mini-lbl">All Time</div>
+                </div>
+            </div>
+            <div class="stat-mini">
+                <div class="stat-mini-icon" style="background:#f59e0b"><i class="fas fa-calendar-day"></i></div>
+                <div>
+                    <div class="stat-mini-val" id="stat-today">0</div>
+                    <div class="stat-mini-lbl">Today</div>
+                </div>
+            </div>
+            <div class="stat-mini">
+                <div class="stat-mini-icon" style="background:#0284c7"><i class="fas fa-clock"></i></div>
+                <div>
+                    <div class="stat-mini-val" id="stat-scheduled">0</div>
+                    <div class="stat-mini-lbl">Scheduled</div>
+                </div>
+            </div>
+            <div class="stat-mini">
+                <div class="stat-mini-icon" style="background:#8b5cf6"><i class="fas fa-user-clock"></i></div>
+                <div>
+                    <div class="stat-mini-val" id="stat-arrived">0</div>
+                    <div class="stat-mini-lbl">Waiting</div>
+                </div>
+            </div>
+            <div class="stat-mini">
+                <div class="stat-mini-icon" style="background:#16a34a"><i class="fas fa-check-double"></i></div>
+                <div>
+                    <div class="stat-mini-val" id="stat-completed">0</div>
+                    <div class="stat-mini-lbl">Completed</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Top Bar with Navigation & Branch Filter --}}
+        <div class="cal-top-bar">
+            <div class="d-flex align-items-center gap-2">
+                <button class="cal-nav-btn" onclick="navigateCalendar(-1)" aria-label="Previous"><i class="fas fa-chevron-left"></i></button>
+                <button class="cal-nav-btn" onclick="navigateCalendar(1)" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
+                <button class="cal-today-btn" onclick="goToday()">Today</button>
+                <span class="cal-month-label" id="cal-date-label">Loading...</span>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                @if(!empty($canViewAllBranches))
+                    <div class="d-flex align-items-center gap-1">
+                        <label style="font-size: 11px; margin: 0; color: #64748b; font-weight: 600;">BRANCH:</label>
+                        <select id="branchSelect" class="form-control form-control-sm" style="font-weight: 600; width: auto;" onchange="changeBranch(this.value)">
+                            @foreach ($branches as $bId => $bName)
+                                <option value="{{ $bId }}" {{ $currentBranchId == $bId ? 'selected' : '' }}>
+                                    📍 {{ $bName }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
-                    <div class="card-header bg-white">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <h5 class="mb-0">Appointment Calendar</h5>
-                                <small class="text-muted">Weekly & daily view of all scheduled appointments</small>
-                            </div>
-                            @can('permission', 'appointment_list.index')
-                            <a href="{{ url('admin/appointments') }}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-list-ul mr-1"></i> Appointment List
-                            </a>
-                            @endcan
-                        </div>
+                @endif
+
+                <div class="cal-view-tabs">
+                    <button class="cal-view-tab active" id="tab-day" onclick="setViewMode('day')">Day (Staff & Booth)</button>
+                    <button class="cal-view-tab" id="tab-week" onclick="setViewMode('week')">Week View</button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Calendar Grid Area --}}
+        <div style="overflow-x: auto; min-height: 500px;" id="calendar-grid">
+            <div style="text-align: center; padding: 60px; color: #94a3b8;">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Loading appointment schedule...
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Appointment Action Drawer / Modal --}}
+<div class="modal fade" id="appointmentDetailModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background: #0f172a; color: #ffffff;">
+                <h5 class="modal-title font-weight-bold" style="font-size: 15px;">
+                    <i class="fas fa-calendar-check mr-2 text-primary"></i>Appointment Details
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div>
+                        <div style="font-size: 16px; font-weight: 700; color: #0f172a;" id="modalPatientName"></div>
+                        <div style="font-size: 12px; color: #64748b;" id="modalPatientPhone"></div>
                     </div>
+                    <span id="modalStatusBadge" class="badge" style="font-size: 11px; padding: 4px 8px;"></span>
+                </div>
 
-                    <div class="card-body p-0">
-                        <div class="cal-wrap">
-
-                            <!-- Top Bar -->
-                            <div class="cal-top-bar">
-                                <div class="d-flex align-items-center gap-2">
-                                    <button class="cal-nav-btn" onclick="shiftWeek(-1)" aria-label="Previous">
-                                        <i class="fas fa-chevron-left"></i>
-                                    </button>
-                                    <button class="cal-nav-btn" onclick="shiftWeek(1)" aria-label="Next">
-                                        <i class="fas fa-chevron-right"></i>
-                                    </button>
-                                    <button class="cal-today-btn" onclick="goToday()">Today</button>
-                                    <span class="cal-month-label" id="cal-month-label"></span>
-                                </div>
-                                <div class="cal-view-tabs">
-                                    <button class="cal-view-tab active" id="tab-week" onclick="setView('week')">Week</button>
-                                    <button class="cal-view-tab" id="tab-day" onclick="setView('day')">Day</button>
-                                </div>
-                            </div>
-
-                            <!-- Professional Filter -->
-                            <div class="cal-filter-bar">
-                                <div class="prof-filter-row" id="prof-filter-row">
-                                    <div class="pfc active" onclick="filterProf(this, 'all')">
-                                        <i class="fas fa-users mr-1" style="font-size:11px"></i> All Professionals
-                                    </div>
-                                    @foreach ($professionals as $prof)
-                                    @php
-                                        $colors = ['#007bff','#28a745','#e67e22','#9b59b6','#e74c3c','#1abc9c','#f39c12','#34495e'];
-                                        $color = $colors[$loop->index % count($colors)];
-                                    @endphp
-                                    <div class="pfc" data-prof="{{ $prof->id }}" onclick="filterProf(this, {{ $prof->id }})">
-                                        <span class="pfc-dot" style="background:{{ $color }}"></span> {{ $prof->name }}
-                                    </div>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <!-- Calendar Grid -->
-                            <div class="cal-grid-wrap" id="calendar-view"></div>
-
-                        </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase" style="font-size: 10px; font-weight: 700;">Date & Time</small>
+                        <div style="font-size: 13px; font-weight: 600; color: #1e293b;" id="modalDateTime"></div>
                     </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase" style="font-size: 10px; font-weight: 700;">Specialist</small>
+                        <div style="font-size: 13px; font-weight: 600; color: #1e293b;" id="modalDoctor"></div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase" style="font-size: 10px; font-weight: 700;">Clinical Service</small>
+                        <div style="font-size: 13px; font-weight: 600; color: #1e293b;" id="modalService"></div>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase" style="font-size: 10px; font-weight: 700;">Resource / Room</small>
+                        <div style="font-size: 13px; font-weight: 600; color: #1e293b;" id="modalResource"></div>
+                    </div>
+                </div>
+
+                <div id="modalAdvanceSection" class="p-2 mb-3 rounded" style="background: #f0fdf4; border: 1px solid #bbf7d0; display: none;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span style="font-size: 12px; color: #166534; font-weight: 600;">
+                            <i class="fas fa-check-circle mr-1"></i>Advance Paid: <strong id="modalAdvanceAmount"></strong>
+                        </span>
+                        <a href="#" id="modalReceiptLink" target="_blank" class="btn btn-xs btn-outline-success">Print Receipt</a>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+                    <button type="button" class="btn btn-sm btn-warning font-weight-bold" id="btnActionArrived" onclick="triggerStatusUpdate('check-in')">
+                        <i class="fas fa-user-check mr-1"></i>Mark Arrived
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary font-weight-bold" id="btnActionStart" onclick="triggerStatusUpdate('start-service')">
+                        <i class="fas fa-stethoscope mr-1"></i>Start Service
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success font-weight-bold" id="btnActionComplete" onclick="triggerStatusUpdate('complete-service')">
+                        <i class="fas fa-check-double mr-1"></i>Mark Complete
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ml-auto" id="btnActionReschedule" onclick="openRescheduleFromModal()">
+                        <i class="fas fa-calendar-alt mr-1"></i>Reschedule
+                    </button>
                 </div>
             </div>
         </div>
     </div>
-</section>
+</div>
 @endsection
 
 @push('scripts')
 <script>
-    /* ==================== STATE ==================== */
-    let currentView = 'week';
-    let currentWeekStart = getMonday(new Date());
-    let selectedProf = 'all';
-    let appointmentsCache = [];
+    let currentViewMode = 'day'; // 'day' or 'week'
+    let selectedDate = new Date();
+    let currentBranch = {{ $currentBranchId }};
+    let appointmentsData = [];
+    let branchSpecialists = [];
+    let branchResources = [];
+    let activeModalAppt = null;
 
-    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-    /* Time slots from database — used to build calendar rows */
-    const timeSlots = [
-        @foreach ($timeSlots as $slot)
-        { start: '{{ $slot->start_time->format('H:i') }}', end: '{{ $slot->end_time->format('H:i') }}', startLabel: '{{ $slot->start_time->format('g:i A') }}', endLabel: '{{ $slot->end_time->format('g:i A') }}' },
-        @endforeach
+    // Standard business hours for hearing clinic: 09:30 AM to 18:30 PM
+    const calendarHours = [
+        '09:30', '10:00', '10:30', '11:00', '11:30', '12:00',
+        '12:30', '13:00', '13:30', '14:00', '14:30', '15:00',
+        '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30'
     ];
 
-    /* ==================== INIT ==================== */
     document.addEventListener('DOMContentLoaded', function() {
-        updateLabel();
-        renderCalendar();
-        loadAppointments();
+        updateDateLabel();
+        loadCalendarData();
     });
 
-    /* ==================== DATE HELPERS ==================== */
-    function getMonday(d) {
-        d = new Date(d);
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        d.setDate(diff);
-        d.setHours(0,0,0,0);
-        return d;
+    function changeBranch(bId) {
+        currentBranch = bId;
+        loadCalendarData();
     }
 
-    function formatDate(d) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth()+1).padStart(2,'0');
-        const dd = String(d.getDate()).padStart(2,'0');
-        return `${y}-${m}-${dd}`;
-    }
-
-    function addDays(d, n) {
-        const r = new Date(d);
-        r.setDate(r.getDate() + n);
-        return r;
-    }
-
-    function isToday(d) {
-        const t = new Date();
-        return d.getFullYear()===t.getFullYear() && d.getMonth()===t.getMonth() && d.getDate()===t.getDate();
-    }
-
-    /* ==================== LABEL ==================== */
-    function updateLabel() {
-        let html = '';
-        if (currentView === 'week') {
-            const end = addDays(currentWeekStart, 6);
-            if (currentWeekStart.getMonth() === end.getMonth()) {
-                html = `${monthNames[currentWeekStart.getMonth()]} ${currentWeekStart.getDate()} – ${end.getDate()}, ${currentWeekStart.getFullYear()}`;
-            } else if (currentWeekStart.getFullYear() === end.getFullYear()) {
-                html = `${monthNames[currentWeekStart.getMonth()].substr(0,3)} ${currentWeekStart.getDate()} – ${monthNames[end.getMonth()].substr(0,3)} ${end.getDate()}, ${currentWeekStart.getFullYear()}`;
-            } else {
-                html = `${monthNames[currentWeekStart.getMonth()].substr(0,3)} ${currentWeekStart.getDate()}, ${currentWeekStart.getFullYear()} – ${monthNames[end.getMonth()].substr(0,3)} ${end.getDate()}, ${end.getFullYear()}`;
-            }
-        } else {
-            html = `${dayNames[currentWeekStart.getDay() === 0 ? 6 : currentWeekStart.getDay()-1]}, ${monthNames[currentWeekStart.getMonth()]} ${currentWeekStart.getDate()}, ${currentWeekStart.getFullYear()}`;
-        }
-        document.getElementById('cal-month-label').textContent = html;
-    }
-
-    /* ==================== NAVIGATION ==================== */
-    function shiftWeek(dir) {
-        if (currentView === 'week') {
-            currentWeekStart = addDays(currentWeekStart, dir * 7);
-        } else {
-            currentWeekStart = addDays(currentWeekStart, dir);
-        }
-        updateLabel();
+    function setViewMode(mode) {
+        currentViewMode = mode;
+        document.querySelectorAll('.cal-view-tab').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + mode).classList.add('active');
+        updateDateLabel();
         renderCalendar();
-        loadAppointments();
+    }
+
+    function navigateCalendar(dir) {
+        if (currentViewMode === 'day') {
+            selectedDate.setDate(selectedDate.getDate() + dir);
+        } else {
+            selectedDate.setDate(selectedDate.getDate() + (dir * 7));
+        }
+        updateDateLabel();
+        loadCalendarData();
     }
 
     function goToday() {
-        if (currentView === 'week') {
-            currentWeekStart = getMonday(new Date());
+        selectedDate = new Date();
+        updateDateLabel();
+        loadCalendarData();
+    }
+
+    function updateDateLabel() {
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+        if (currentViewMode === 'day') {
+            document.getElementById('cal-date-label').textContent = 
+                `${days[selectedDate.getDay()]}, ${selectedDate.getDate()} ${months[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
         } else {
-            currentWeekStart = new Date();
-            currentWeekStart.setHours(0,0,0,0);
+            const start = getMonday(new Date(selectedDate));
+            const end = new Date(start);
+            end.setDate(end.getDate() + 6);
+            document.getElementById('cal-date-label').textContent = 
+                `${start.getDate()} ${months[start.getMonth()].substr(0,3)} – ${end.getDate()} ${months[end.getMonth()].substr(0,3)} ${end.getFullYear()}`;
         }
-        updateLabel();
-        renderCalendar();
-        loadAppointments();
     }
 
-    /* ==================== VIEW TOGGLE ==================== */
-    function setView(view) {
-        currentView = view;
-        document.querySelectorAll('.cal-view-tab').forEach(t => t.classList.remove('active'));
-        document.getElementById('tab-' + view).classList.add('active');
-
-        if (view === 'week') {
-            currentWeekStart = getMonday(currentWeekStart);
-        }
-        updateLabel();
-        renderCalendar();
-        loadAppointments();
+    function getMonday(d) {
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const res = new Date(d);
+        res.setDate(diff);
+        return res;
     }
 
-    /* ==================== FILTER ==================== */
-    function filterProf(el, profId) {
-        selectedProf = profId;
-        document.querySelectorAll('.pfc').forEach(c => c.classList.remove('active'));
-        el.classList.add('active');
-        loadAppointments();
+    function formatDateYmd(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
     }
 
-    /* ==================== DATA LOADING ==================== */
-    function loadAppointments() {
-        let start, end;
-        if (currentView === 'week') {
-            start = formatDate(currentWeekStart);
-            end = formatDate(addDays(currentWeekStart, 6));
+    function loadCalendarData() {
+        let startStr, endStr;
+        if (currentViewMode === 'day') {
+            startStr = formatDateYmd(selectedDate);
+            endStr = startStr;
         } else {
-            start = formatDate(currentWeekStart);
-            end = start;
+            const mon = getMonday(new Date(selectedDate));
+            const sun = new Date(mon);
+            sun.setDate(sun.getDate() + 6);
+            startStr = formatDateYmd(mon);
+            endStr = formatDateYmd(sun);
         }
 
-        let url = `{{ url('admin/appointments/calendar-data') }}?start_date=${start}&end_date=${end}`;
-        if (selectedProf !== 'all') url += `&user_id=${selectedProf}`;
+        const url = `/admin/appointments/calendar-data?start_date=${startStr}&end_date=${endStr}&branch_id=${currentBranch}`;
 
         fetch(url)
-            .then(r => r.json())
-            .then(response => {
-                appointmentsCache = response.appointments || [];
-                updateStats(response.stats || {});
+            .then(res => res.json())
+            .then(data => {
+                appointmentsData = data.appointments || [];
+                branchSpecialists = data.specialists || [];
+                branchResources = data.resources || [];
+                updateStats(data.stats || {});
                 renderCalendar();
             });
     }
 
-    /* ==================== STATS ==================== */
-    function updateStats(stats) {
-        document.getElementById('stat-total').textContent = stats.total || 0;
-        document.getElementById('stat-today').textContent = stats.today || 0;
-        document.getElementById('stat-scheduled').textContent = stats.scheduled || 0;
-        document.getElementById('stat-cancelled').textContent = stats.cancelled || 0;
-        document.getElementById('stat-completed').textContent = stats.completed || 0;
+    function updateStats(s) {
+        document.getElementById('stat-total').textContent = s.total || 0;
+        document.getElementById('stat-today').textContent = s.today || 0;
+        document.getElementById('stat-scheduled').textContent = s.scheduled || 0;
+        document.getElementById('stat-arrived').textContent = s.arrived || 0;
+        document.getElementById('stat-completed').textContent = s.completed || 0;
     }
 
-    /* ==================== RENDER ==================== */
     function renderCalendar() {
-        const container = document.getElementById('calendar-view');
+        const container = document.getElementById('calendar-grid');
 
-        if (currentView === 'week') {
-            renderWeek(container);
+        if (currentViewMode === 'day') {
+            renderMultiColumnDayView(container);
         } else {
-            renderDay(container);
+            renderWeekView(container);
         }
     }
 
-    function renderWeek(container) {
-        const days = [];
-        for (let i = 0; i < 7; i++) {
-            days.push(addDays(currentWeekStart, i));
-        }
+    /**
+     * Wireframe 2: Day View with Staff Columns + Sound Booth Column!
+     */
+    function renderMultiColumnDayView(container) {
+        const dateStr = formatDateYmd(selectedDate);
 
         let html = '<table class="cal-table"><thead><tr>';
-        html += '<th class="th-time"></th>';
-        days.forEach((d, idx) => {
-            const today = isToday(d) ? ' today' : '';
-            html += `<th class="th-day${today}"><div class="th-day-name">${dayNames[idx]}</div><div class="th-day-num">${d.getDate()}</div></th>`;
+        html += '<th class="td-time">TIME</th>';
+
+        // Specialist columns
+        branchSpecialists.forEach(spec => {
+            html += `<th><i class="fas fa-user-md mr-1 text-primary"></i>${spec.name}</th>`;
         });
+
+        // Sound Booth column
+        html += `<th class="resource-col-header"><i class="fas fa-door-open mr-1 text-success"></i>SOUND BOOTH 1 (RESOURCE)</th>`;
         html += '</tr></thead><tbody>';
 
-        timeSlots.forEach(slot => {
-            html += `<tr class="time-row">`;
-            html += `<td class="td-time">${slot.startLabel}<br><span style="color:#c4c4c4;font-size:10px">${slot.endLabel}</span></td>`;
-            for (let i = 0; i < 7; i++) {
-                const d = days[i];
-                const todayClass = isToday(d) ? ' today-col' : '';
-                html += `<td class="time-cell${todayClass}" data-date="${formatDate(d)}" data-slot="${slot.start}">`;
-                html += getApptBlock(formatDate(d), slot.start);
-                html += '</td>';
+        calendarHours.forEach(time => {
+            const timeLabel = formatTimeLabel(time);
+            html += `<tr>`;
+            html += `<td class="td-time">${timeLabel}</td>`;
+
+            // Cells for each specialist
+            branchSpecialists.forEach(spec => {
+                const appt = appointmentsData.find(a => 
+                    a.date === dateStr && 
+                    a.professional_id === spec.id && 
+                    isTimeInAppointment(time, a.start_time, a.end_time)
+                );
+
+                if (appt) {
+                    html += `<td>`;
+                    html += renderApptCard(appt);
+                    html += `</td>`;
+                } else {
+                    html += `<td>`;
+                    html += `<a href="/admin/appointments/create?user_id=${spec.id}&date=${dateStr}&branch_id=${currentBranch}" class="empty-slot-btn" title="Click to book">`;
+                    html += `<i class="fas fa-plus mr-1" style="font-size:9px"></i>Book`;
+                    html += `</a>`;
+                    html += `</td>`;
+                }
+            });
+
+            // Cell for Sound Booth
+            const boothAppt = appointmentsData.find(a => 
+                a.date === dateStr && 
+                a.resource_name && a.resource_name.toLowerCase().includes('booth') && 
+                isTimeInAppointment(time, a.start_time, a.end_time)
+            );
+
+            if (boothAppt) {
+                html += `<td style="background: #f0fdf4;">`;
+                html += renderApptCard(boothAppt, true);
+                html += `</td>`;
+            } else {
+                html += `<td style="background: #fcfdfd;">`;
+                html += `<div style="color: #10b981; font-size: 11px; text-align: center; padding-top: 10px; font-weight: 500;">`;
+                html += `<i class="fas fa-check-circle mr-1"></i>Available`;
+                html += `</div>`;
+                html += `</td>`;
             }
-            html += '</tr>';
+
+            html += `</tr>`;
         });
 
         html += '</tbody></table>';
         container.innerHTML = html;
     }
 
-    function renderDay(container) {
-        const d = currentWeekStart;
-        const today = isToday(d);
-        const dayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    function renderWeekView(container) {
+        const mon = getMonday(new Date(selectedDate));
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(mon);
+            d.setDate(d.getDate() + i);
+            days.push(d);
+        }
 
-        let html = '<table class="cal-table day-view"><thead><tr>';
-        html += '<th class="th-time"></th>';
-        html += `<th class="th-day${today ? ' today' : ''}" style="min-width:160px"><div class="th-day-name">${dayNames[dayIdx]}</div><div class="th-day-num">${d.getDate()}</div></th>`;
+        const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+        let html = '<table class="cal-table"><thead><tr>';
+        html += '<th class="td-time">TIME</th>';
+        days.forEach((d, idx) => {
+            const isTodayDate = formatDateYmd(d) === formatDateYmd(new Date());
+            html += `<th style="${isTodayDate ? 'background:#e0f2fe; color:#0369a1;' : ''}">`;
+            html += `<div>${dayNames[idx]}</div><div style="font-size:14px; font-weight:800;">${d.getDate()}</div>`;
+            html += `</th>`;
+        });
         html += '</tr></thead><tbody>';
 
-        const dateStr = formatDate(d);
-        timeSlots.forEach(slot => {
-            html += `<tr class="time-row">`;
-            html += `<td class="td-time">${slot.startLabel}<br><span style="color:#c4c4c4;font-size:10px">${slot.endLabel}</span></td>`;
-            const todayClass = today ? ' today-col' : '';
-            html += `<td class="time-cell${todayClass}" data-date="${dateStr}" data-slot="${slot.start}">`;
-            html += getApptBlock(dateStr, slot.start);
-            html += '</td>';
-            html += '</tr>';
+        calendarHours.forEach(time => {
+            const timeLabel = formatTimeLabel(time);
+            html += `<tr>`;
+            html += `<td class="td-time">${timeLabel}</td>`;
+
+            days.forEach(d => {
+                const dateStr = formatDateYmd(d);
+                const dayAppts = appointmentsData.filter(a => 
+                    a.date === dateStr && 
+                    isTimeInAppointment(time, a.start_time, a.end_time)
+                );
+
+                html += `<td>`;
+                if (dayAppts.length > 0) {
+                    dayAppts.forEach(a => {
+                        html += renderApptCard(a);
+                    });
+                } else {
+                    html += `<a href="/admin/appointments/create?date=${dateStr}&branch_id=${currentBranch}" class="empty-slot-btn">`;
+                    html += `<i class="fas fa-plus" style="font-size:9px"></i>`;
+                    html += `</a>`;
+                }
+                html += `</td>`;
+            });
+
+            html += `</tr>`;
         });
 
         html += '</tbody></table>';
         container.innerHTML = html;
     }
 
-    function getApptBlock(date, slotStart) {
-        const match = appointmentsCache.find(a => {
-            return a.date === date && a.start_time === slotStart;
-        });
-        if (!match) return '';
+    function isTimeInAppointment(slotTime, startTime, endTime) {
+        if (!startTime) return false;
+        return slotTime >= startTime && slotTime < (endTime || startTime);
+    }
 
-        return `<div class="appt-block" style="background:${match.bg_color};border-left-color:${match.color}" title="Patient: ${match.patient}\nProfessional: ${match.professional}\nDate: ${match.date}\nTime: ${match.start_label} – ${match.end_label}\nService: ${match.service}\nStatus: ${match.status_label}">
-            <div class="appt-block-name" style="color:${match.color}">${match.patient}</div>
-            <div class="appt-block-service" style="color:${match.color}">${match.service}</div>
-            <div class="appt-block-status" style="background:${match.color};color:#fff">${match.status_label}</div>
-        </div>`;
+    function formatTimeLabel(time24) {
+        const parts = time24.split(':');
+        let h = parseInt(parts[0], 10);
+        const m = parts[1];
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${h}:${m} ${ampm}`;
+    }
+
+    function renderApptCard(a, isBooth = false) {
+        const bg = a.bg_color || '#eff6ff';
+        const color = a.color || '#2563eb';
+        const safeJson = JSON.stringify(a).replace(/"/g, '&quot;');
+
+        let text = `<div class="appt-card" style="background:${bg}; border-left-color:${color};" onclick="openApptModal(${safeJson})">`;
+        text += `<div style="font-weight:700; color:${color}; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">`;
+        text += `${a.patient}`;
+        text += `</div>`;
+        text += `<div style="font-size:10px; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">`;
+        text += isBooth ? `Booth • Dr. ${a.professional}` : a.service;
+        text += `</div>`;
+        text += `<div style="display:flex; align-items:center; justify-content:space-between; margin-top:2px;">`;
+        text += `<span style="font-size:9px; color:#64748b;">${a.start_label}</span>`;
+        text += `<span class="badge" style="background:${color}; color:#fff; font-size:9px; padding:1px 4px;">${a.status_label}</span>`;
+        text += `</div>`;
+        text += `</div>`;
+        return text;
+    }
+
+    function openApptModal(appt) {
+        activeModalAppt = appt;
+        $('#modalPatientName').text(appt.patient);
+        $('#modalPatientPhone').text(appt.phone || 'No phone provided');
+        $('#modalDateTime').text(`${appt.date} • ${appt.start_label} - ${appt.end_label}`);
+        $('#modalDoctor').text(appt.professional || 'Unassigned');
+        $('#modalService').text(`${appt.service} (${appt.duration}m)`);
+        $('#modalResource').text(appt.resource_name || 'Standard Consultation Room');
+
+        $('#modalStatusBadge').text(appt.status_label)
+            .css({'background': appt.bg_color, 'color': appt.color, 'border': `1px solid ${appt.color}`});
+
+        if (appt.advance_amount > 0) {
+            $('#modalAdvanceAmount').text(`৳${appt.advance_amount.toFixed(2)}`);
+            $('#modalReceiptLink').attr('href', appt.receipt_url || '#');
+            $('#modalAdvanceSection').show();
+        } else {
+            $('#modalAdvanceSection').hide();
+        }
+
+        // Show/hide action buttons according to status
+        const st = appt.status;
+        $('#btnActionArrived').toggle(st === 'scheduled' || st === 'booked' || st === 'confirmed');
+        $('#btnActionStart').toggle(st === 'arrived');
+        $('#btnActionComplete').toggle(st === 'in_progress');
+
+        $('#appointmentDetailModal').modal('show');
+    }
+
+    function triggerStatusUpdate(action) {
+        if (!activeModalAppt) return;
+        const apptId = activeModalAppt.id;
+
+        $.post(`/admin/appointments/${apptId}/${action}`, {
+            _token: '{{ csrf_token() }}'
+        }).done(function(res) {
+            $('#appointmentDetailModal').modal('hide');
+            loadCalendarData();
+        }).fail(function() {
+            alert('Failed to update status.');
+        });
+    }
+
+    function openRescheduleFromModal() {
+        if (!activeModalAppt) return;
+        $('#appointmentDetailModal').modal('hide');
+        window.location.href = `/admin/appointments/${activeModalAppt.id}/edit`;
     }
 </script>
 @endpush

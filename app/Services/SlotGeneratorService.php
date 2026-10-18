@@ -44,7 +44,7 @@ class SlotGeneratorService
         // Get booked pivot IDs for this professional on this date (excluding current appointment)
         $query = Appointment::where('user_id', $professional->id)
             ->where('appointment_date', $date)
-            ->where('status', AppointmentStatus::SCHEDULED);
+            ->whereIn('status', [AppointmentStatus::SCHEDULED, AppointmentStatus::COMPLETED]);
 
         if ($excludeAppointmentId) {
             $query->where('id', '!=', $excludeAppointmentId);
@@ -75,7 +75,7 @@ class SlotGeneratorService
         return !Appointment::where('user_id', $professional->id)
             ->where('appointment_date', $date)
             ->where('professional_time_slot_id', $professionalTimeSlotId)
-            ->where('status', AppointmentStatus::SCHEDULED)
+            ->whereIn('status', [AppointmentStatus::SCHEDULED, AppointmentStatus::COMPLETED])
             ->exists();
     }
 }

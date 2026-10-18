@@ -28,6 +28,7 @@ class Lead extends Model
         'district_id',
         'address',
         'age',
+        'date_of_birth',
         'gender',
         'phone_number',
         'contact_person_name',
@@ -50,31 +51,56 @@ class Lead extends Model
 
         // Lead Status
         'lead_status',
+        'lead_temperature',
     ];
 
     protected $casts = [
         'inquiry_for' => 'array',
-        'hearing_loss' => 'array'
+        'hearing_loss' => 'array',
+        'date_of_birth' => 'date:Y-m-d',
     ];
+
+    /** Old statuses that were folded into the 5-stage pipeline. */
+    public const LEGACY_STAGE = [
+        'verified'                 => 'new',
+        'tele_counsel_appointment' => 'tele_counsel',
+        'store_appointment'        => 'tele_counsel',
+    ];
+
+    /** Active pipeline stages plus Won/Lost, keyed by status key: [label, color, icon]. */
+    public static function stageMap(): array
+    {
+        static $map;
+
+        return $map ??= \App\Models\Pipeline::default()->activeStages()->get(['name', 'status_key', 'color'])
+            ->mapWithKeys(fn ($s) => [$s->status_key => [
+                'label' => $s->name,
+                'color' => $s->color,
+                'icon'  => LeadStatus::tryFrom($s->status_key)?->icon() ?? 'fas fa-circle',
+            ]])
+            ->put('won', ['label' => 'Won', 'color' => '#10b981', 'icon' => 'fas fa-trophy'])
+            ->put('lost', ['label' => 'Lost', 'color' => '#ef4444', 'icon' => 'fas fa-times-circle'])
+            ->all();
+    }
+
+    /** Current stage key, with old statuses mapped onto the current pipeline. */
+    public function getStageKeyAttribute(): string
+    {
+        $key = $this->lead_status instanceof LeadStatus ? $this->lead_status->value : (string) $this->lead_status;
+
+        return self::LEGACY_STAGE[$key] ?? $key;
+    }
 
     // Accessor for status label
     public function getStatusLabelAttribute(): ?string
     {
-        $status = $this->lead_status instanceof LeadStatus
-            ? $this->lead_status
-            : LeadStatus::tryFrom($this->lead_status);
-
-        return $status?->label() ?? ucfirst($this->lead_status);
+        return self::stageMap()[$this->stage_key]['label'] ?? ucfirst(str_replace('_', ' ', $this->stage_key));
     }
 
     // Accessor for status color
     public function getStatusColorAttribute(): ?string
     {
-        $status = $this->lead_status instanceof LeadStatus
-            ? $this->lead_status
-            : LeadStatus::tryFrom($this->lead_status);
-
-        return $status?->color();
+        return self::stageMap()[$this->stage_key]['color'] ?? '#94a3b8';
     }
 
     public function getSourceOfEntryLabelAttribute(): ?string
@@ -101,26 +127,41 @@ class Lead extends Model
         return $labels->implode(', ');
     }
 
-    public function getHearingLossLabelAttribute()
+    /**
+     * Ears with hearing loss: [['ear' => 'Right', 'degree' => 'Moderate'|null, 'type' => '...'|null], ...].
+     * Reads both stored formats: old ["right","left"] (side only) and new {right: {enabled, degree, type}}.
+     */
+    public function hearingEars(): array
     {
         $items = $this->hearing_loss ?? [];
-
         if (!is_array($items)) {
-            $items = json_decode($items, true) ?? [];
+            $items = json_decode((string) $items, true) ?? [];
         }
 
-        $parts = [];
+        $ears = [];
         foreach (['right', 'left'] as $ear) {
-            if (isset($items[$ear]['enabled']) && $items[$ear]['enabled']) {
-                $earLabel = ucfirst($ear);
-                $degree = HearingDegree::tryFrom($items[$ear]['degree'] ?? '')?->label() ?? '';
-                $type = HearingType::tryFrom($items[$ear]['type'] ?? '')?->label() ?? '';
-                $detail = implode(', ', array_filter([$degree, $type]));
-                $parts[] = $detail ? "$ear: $detail" : $earLabel;
+            $d = $items[$ear] ?? null;
+            $legacy = in_array($ear, $items, true);
+            if (!$legacy && empty($d['enabled'])) {
+                continue;
             }
+            $ears[] = [
+                'ear'    => ucfirst($ear),
+                'degree' => is_array($d) ? HearingDegree::tryFrom($d['degree'] ?? '')?->label() : null,
+                'type'   => is_array($d) ? HearingType::tryFrom($d['type'] ?? '')?->label() : null,
+            ];
         }
 
-        return implode(' | ', $parts);
+        return $ears;
+    }
+
+    public function getHearingLossLabelAttribute(): string
+    {
+        return collect($this->hearingEars())->map(function ($e) {
+            $detail = implode(', ', array_filter([$e['degree'], $e['type']]));
+
+            return $detail ? "{$e['ear']}: $detail" : $e['ear'];
+        })->implode(' | ');
     }
 
     public function getLeadTypeLabelAttribute(): ?string
@@ -135,6 +176,19 @@ class Lead extends Model
     public function followUps()
     {
         return $this->hasMany(LeadFollowUp::class, 'lead_id', 'id');
+    }
+
+    /** Next lead ID for today: L-YYYYMMDD0001 (soft-deleted leads count, so IDs are never reused). */
+    public static function generateUid(): string
+    {
+        $prefix = 'L-' . date('Ymd');
+        $last = static::withoutGlobalScopes()->withTrashed()
+            ->where('lead_uid', 'LIKE', $prefix . '%')
+            ->orderByDesc('lead_uid')
+            ->value('lead_uid');
+        $next = $last ? ((int) substr($last, strlen($prefix))) + 1 : 1;
+
+        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 
     public function statusHistories()
@@ -213,11 +267,36 @@ class Lead extends Model
         return $this->belongsTo(User::class, 'vendor_id', 'id');
     }
 
+    /** Sales opportunities of this person (newest first). */
+    public function deals()
+    {
+        return $this->hasMany(Deal::class)->latest('id');
+    }
+
+    /** Customer record (exists once the person has bought). */
+    public function customer()
+    {
+        return $this->hasOne(Customer::class);
+    }
+
+    public function proposals()
+    {
+        return $this->hasMany(Proposal::class, 'lead_id');
+    }
+
     protected static function booted(): void
     {
         static::addGlobalScope('vendor_filter', function ($builder) {
-            if (auth()->check() && auth()->user()->isVendor()) {
-                $builder->where('vendor_id', auth()->id());
+            $branchId = auth()->check() ? auth()->user()->branchId() : null;
+            if ($branchId) {
+                $builder->where('vendor_id', $branchId);
+            }
+        });
+
+        // Canonical phone for duplicate detection (017.., +88017.., 88017.. are the same number)
+        static::saving(function (Lead $lead) {
+            if ($lead->isDirty('phone_number') || $lead->normalized_phone === null) {
+                $lead->normalized_phone = \App\Classes\Helper::normalizePhone($lead->phone_number);
             }
         });
     }

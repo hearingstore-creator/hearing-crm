@@ -67,8 +67,9 @@ trait HelperTrait
             $columns[$this->getUpdatedAtColumn()] = $this->fromDateTime($time);
         }
         if($user = Auth::user()){
-			$columns['deleted_by'] = Auth::User()->id;
-		}
+            $this->deleted_by = Auth::User()->id;
+            $columns['deleted_by'] = Auth::User()->id;
+        }
         $query->update($columns);
 
         $this->syncOriginalAttributes(array_keys($columns));

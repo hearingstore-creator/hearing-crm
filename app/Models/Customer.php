@@ -36,6 +36,23 @@ class Customer extends Model
         return $this->hasMany(Appointment::class, 'customer_id');
     }
 
+    public function advances()
+    {
+        return $this->hasMany(CustomerAdvance::class, 'customer_id');
+    }
+
+    public function activeAdvances()
+    {
+        return $this->hasMany(CustomerAdvance::class, 'customer_id')
+            ->where('status', CustomerAdvance::STATUS_ACTIVE)
+            ->where('balance', '>', 0);
+    }
+
+    public function activeAdvanceBalance(): float
+    {
+        return (float) $this->activeAdvances()->sum('balance');
+    }
+
     public function saleMasters()
     {
         return $this->hasMany(SaleMaster::class, 'customer_id');
@@ -64,38 +81,57 @@ class Customer extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('vendor_relation_filter', function ($builder) {
-            Helper::vendorRelationScope($builder, 'lead');
+            if (Helper::isAllBranchesMode() || (auth()->check() && auth()->user()->isSuperAdmin())) {
+                return;
+            }
+
+            $branchId = Helper::currentBranchId();
+            if ($branchId) {
+                $builder->whereHas('lead', function ($query) use ($branchId) {
+                    $query->where('vendor_id', $branchId);
+                });
+            }
         });
 
         static::creating(function ($customer) {
             if (empty($customer->customer_uid)) {
-                $customer->customer_uid = $customer->generateCustomerUID();
+                $customer->customer_uid = static::generateCustomerUID();
             }
+        });
+
+        // SMS Center "Membership Upgrade" automation (read-only listener)
+        static::updated(function ($customer) {
+            rescue(fn () => app(\App\Services\SmsAutomationService::class)->onCustomerUpdated($customer));
         });
     }
 
     /**
-     * Generate a unique customer UID
-     * Format: C-YYYYMMDD-XXXX (where XXXX is a 4-digit padded number)
+     * Generate a guaranteed-unique customer UID: C-YYYYMMDDXXXX
+     * Bypasses all global scopes, includes soft-deleted rows, and uses numeric max to prevent duplicate collisions.
      *
      * @return string
      */
-    private function generateCustomerUID(): string
+    public static function generateCustomerUID(): string
     {
         $prefix = 'C-' . date('Ymd');
-        $lastCustomer = Customer::withTrashed()
-            ->where('customer_uid', 'LIKE', $prefix . '%')
-            ->orderByDesc('customer_uid')
-            ->value('customer_uid');
+        $prefixLen = strlen($prefix);
 
-        if ($lastCustomer) {
-            $lastNumber = (int) substr($lastCustomer, strlen($prefix));
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
+        // Raw table query to strictly bypass any global scope (like branch) and check all soft-deleted records
+        $maxNum = \Illuminate\Support\Facades\DB::table('customers')
+            ->where('customer_uid', 'LIKE', $prefix . '%')
+            ->selectRaw("MAX(CAST(SUBSTRING(customer_uid, {$prefixLen} + 1) AS UNSIGNED)) as max_num")
+            ->value('max_num');
+
+        $nextNumber = $maxNum ? ((int) $maxNum + 1) : 1;
+        $candidate = $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+
+        // Safety check loop to ensure candidate does not exist in the database
+        while (\Illuminate\Support\Facades\DB::table('customers')->where('customer_uid', $candidate)->exists()) {
+            $nextNumber++;
+            $candidate = $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
         }
 
-        return $prefix . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+        return $candidate;
     }
 
     /**
@@ -124,5 +160,13 @@ class Customer extends Model
 
         // Available balance = earned - redeemed
         return max(0, $earnedPoints - $redeemedPoints);
+    }
+
+    /**
+     * Display name accessor (from linked lead)
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->lead?->full_name ?? $this->customer_uid ?? ('Customer #' . $this->id);
     }
 }

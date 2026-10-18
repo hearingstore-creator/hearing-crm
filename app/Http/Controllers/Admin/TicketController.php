@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Classes\SMS;
+use App\Enums\SmsAutomationTrigger;
+use App\Services\SmsAutomationService;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Http\Controllers\Controller;
@@ -12,6 +13,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 
 class TicketController extends Controller
 {
@@ -24,7 +26,7 @@ class TicketController extends Controller
     {
         $this->middleware('permission:ticket_list.index')->only(['index']);
         $this->middleware('permission:add_ticket.create')->only(['create', 'store']);
-        $this->middleware('permission:ticket_list.edit')->only(['edit', 'update']);
+        $this->middleware('permission:ticket_list.edit')->only(['edit', 'update', 'updateStatus']);
         $this->middleware('permission:ticket_list.delete')->only(['destroy']);
     }
 
@@ -68,11 +70,33 @@ class TicketController extends Controller
             $query->whereBetween('created_at', [$start, $end]);
         }
 
-        $data['tickets'] = $query->latest()->paginate(20);
-        $data['customers'] = Customer::with('lead')->orderBy('id', 'desc')->get();
+        if ($request->boolean('open_only')) {
+            $query->whereNotIn('status', ['Solved', 'Closed']);
+        }
+        if ($request->boolean('done_only')) {
+            $query->whereIn('status', ['Solved', 'Closed']);
+        }
+
+        $data['tickets'] = \App\Classes\Helper::readAllBranches(fn () => $query->latest()->paginate(20));
+        // Customers of every branch (read-only dropdown) for HQ support staff who can view all branches
+        $data['customers'] = \App\Classes\Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
         $data['users'] = User::select('id', 'name')->orderBy('id', 'desc')->get();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
+
+        // Summary cards
+        $byStatus = Ticket::selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status');
+        $completed = (int) (($byStatus['Solved'] ?? 0) + ($byStatus['Closed'] ?? 0));
+        $total = (int) $byStatus->sum();
+        $data['ticketStats'] = [
+            'total' => $total,
+            'completed' => $completed,
+            'due' => $total - $completed,
+            'in_progress' => (int) ($byStatus['In Progress'] ?? 0),
+            'open' => (int) ($byStatus['Open'] ?? 0),
+            'today' => Ticket::whereDate('created_at', today())->count(),
+            'mine_open' => Ticket::where('assigned_to', auth()->id())->whereNotIn('status', ['Solved', 'Closed'])->count(),
+        ];
 
         return view('admin.ticket.index', $data);
     }
@@ -84,7 +108,8 @@ class TicketController extends Controller
      */
     public function create(): View
     {
-        $data['customers'] = Customer::with('lead')->orderBy('id', 'desc')->get();
+        // Customers of every branch (read-only dropdown) for HQ support staff who can view all branches
+        $data['customers'] = \App\Classes\Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
         $data['users'] = User::orderBy('id', 'desc')->get();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
@@ -114,27 +139,17 @@ class TicketController extends Controller
         $ticket = new Ticket($request->all());
 
         if ($ticket->save()) {
-            // Send SMS notification
-            $customer = Customer::with('lead')->find($request->customer_id);
-            $phone_number = null;
-            $recipient_name = null;
+            // "Service Ticket Created" SMS (text managed in SMS Center → Automation)
+            $customer = \App\Classes\Helper::readAllBranches(fn () => Customer::with('lead')->find($request->customer_id));
 
-            if ($customer && $customer->lead) {
-                $phone_number = $customer->lead->phone_number;
-                $recipient_name = $customer->lead->full_name;
-            }
-
-            if ($phone_number) {
-                $sms = new SMS();
-                $msisdn = $phone_number;
-                $ticketId = str_pad($ticket->id, 4, '0', STR_PAD_LEFT);
-                $priority = ucfirst($ticket->priority->value);
-                $status = ucfirst(str_replace('_', ' ', $ticket->status->value));
-
-                $messageBody = "Dear {$recipient_name},\n\nYour support ticket has been created successfully!\n\nTicket Details:\nTicket ID: #{$ticketId}\nSubject: {$ticket->subject}\nPriority: {$priority}\nStatus: {$status}\n\nOur team will review your ticket and get back to you within 24-48 hours.\n\nIf you have any questions, feel free to contact us.\n\nBest regards,\nHearing Care Team";
-                $csmsId = uniqid(); // csms id must be unique
-
-                $sms->singleSms($msisdn, $messageBody, $csmsId);
+            if ($customer && $customer->lead && $customer->lead->phone_number) {
+                app(SmsAutomationService::class)->fire(SmsAutomationTrigger::TICKET_CREATED, $customer->lead->phone_number, 'customer', (int) $customer->id, [
+                    'name' => $customer->lead->full_name, 'customer_name' => $customer->lead->full_name,
+                    'ticket_id' => str_pad($ticket->id, 4, '0', STR_PAD_LEFT),
+                    'subject' => $ticket->subject,
+                    'priority' => ucfirst($ticket->priority->value),
+                    'status' => ucfirst(str_replace('_', ' ', $ticket->status->value)),
+                ], 'ticket-created:' . $ticket->id);
             }
 
             return redirect('admin/ticket')->with('success', 'Ticket created successfully');
@@ -152,7 +167,8 @@ class TicketController extends Controller
     public function edit(int $id): View
     {
         $data['ticket'] = Ticket::findOrFail($id);
-        $data['customers'] = Customer::with('lead')->orderBy('id', 'desc')->get();
+        // Customers of every branch (read-only dropdown) for HQ support staff who can view all branches
+        $data['customers'] = \App\Classes\Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
         $data['users'] = User::orderBy('id', 'desc')->get();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
@@ -193,6 +209,32 @@ class TicketController extends Controller
         }
 
         return redirect()->back()->with('warning', 'Ticket not updated');
+    }
+
+    /**
+     * Quick status update (used by dashboard Daily Lookout).
+     *
+     * @param Request $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function updateStatus(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'status' => 'required|in:' . implode(',', array_column(TicketStatus::cases(), 'value')),
+        ]);
+
+        $ticket = Ticket::findOrFail($id);
+        $ticket->status = $request->status;
+
+        // Same rule as update(): stamp resolved_at when moving to Solved
+        if ($ticket->isDirty('status') && $request->status === TicketStatus::SOLVED->value) {
+            $ticket->resolved_at = now();
+        }
+
+        $ticket->save();
+
+        return response()->json(['success' => true, 'message' => 'Ticket status updated']);
     }
 
     /**

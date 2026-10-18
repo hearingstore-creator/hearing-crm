@@ -1,91 +1,104 @@
 @extends('admin.layouts.master')
+@section('page_title', 'Products')
+@section('breadcrumb_parent', 'Inventory')
+@section('breadcrumb_parent_url', url('admin/product'))
 
 @push('css')
 @include('admin.partials.datatables-css')
+<link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
 @endpush
 
 @section('content')
-<!-- Main content -->
-<section class="content pt-3">
-   <div class="container-fluid">
-      <div class="row">
-         <div class="col-md-12">
-            <div class="card card-outline card-primary">
-               <div class="card-header">
-                  <div class="row">
-                     <div class="col-md-6">
-                        <h5>Products List</h5>
-                     </div>
-                     @can('permission', 'product.create')
-                     <div class="col-md-6 text-right">
-                        <a href="{{url('admin/product/create')}}" class="btn-primary btn-cs-primary btn-sm"><i class="fas fa-plus mr-1"></i>Add Product</a>
-                     </div>
-                     @endcan
-                  </div>
-               </div>
+<div class="container-fluid" style="padding: 0 24px;">
 
-               @include('admin.alert_message')
+    {{-- Page Header --}}
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-box-open" style="color: var(--accent-500); margin-right: 8px;"></i>Products</h1>
+            <p>Manage hearing aids, accessories, and product catalog</p>
+        </div>
+        <div class="header-actions">
+            @can('permission', 'product.create')
+                <a href="{{ url('admin/product/create') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus mr-1"></i>Add Product
+                </a>
+            @endcan
+        </div>
+    </div>
 
-               <div class="card-body">
-                <table  class="table table-bordered table-striped"
-                 data-datatable="products-list">
-                    <thead>
+    @include('admin.alert_message')
+
+    {{-- Data Table --}}
+    <div class="crm-table-card crm-animate-in delay-1">
+        <div class="crm-table-header">
+            <div class="table-title">
+                <i class="fas fa-list" style="color: var(--page-text-muted);"></i>
+                All Products
+                <span class="table-count">{{ count($products) }}</span>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="crm-table" data-datatable="products-list">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th>Brand</th>
+                        <th>Model</th>
+                        <th>Battery</th>
+                        <th>Usage</th>
+                        <th>Inv. Warranty</th>
+                        <th>Sales Warranty</th>
+                        <th style="width: 90px; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($products as $key => $product)
                         <tr>
-                            <th>SL</th>
-                            <th>Category</th>
-                            <th>Type</th>
-                            <th>Brand</th>
-                            <th>Model</th>
-                            <th>Battery</th>
-                            <th>Usage (Months)</th>
-                            <th>Inventory Warranty</th>
-                            <th>Sales Warranty</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($products as $key=> $product)
-                         <tr>
-                            <td>{{++$key}}</td>
-                            <td>{{$product->category->category_name ?? 'N/A'}}</td>
-                            <td>{{$product->type->type_name ?? 'N/A'}}</td>
-                            <td>{{$product->brand->brand_name ?? 'N/A'}}</td>
-                            <td>{{$product->model}}</td>
-                            <td>{{$product->battery_size ?? 'N/A'}}</td>
-                            <td>{{$product->usage_months ? $product->usage_months . ' months' : 'N/A'}} </td>
-                            <td>{{$product->warranty_inventory_months}} months</td>
-                            <td>{{$product->warranty_sales_months ?? 'N/A'}} months</td>
+                            <td style="color: var(--page-text-muted); font-size: 12px;">{{ ++$key }}</td>
                             <td>
-                                <div class="d-flex flex-wrap justify-content-center">
+                                <span class="crm-status-badge badge-status-verified">
+                                    <span class="dot"></span>
+                                    {{ $product->category->category_name ?? 'N/A' }}
+                                </span>
+                            </td>
+                            <td style="font-size: 13px;">{{ $product->type->type_name ?? 'N/A' }}</td>
+                            <td>
+                                <span style="font-weight: 500;">{{ $product->brand->brand_name ?? 'N/A' }}</span>
+                            </td>
+                            <td>
+                                <span style="font-weight: 600; color: var(--accent-500);">{{ $product->model }}</span>
+                            </td>
+                            <td style="font-size: 12px; color: var(--page-text-secondary);">{{ $product->battery_size ?? 'N/A' }}</td>
+                            <td style="font-size: 12px; color: var(--page-text-secondary);">{{ $product->usage_months ? $product->usage_months . 'mo' : 'N/A' }}</td>
+                            <td style="font-size: 12px;">{{ $product->warranty_inventory_months }}mo</td>
+                            <td style="font-size: 12px;">{{ $product->warranty_sales_months ?? 'N/A' }}mo</td>
+                            <td>
+                                <div class="crm-actions">
                                     @can('permission', 'product.edit')
-                                    <a href="{{ url('admin/product/'.$product->id.'/edit') }}" class="edit btn btn-success btn-sm mr-1">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
+                                        <a href="{{ url('admin/product/'.$product->id.'/edit') }}" class="action-btn btn-edit" title="Edit">
+                                            <i class="fas fa-pen"></i>
+                                        </a>
                                     @endcan
-                                    {{-- @can('permission', 'product.delete')
-                                    <form action="{{ url('admin/product/'.$product->id) }}" method="POST">
-                                        <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="_method" value="DELETE">
-                                        <button type="submit" class="btn btn-danger btn-sm" onclick="confirmDelete(event)">
-                                            <i class="far fa-trash-alt"></i>
-                                        </button>
-                                    </form>
-                                    @endcan --}}
                                 </div>
                             </td>
-                         </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-              </div>
-            </div>
-         </div>
-      </div>
-   </div>
-   <!-- /.container-fluid -->
-</section>
-<!-- /.content -->
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="10" style="text-align: center; padding: 40px !important; color: var(--page-text-muted);">
+                                <i class="fas fa-box-open" style="font-size: 32px; display: block; margin-bottom: 12px; color: var(--gray-300);"></i>
+                                No products found.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 
+</div>
 @endsection
 
 @push('scripts')

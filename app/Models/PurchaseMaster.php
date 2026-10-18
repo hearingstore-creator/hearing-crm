@@ -13,6 +13,7 @@ class PurchaseMaster extends Model
     
     protected $fillable = [
         'purchase_invoice_no',
+        'supplier_memo_no',
         'supplier_id',
         'vendor_id',
         'date',
@@ -33,9 +34,39 @@ class PurchaseMaster extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function manufacturer()
+    {
+        return $this->belongsTo(Supplier::class, 'supplier_id');
+    }
+
     public function vendor()
     {
         return $this->belongsTo(User::class, 'vendor_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(User::class, 'vendor_id');
+    }
+
+    public function details()
+    {
+        return $this->hasMany(PurchaseDetail::class, 'purchase_master_id');
+    }
+
+    public function purchaseDetails()
+    {
+        return $this->hasMany(PurchaseDetail::class, 'purchase_master_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(PurchaseDetail::class, 'purchase_master_id');
+    }
+
+    public function returns()
+    {
+        return $this->hasMany(PurchaseReturn::class, 'purchase_master_id');
     }
 
     protected static function booted(): void
@@ -58,9 +89,14 @@ class PurchaseMaster extends Model
             return false;
         }
 
-        if ($user->isVendor()) {
-            // Vendor can only access their own purchases
-            return $this->vendor_id === $user->id;
+        if ($user->canViewAllBranches()) {
+            return true;
+        }
+
+        $branchId = $user->branchId();
+        if ($branchId) {
+            // Branch login / branch staff can only access their branch's purchases
+            return (int) $this->vendor_id === $branchId;
         }
 
         // General users can only access global purchases

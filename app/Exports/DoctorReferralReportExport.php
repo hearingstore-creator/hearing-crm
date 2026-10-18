@@ -502,7 +502,7 @@ class DoctorReferralReportExport implements FromCollection, WithHeadings, WithMa
         }
 
         if (!empty($this->filters['vendor_id']) && !empty($this->vendorName)) {
-            $filters[] = 'Vendor: ' . $this->vendorName;
+            $filters[] = 'Branch: ' . $this->vendorName;
         }
 
         if (!empty($this->filters['payment_status']) && $this->filters['payment_status'] != 'all') {

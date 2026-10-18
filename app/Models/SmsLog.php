@@ -23,6 +23,9 @@ class SmsLog extends Model
         'gateway_response',
         'error_message',
         'sent_at',
+        'follow_up_created',
+        'read_by_agent',
+        'campaign_name',
     ];
 
     protected $casts = [

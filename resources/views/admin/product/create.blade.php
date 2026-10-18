@@ -124,6 +124,26 @@
                                                 @enderror
                                             </div>
                                         </div>
+                                        <div class="form-group row">
+                                            <label for="reorder_level" class="col-sm-3 col-form-label">Reorder Level:</label>
+                                            <div class="col-sm-6">
+                                                <input type="number" class="form-control" id="reorder_level" placeholder="e.g. 5" name="reorder_level" value="{{ old('reorder_level') }}" min="0" autocomplete="off">
+                                                <small class="form-text text-muted">Dashboard warns when stock falls to this level (blank = 5)</small>
+                                                @error('reorder_level')
+                                                    <span class="text-danger">{{ $message }}</span>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="service_interval_months" class="col-sm-3 col-form-label">Service Interval (Months):</label>
+                                            <div class="col-sm-6">
+                                                <input type="number" class="form-control" id="service_interval_months" placeholder="e.g. 6" name="service_interval_months" value="{{ old('service_interval_months') }}" min="1" max="60" autocomplete="off">
+                                                <small class="form-text text-muted">Cleaning / service reminder cycle after sale (blank = 6 for hearing aids)</small>
+                                                @error('service_interval_months')
+                                                    <span class="text-danger">{{ $message }}</span>
+                                                @enderror
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-group row">

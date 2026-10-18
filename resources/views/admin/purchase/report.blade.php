@@ -58,7 +58,7 @@
                                             <tr>
                                                 <th class="text-center">SL</th>
                                                 <th class="text-center">Purchase Invoice No</th>
-                                                <th class="text-center">Manufacturer</th>
+                                                <th class="text-center">Supplier</th>
                                                 <th class="text-center">Date</th>
                                                 <th class="text-center">Description</th>
                                                 <th class="text-right">Total</th>
@@ -77,7 +77,7 @@
                                                 <tr>
                                                     <td class="text-center">{{ ++$key }}</td>
                                                     <td class="text-center">{{ $val->purchase_invoice_no }}</td>
-                                                    <td class="text-center">{{ $val->manufacturer->manufacturer_name }}</td>
+                                                    <td class="text-center">{{ $val->supplier?->supplier_name ?? $val->manufacturer?->manufacturer_name ?? 'N/A' }}</td>
                                                     <td class="text-center">{{ $val->date }}</td>
                                                     <td class="text-center">{{ $val->details }}</td>
                                                     <td class="text-right">{{ $val->total_amount }}</td>

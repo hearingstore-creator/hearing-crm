@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hearing Aid Repair & Service Pipeline – Complete User Guide | Hearing Store CRM</title>
+<meta name="description" content="Comprehensive step-by-step user guide for the Hearing Store CRM Repair & Service Pipeline. Covers intake, lab dispatch, estimates, repair tracking, supplier reconciliation, and financial settlement.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --primary-light: #eff6ff;
+    --accent: #0f172a;
+    --ink: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --bg-page: #f8fafc;
+    --card-bg: #ffffff;
+    --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+    --card-shadow-hover: 0 10px 25px -3px rgba(15, 23, 42, 0.1);
+
+    /* 6 Stage Colors */
+    --s1: #2563eb;
+    --s1-bg: #eff6ff;
+    --s2: #d97706;
+    --s2-bg: #fffbeb;
+    --s3: #7c3aed;
+    --s3-bg: #faf5ff;
+    --s4: #0891b2;
+    --s4-bg: #ecfeff;
+    --s5: #059669;
+    --s5-bg: #f0fdf4;
+    --s6: #475569;
+    --s6-bg: #f8fafc;
+
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #0284c7;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    background: var(--bg-page);
+    line-height: 1.65;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Top Navigation Bar */
+  .top-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .nav-brand i {
+    color: var(--primary);
+    font-size: 20px;
+  }
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .search-input-wrap {
+    position: relative;
+    width: 260px;
+  }
+  .search-input-wrap input {
+    width: 100%;
+    padding: 7px 12px 7px 34px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #f1f5f9;
+    outline: none;
+    transition: all 0.2s;
+  }
+  .search-input-wrap input:focus {
+    background: #fff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+  }
+  .search-input-wrap i {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .btn-print {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.15s;
+  }
+  .btn-print:hover { opacity: 0.9; }
+
+  /* Main Container Layout */
+  .layout-container {
+    max-width: 1280px;
+    margin: 32px auto;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  /* Sticky Sidebar Table of Contents */
+  .sidebar-toc {
+    position: sticky;
+    top: 80px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+  }
+  .sidebar-toc h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .toc-menu {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .toc-menu a {
+    color: #334155;
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 7px 10px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+  }
+  .toc-menu a:hover, .toc-menu a.active {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-weight: 600;
+  }
+  .toc-menu a .stage-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Content Body */
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  /* Header Banner */
+  .header-card {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 40px 44px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.2);
+  }
+  .header-card::after {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(circle, rgba(37,99,235,0.3) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .header-badge {
+    background: rgba(37,99,235,0.3);
+    border: 1px solid rgba(59,130,246,0.5);
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .header-card h1 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+    line-height: 1.25;
+  }
+  .header-card p {
+    color: #cbd5e1;
+    font-size: 16px;
+    max-width: 680px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+  .header-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    padding-top: 20px;
+    font-size: 13px;
+    color: #94a3b8;
+  }
+  .header-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .header-meta strong { color: #f8fafc; }
+
+  /* Sections */
+  .guide-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 36px;
+    box-shadow: var(--card-shadow);
+    scroll-margin-top: 90px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+  }
+  .section-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .section-header h2 {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+  }
+
+  /* 6 Stage Visual Pipeline Strip */
+  .stage-strip {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin: 24px 0;
+  }
+  .stage-strip-card {
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 14px 12px;
+    background: #fff;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .stage-strip-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.07);
+  }
+  .stage-strip-card .st-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .stage-strip-card .st-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+  .stage-strip-card.s1 { border-top: 4px solid var(--s1); }
+  .stage-strip-card.s1 .st-badge { color: var(--s1); }
+  .stage-strip-card.s2 { border-top: 4px solid var(--s2); }
+  .stage-strip-card.s2 .st-badge { color: var(--s2); }
+  .stage-strip-card.s3 { border-top: 4px solid var(--s3); }
+  .stage-strip-card.s3 .st-badge { color: var(--s3); }
+  .stage-strip-card.s4 { border-top: 4px solid var(--s4); }
+  .stage-strip-card.s4 .st-badge { color: var(--s4); }
+  .stage-strip-card.s5 { border-top: 4px solid var(--s5); }
+  .stage-strip-card.s5 .st-badge { color: var(--s5); }
+  .stage-strip-card.s6 { border-top: 4px solid var(--s6); }
+  .stage-strip-card.s6 .st-badge { color: var(--s6); }
+
+  /* Submenus Grid */
+  .submenus-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .submenu-card {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    transition: all 0.2s;
+  }
+  .submenu-card:hover {
+    background: #fff;
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  .submenu-card h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .submenu-card h4 i { color: var(--primary); }
+  .submenu-card p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .submenu-card .pill-route {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: #e2e8f0;
+    color: #475569;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 8px;
+  }
+
+  /* Stage Deep Dive Cards */
+  .stage-detail-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .stage-detail-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--border);
+  }
+  .stage-detail-header .stage-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .stage-number-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+  }
+  .stage-detail-header h3 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .stage-tag {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+  }
+  .stage-detail-body {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 900px) {
+    .stage-detail-body { grid-template-columns: 1fr; }
+  }
+  .stage-steps-list {
+    list-style: none;
+    counter-reset: step-counter;
+  }
+  .stage-steps-list li {
+    counter-increment: step-counter;
+    position: relative;
+    padding-left: 36px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .stage-steps-list li::before {
+    content: counter(step-counter);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+  }
+  .stage-steps-list li strong {
+    color: var(--ink);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 14.5px;
+  }
+  .stage-summary-box {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .summary-item {
+    font-size: 13px;
+  }
+  .summary-item .label {
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 11px;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .summary-item .val {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* Callout Boxes */
+  .callout {
+    padding: 16px 20px;
+    border-radius: 10px;
+    margin: 18px 0;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .callout i { font-size: 18px; margin-top: 3px; flex-shrink: 0; }
+  .callout.info { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; }
+  .callout.info i { color: #0284c7; }
+  .callout.tip { background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; }
+  .callout.tip i { color: #10b981; }
+  .callout.warning { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; }
+  .callout.warning i { color: #f59e0b; }
+  .callout.danger { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .callout.danger i { color: #ef4444; }
+
+  /* Data Tables */
+  .styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13.5px;
+  }
+  .styled-table th {
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    padding: 10px 14px;
+    border-bottom: 2px solid var(--border);
+    text-align: left;
+  }
+  .styled-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .styled-table tr:hover td { background: #f8fafc; }
+
+  /* Pill Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge-primary { background: #dbeafe; color: #1d4ed8; }
+  .badge-success { background: #dcfce7; color: #15803d; }
+  .badge-warning { background: #fef3c7; color: #b45309; }
+  .badge-danger { background: #fee2e2; color: #b91c1c; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+
+  /* Financial Architecture Diagrams */
+  .diagram-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 18px 0;
+  }
+  .diagram-node {
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  }
+  .diagram-arrow {
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+
+  /* FAQ Accordion / Grid */
+  .faq-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  @media (max-width: 800px) { .faq-grid { grid-template-columns: 1fr; } }
+  .faq-card {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .faq-card h4 {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .faq-card h4 i { color: var(--primary); margin-top: 2px; }
+  .faq-card p {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.55;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 40px 0 60px;
+    color: var(--text-muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .layout-container { grid-template-columns: 1fr; }
+    .sidebar-toc { display: none; }
+    .stage-strip { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .stage-strip { grid-template-columns: repeat(2, 1fr); }
+    .header-card { padding: 24px; }
+    .header-card h1 { font-size: 24px; }
+    .guide-section { padding: 20px; }
+  }
+
+  /* Print Styles */
+  @media print {
+    .top-navbar, .sidebar-toc, .btn-print, .search-input-wrap { display: none !important; }
+    .layout-container { display: block; max-width: 100%; margin: 0; padding: 0; }
+    body { background: #fff; font-size: 12px; }
+    .guide-section { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; margin-bottom: 20px; }
+    .header-card { background: #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .stage-strip-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="top-navbar">
+  <a href="#" class="nav-brand">
+    <i class="fas fa-stethoscope"></i>
+    <span>Hearing Store CRM &middot; Repair Module Guide</span>
+  </a>
+  <div class="nav-actions">
+    <div class="search-input-wrap">
+      <i class="fas fa-search"></i>
+      <input type="text" id="guideSearch" placeholder="Search guide topics..." onkeyup="filterGuideTopics()">
+    </div>
+    <button class="btn-print" onclick="window.print()">
+      <i class="fas fa-print"></i> Print Guide
+    </button>
+  </div>
+</nav>
+
+<div class="layout-container">
+
+  <!-- Sidebar Sticky TOC -->
+  <aside class="sidebar-toc">
+    <h3><i class="fas fa-list-ul mr-1"></i> Table of Contents</h3>
+    <ul class="toc-menu" id="tocList">
+      <li><a href="#overview"><i class="fas fa-info-circle"></i> Module Overview</a></li>
+      <li><a href="#submenus"><i class="fas fa-th-large"></i> The 6 Sub-Menus</a></li>
+      <li><a href="#workflow-paths"><i class="fas fa-route"></i> Dual Workflow Paths</a></li>
+      <li><a href="#stage1"><span class="stage-dot" style="background:var(--s1)"></span> 1. Received (Intake)</a></li>
+      <li><a href="#stage2"><span class="stage-dot" style="background:var(--s2)"></span> 2. At Lab (Dispatch)</a></li>
+      <li><a href="#stage3"><span class="stage-dot" style="background:var(--s3)"></span> 3. Waiting Approval</a></li>
+      <li><a href="#stage4"><span class="stage-dot" style="background:var(--s4)"></span> 4. In Repair (Bench)</a></li>
+      <li><a href="#stage5"><span class="stage-dot" style="background:var(--s5)"></span> 5. Ready for Pickup</a></li>
+      <li><a href="#stage6"><span class="stage-dot" style="background:var(--s6)"></span> 6. Delivered &amp; Paid</a></li>
+      <li><a href="#financials"><i class="fas fa-file-invoice-dollar"></i> Financial Architecture</a></li>
+      <li><a href="#reconciliation"><i class="fas fa-calculator"></i> Supplier Reconciliation</a></li>
+      <li><a href="#rma-stock"><i class="fas fa-exchange-alt"></i> Supplier RMA Stock</a></li>
+      <li><a href="#faq"><i class="fas fa-question-circle"></i> FAQ &amp; Troubleshooting</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Hero Header -->
+    <header class="header-card" id="overview">
+      <div class="header-badge">
+        <i class="fas fa-shield-alt"></i> Standard Operating Procedure (SOP)
+      </div>
+      <h1>Hearing Aid Repair &amp; Service Pipeline</h1>
+      <p>
+        A complete, operational manual for clinic receptionists, bench audiologists, service managers, and accountants.
+        Learn how to receive hearing aids, dispatch to supplier labs, manage estimates, audit warranty replacements,
+        and hit accounting ledgers with zero duplicate entries.
+      </p>
+      <div class="header-meta">
+        <span><i class="fas fa-building"></i> Clinic: <strong>Zenhear &middot; Hearing Store BD</strong></span>
+        <span><i class="fas fa-code-branch"></i> Workflow: <strong>Plan B (Streamlined 6 Stages)</strong></span>
+        <span><i class="fas fa-shield-virus"></i> Protection: <strong>Strict Anti-Double-Entry v2.4</strong></span>
+        <span><i class="fas fa-clock"></i> Updated: <strong>October 2026</strong></span>
+      </div>
+    </header>
+
+    <!-- 6 Stage Visual Pipeline Summary -->
+    <div class="stage-strip">
+      <div class="stage-strip-card s1">
+        <div class="st-badge">Stage 1</div>
+        <div class="st-name">Received</div>
+      </div>
+      <div class="stage-strip-card s2">
+        <div class="st-badge">Stage 2</div>
+        <div class="st-name">At Lab</div>
+      </div>
+      <div class="stage-strip-card s3">
+        <div class="st-badge">Stage 3</div>
+        <div class="st-name">Waiting Approval</div>
+      </div>
+      <div class="stage-strip-card s4">
+        <div class="st-badge">Stage 4</div>
+        <div class="st-name">In Repair</div>
+      </div>
+      <div class="stage-strip-card s5">
+        <div class="st-badge">Stage 5</div>
+        <div class="st-name">Ready for Pickup</div>
+      </div>
+      <div class="stage-strip-card s6">
+        <div class="st-badge">Stage 6</div>
+        <div class="st-name">Delivered</div>
+      </div>
+    </div>
+
+    <!-- Section: The 6 Sub-Menus -->
+    <section class="guide-section" id="submenus">
+      <div class="section-header">
+        <div class="section-icon"><i class="fas fa-th"></i></div>
+        <h2>1. The 6 Sub-Menus in the CRM</h2>
+      </div>
+      <p>
+        The Repair module is organized into 6 dedicated screens under the <strong>Repair</strong> navigation drawer.
+        Each serves a dedicated function in clinic operations:
+      </p>
+
+      <div class="submenus-grid">
+        <div class="submenu-card">
+          <h4><i class="fas fa-stream"></i> 1. Repair Pipeline</h4>
+          <p>The daily operational Kanban Board and List view. Shows all active jobs across the 6 pipeline stages with real-time status counters.</p>
+          <span class="pill-route">Route: admin/repairs</span>
+        </div>
+
+        <div class="submenu-card">
+          <h4><i class="fas fa-archive"></i> 2. All Repair Jobs</h4>
+          <p>Full historical registry (Plan A mode). Search all past repairs, closed warranty records, delivered devices, and historical tracking logs.</p>
+          <span class="pill-route">Route: admin/repairs?mode=legacy</span>
+        </div>
+
+        <div class="submenu-card">
+          <h4><i class="fas fa-plus-circle"></i> 3. New Repair Job</h4>
+          <p>The official intake wizard. Search patient by name or phone, validate device serial number, run automated warranty checks, and print job cards.</p>
+          <span class="pill-route">Route: admin/repairs/create</span>
+        </div>
+
+        <div class="submenu-card">
+          <h4><i class="fas fa-bolt"></i> 4. Quick Walk-in</h4>
+          <p>Rapid 1-minute modal for same-day clinic servicing: wax guard replacement, dehumidification, acoustic tube change, and cleaning without lab dispatch.</p>
+          <span class="pill-route">Route: admin/repairs/quick</span>
+        </div>
+
+        <div class="submenu-card">
+          <h4><i class="fas fa-file-invoice-dollar"></i> 5. Supplier Reconciliation</h4>
+          <p>Dedicated accounting screen. Reconciles monthly lab statements from manufacturers against clinic challans with one-click payment settlement.</p>
+          <span class="pill-route">Route: admin/repairs/supplier-reconciliation</span>
+        </div>
+
+        <div class="submenu-card">
+          <h4><i class="fas fa-boxes"></i> 6. Supplier RMA Stock</h4>
+          <p>Manufacturer replacement stock &amp; warranty replacement serial audit trail. Ensures supplier warranty units cannot be registered under duplicate serials.</p>
+          <span class="pill-route">Route: admin/repairs/rma</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section: Dual Workflow Paths -->
+    <section class="guide-section" id="workflow-paths">
+      <div class="section-header">
+        <div class="section-icon"><i class="fas fa-random"></i></div>
+        <h2>2. Dual Workflow Routing: In-House vs Lab Dispatch</h2>
+      </div>
+      <p>
+        When receiving a hearing aid, the system prompts you to choose the service path based on device diagnostic severity:
+      </p>
+
+      <div class="diagram-flow">
+        <div class="diagram-node" style="border-color:var(--primary);"><i class="fas fa-user-injured mr-1"></i> Patient Walk-in</div>
+        <div class="diagram-arrow"><i class="fas fa-arrow-right"></i></div>
+        <div class="diagram-node" style="border-color:var(--s1);"><i class="fas fa-qrcode mr-1"></i> Serial &amp; Physical Check</div>
+        <div class="diagram-arrow"><i class="fas fa-arrow-right"></i></div>
+        <div class="diagram-node" style="border-color:var(--s2);"><i class="fas fa-code-branch mr-1"></i> Path Selection</div>
+      </div>
+
+      <div class="submenus-grid" style="margin-top:20px;">
+        <div class="submenu-card" style="border-left:4px solid var(--success);">
+          <h4><span class="badge badge-success"><i class="fas fa-wrench mr-1"></i> Path A: In-House Service</span></h4>
+          <p><strong>When to use:</strong> Minor issues that the clinic audiologist can fix on site within 15 to 30 minutes.</p>
+          <ul style="padding-left:18px; margin-top:8px; font-size:13px; color:#475569;">
+            <li>Cerumen (wax) clogging the receiver spout</li>
+            <li>Damaged microphone protector / wax guard</li>
+            <li>Moisture extraction in vacuum dryer chamber</li>
+            <li>Earmold tubing replacement &amp; acoustic seal test</li>
+          </ul>
+          <div class="callout tip" style="margin-top:12px; padding:10px 14px;">
+            <i class="fas fa-check-circle"></i>
+            <span><strong>Zero Lab Dispatch:</strong> The job bypasses Stages 2, 3 &amp; 4 and moves straight to <strong>Ready for Pickup / Delivered</strong> with immediate cashier settlement.</span>
+          </div>
+        </div>
+
+        <div class="submenu-card" style="border-left:4px solid var(--primary);">
+          <h4><span class="badge badge-primary"><i class="fas fa-paper-plane mr-1"></i> Path B: Supplier Lab Dispatch</span></h4>
+          <p><strong>When to use:</strong> Major internal hardware faults, dead components, custom shell remakes, or manufacturer warranty replacements.</p>
+          <ul style="padding-left:18px; margin-top:8px; font-size:13px; color:#475569;">
+            <li>Dead receiver or blown amplifier module</li>
+            <li>Internal circuit corrosion or microphone failure</li>
+            <li>RIC cable break or custom shell cracking / re-shell</li>
+            <li>Official Manufacturer Warranty Claim (Signia, Phonak, Oticon, Widex, ReSound)</li>
+          </ul>
+          <div class="callout info" style="margin-top:12px; padding:10px 14px;">
+            <i class="fas fa-truck"></i>
+            <span><strong>Full 6-Stage Tracking:</strong> Generated with courier tracking #, lab diagnostic quote, patient phone authorization, and supplier ledger reconciliation.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deep Dive: Stage 1 -->
+    <section class="guide-section" id="stage1">
+      <div class="stage-detail-card" style="border-top: 4px solid var(--s1);">
+        <div class="stage-detail-header">
+          <div class="stage-title-wrap">
+            <div class="stage-number-circle" style="background:var(--s1);">1</div>
+            <div>
+              <h3>Stage 1: Received (Device Intake &amp; Inspection)</h3>
+              <span class="text-muted" style="font-size:12px;">Front Desk &amp; Clinic Intake Protocol</span>
+            </div>
+          </div>
+          <span class="stage-tag" style="background:var(--s1-bg); color:var(--s1);">Intake Barcode</span>
+        </div>
+        <div class="stage-detail-body">
+          <div>
+            <ul class="stage-steps-list">
+              <li>
+                <strong>Step 1: Patient Identification &amp; Device Search</strong>
+                Ask the patient for their name or phone number. The CRM auto-suggests their profile and shows all past hearing aid purchases and warranty records.
+              </li>
+              <li>
+                <strong>Step 2: Serial Number Scan &amp; Automated Warranty Verification</strong>
+                Scan or type the serial number on the hearing aid casing. The system automatically queries the sales ledger and sets the warranty tier:
+                <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
+                  <span class="badge badge-success"><i class="fas fa-shield-alt"></i> Tier 1: Product Warranty Active</span>
+                  <span class="badge badge-warning"><i class="fas fa-history"></i> Tier 2: Post-Warranty Service</span>
+                  <span class="badge badge-danger"><i class="fas fa-times-circle"></i> Void: Liquid / Shell Damage</span>
+                </div>
+              </li>
+              <li>
+                <strong>Step 3: Physical Condition &amp; Accessories Checklist</strong>
+                Inspect the device under magnification. Check off received accessories: Earmold, Battery, Wax tool, Hearing aid case. Note any preexisting shell cracks.
+              </li>
+              <li>
+                <strong>Step 4: Issue Reporting &amp; Intake Slip Printing</strong>
+                Select reported symptoms (No Sound, Distortion, Weak, Intermittent, High Battery Drain). Click <strong>Create Repair Job</strong> and hand the printed Intake Receipt to the patient.
+              </li>
+            </ul>
+          </div>
+          <div class="stage-summary-box">
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-user-check mr-1"></i> Responsible Staff</span>
+              <span class="val">Front Desk Receptionist / Junior Audiologist</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-print mr-1"></i> Print Deliverable</span>
+              <span class="val">Customer Repair Intake Slip (with Barcode &amp; promised delivery date)</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-arrow-circle-right mr-1"></i> Next Action</span>
+              <span class="val">Click <strong>Dispatch to Lab</strong> (Path B) or <strong>Complete In-House</strong> (Path A)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deep Dive: Stage 2 -->
+    <section class="guide-section" id="stage2">
+      <div class="stage-detail-card" style="border-top: 4px solid var(--s2);">
+        <div class="stage-detail-header">
+          <div class="stage-title-wrap">
+            <div class="stage-number-circle" style="background:var(--s2);">2</div>
+            <div>
+              <h3>Stage 2: At Lab (Courier Dispatch &amp; Lab Confirmation)</h3>
+              <span class="text-muted" style="font-size:12px;">Logistics &amp; Manufacturer Lab Challans</span>
+            </div>
+          </div>
+          <span class="stage-tag" style="background:var(--s2-bg); color:var(--s2);">Challan Tracking</span>
+        </div>
+        <div class="stage-detail-body">
+          <div>
+            <ul class="stage-steps-list">
+              <li>
+                <strong>Step 1: Choose External Manufacturer Lab</strong>
+                Select the supplier lab (e.g. Sivantos / Signia BD, Sonova / Phonak, Demant / Oticon, GN ReSound).
+              </li>
+              <li>
+                <strong>Step 2: Select Dispatch Mode</strong>
+                <p style="margin-top:4px; font-size:13px; color:#475569;">
+                  <strong>Option A (Courier Service):</strong> Select courier (Steadfast, Sundarban, eCourier, SA Paribahan) and enter the <strong>Consignment / Waybill Tracking #</strong>.<br>
+                  <strong>Option B (By Hand Bearer):</strong> Enter the messenger's name and contact number for hand-carry delivery.
+                </p>
+              </li>
+              <li>
+                <strong>Step 3: Print Lab Delivery Challan</strong>
+                The system generates a duplicate Official Service Challan containing original serial numbers, patient complaints, and requested teardown inspection.
+              </li>
+              <li>
+                <strong>Step 4: Confirm Lab Arrival</strong>
+                When the supplier lab confirms receipt, click <strong>Confirm at Lab</strong> in the card menu. This locks the dispatch timestamp and sets an automatic 72-hour task reminder for diagnosis.
+              </li>
+            </ul>
+          </div>
+          <div class="stage-summary-box">
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-truck-loading mr-1"></i> Responsible Staff</span>
+              <span class="val">Clinic Dispatcher / Operations Executive</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-barcode mr-1"></i> Waybill Required</span>
+              <span class="val">Yes, tracking # mandatory for courier dispatches</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-bell mr-1"></i> Automated Task Engine</span>
+              <span class="val">Fires automated task: <em>"Follow-up lab estimate in 3 days"</em></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deep Dive: Stage 3 -->
+    <section class="guide-section" id="stage3">
+      <div class="stage-detail-card" style="border-top: 4px solid var(--s3);">
+        <div class="stage-detail-header">
+          <div class="stage-title-wrap">
+            <div class="stage-number-circle" style="background:var(--s3);">3</div>
+            <div>
+              <h3>Stage 3: Waiting Approval (Estimate &amp; Patient Decision)</h3>
+              <span class="text-muted" style="font-size:12px;">Financial Quoting &amp; Patient Tele-Counseling</span>
+            </div>
+          </div>
+          <span class="stage-tag" style="background:var(--s3-bg); color:var(--s3);">Estimate Authorization</span>
+        </div>
+        <div class="stage-detail-body">
+          <div>
+            <ul class="stage-steps-list">
+              <li>
+                <strong>Step 1: Input Lab Diagnosis &amp; Estimate Cost</strong>
+                When the supplier lab sends the teardown report, open the job modal and input the <strong>Supplier Cost</strong> (e.g. ৳2,500 for receiver replacement).
+              </li>
+              <li>
+                <strong>Step 2: Add Clinic Service Margin &amp; Total Quote</strong>
+                Enter the clinic customer quote (e.g. ৳3,500). If the unit is under manufacturer warranty, supplier parts cost is ৳0.00.
+              </li>
+              <li>
+                <strong>Step 3: Call Patient for Decision</strong>
+                Audiologist calls the patient to explain findings. Click <strong>Record Decision</strong> in the CRM:
+                <p style="margin-top:6px; font-size:13px;">
+                  <strong class="text-success"><i class="fas fa-check-circle text-success"></i> Patient Approves:</strong> Enter optional advance deposit. Job advances immediately to <strong>Stage 4: In Repair</strong>.<br>
+                  <strong class="text-danger"><i class="fas fa-times-circle text-danger"></i> Patient Declines (Void):</strong> Select decline reason (Too Expensive, Decided to Upgrade, Patient Refused). Apply standard inspection fee (e.g. ৳500) if clinic policy applies. Job moves directly to <strong>Stage 5: Ready for Pickup</strong> for device return.
+                </p>
+              </li>
+            </ul>
+          </div>
+          <div class="stage-summary-box">
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-phone-volume mr-1"></i> Responsible Staff</span>
+              <span class="val">Senior Audiologist / Counselor</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-receipt mr-1"></i> Patient Decision</span>
+              <span class="val">Approved (Proceed to repair) vs Voided (Return to patient)</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-hand-holding-usd mr-1"></i> Advance Deposit</span>
+              <span class="val">Auto-generates advance money receipt if collected</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deep Dive: Stage 4 -->
+    <section class="guide-section" id="stage4">
+      <div class="stage-detail-card" style="border-top: 4px solid var(--s4);">
+        <div class="stage-detail-header">
+          <div class="stage-title-wrap">
+            <div class="stage-number-circle" style="background:var(--s4);">4</div>
+            <div>
+              <h3>Stage 4: In Repair (Technical Bench &amp; Parts Replacement)</h3>
+              <span class="text-muted" style="font-size:12px;">Component Replacement &amp; Manufacturer Re-serialization</span>
+            </div>
+          </div>
+          <span class="stage-tag" style="background:var(--s4-bg); color:var(--s4);">Bench Work</span>
+        </div>
+        <div class="stage-detail-body">
+          <div>
+            <ul class="stage-steps-list">
+              <li>
+                <strong>Step 1: Bench Work Execution</strong>
+                Technicians at the supplier lab replace defective transducers, repair PCB circuitry, re-pot microphones, or re-cast custom ITE/CIC hearing aid shells.
+              </li>
+              <li>
+                <strong>Step 2: Replacement Serial Number Assignment</strong>
+                <p style="margin-top:4px; font-size:13px; color:#475569;">
+                  If the manufacturer replaces the complete unit under warranty:
+                  <br>&bull; The original serial number is locked in CRM audit history.
+                  <br>&bull; Enter the <strong>New Replaced Serial Number</strong> in the modal.
+                  <br>&bull; The CRM validates that this new serial is unique and automatically updates the patient's device profile and warranty certificate.
+                </p>
+              </li>
+              <li>
+                <strong>Step 3: Quality Control &amp; Acoustic Sweep Test</strong>
+                The device undergoes 2cc coupler electroacoustic analysis (OSPL90, FOG, THD distortion test) to ensure it complies with manufacturer specifications.
+              </li>
+            </ul>
+          </div>
+          <div class="stage-summary-box">
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-tools mr-1"></i> Responsible Staff</span>
+              <span class="val">Bench Audiologist / Service Engineer</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-shield-alt mr-1"></i> Warranty Protection</span>
+              <span class="val">Duplicate serial protection active &middot; RMA audit linked</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-check-double mr-1"></i> Next Action</span>
+              <span class="val">Supplier ships unit back &rarr; Click <strong>Receive from Lab</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deep Dive: Stage 5 -->
+    <section class="guide-section" id="stage5">
+      <div class="stage-detail-card" style="border-top: 4px solid var(--s5);">
+        <div class="stage-detail-header">
+          <div class="stage-title-wrap">
+            <div class="stage-number-circle" style="background:var(--s5);">5</div>
+            <div>
+              <h3>Stage 5: Ready for Pickup (Lab Return &amp; Supplier Bill Sync)</h3>
+              <span class="text-muted" style="font-size:12px;">Device Verification &amp; Supplier Ledger Automatic Entry</span>
+            </div>
+          </div>
+          <span class="stage-tag" style="background:var(--s5-bg); color:var(--s5);">Supplier Ledger Sync</span>
+        </div>
+        <div class="stage-detail-body">
+          <div>
+            <ul class="stage-steps-list">
+              <li>
+                <strong>Step 1: Receive Device Back from Supplier Lab</strong>
+                Open the shipment parcel. Match the physical hearing aid serial number with the job slip. Conduct clinic listening check.
+              </li>
+              <li>
+                <strong>Step 2: Enter Supplier Cash Memo &amp; Invoice Details</strong>
+                <p style="margin-top:4px; font-size:13px; color:#475569;">
+                  In the <strong>Return from Lab</strong> modal, enter:
+                  <br>&bull; <strong>Supplier Memo / Invoice Number:</strong> (e.g. <code style="font-family:'JetBrains Mono';">INV-SIG-8841</code>)
+                  <br>&bull; <strong>Supplier Bill Date:</strong> Date printed on supplier bill
+                  <br>&bull; <strong>Final Supplier Charge:</strong> Actual billed amount
+                </p>
+                <div class="callout tip" style="margin-top:10px; padding:10px 14px;">
+                  <i class="fas fa-check-double"></i>
+                  <span><strong>Automatic Supplier Ledger Credit:</strong> Submitting this modal instantly hits the <strong>Supplier Ledger</strong> as a payable liability under the entered memo number. It is protected against duplicate rows.</span>
+                </div>
+              </li>
+              <li>
+                <strong>Step 3: Notify Patient via SMS &amp; Phone</strong>
+                Click <strong>Send Ready SMS</strong>. The CRM delivers an automated SMS notification: <em>"Dear Patient, your hearing aid [Job #] is ready for collection at Zenhear Clinic. Net Due: ৳..."</em>
+              </li>
+            </ul>
+          </div>
+          <div class="stage-summary-box">
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-box-open mr-1"></i> Responsible Staff</span>
+              <span class="val">Clinic Receptionist / Store Executive</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-book mr-1"></i> Accounting Hit</span>
+              <span class="val">Supplier Ledger Credit Entry generated automatically</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-sms mr-1"></i> Patient Notification</span>
+              <span class="val">Ready SMS sent &middot; Call logged on timeline</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deep Dive: Stage 6 -->
+    <section class="guide-section" id="stage6">
+      <div class="stage-detail-card" style="border-top: 4px solid var(--s6);">
+        <div class="stage-detail-header">
+          <div class="stage-title-wrap">
+            <div class="stage-number-circle" style="background:var(--s6);">6</div>
+            <div>
+              <h3>Stage 6: Delivered (Patient Handover &amp; Financial Settlement)</h3>
+              <span class="text-muted" style="font-size:12px;">Final Fitting, Customer Payment &amp; Warranty Issuance</span>
+            </div>
+          </div>
+          <span class="stage-tag" style="background:var(--s6-bg); color:var(--s6);">Delivered &amp; Paid</span>
+        </div>
+        <div class="stage-detail-body">
+          <div>
+            <ul class="stage-steps-list">
+              <li>
+                <strong>Step 1: Patient Hearing Aid Testing &amp; Fitting</strong>
+                Insert fresh zinc-air battery. Have the patient test the hearing aid in clinic. Verify gain, volume control, clarity, and comfort.
+              </li>
+              <li>
+                <strong>Step 2: Collect Remaining Payment &amp; Settle Due</strong>
+                <p style="margin-top:4px; font-size:13px; color:#475569;">
+                  Open the <strong>Handover &amp; Settle Payment</strong> modal. Review net due amount (Total Cost minus Advance Paid).
+                  <br>&bull; Select Payment Method: <strong>Cash</strong>, <strong>bKash / Nagad</strong>, <strong>POS Card</strong>, or <strong>Bank Transfer</strong>.
+                  <br>&bull; Click <strong>Collect &amp; Deliver Device</strong>.
+                </p>
+                <div class="callout danger" style="margin-top:10px; padding:10px 14px;">
+                  <i class="fas fa-shield-alt"></i>
+                  <span><strong>Double-Click Protection Active:</strong> Buttons automatically disable upon first click with a 10-second submission lock. The remaining due is capped at zero to prevent accidental double-collection.</span>
+                </div>
+              </li>
+              <li>
+                <strong>Step 3: Issue Post-Repair Warranty &amp; Final Slip</strong>
+                The system automatically creates a service invoice, updates the customer ledger, and issues a 3-month or 6-month repair warranty certificate.
+              </li>
+            </ul>
+          </div>
+          <div class="stage-summary-box">
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-user-tie mr-1"></i> Responsible Staff</span>
+              <span class="val">Clinic Cashier / Audiologist</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-file-invoice mr-1"></i> Documents Issued</span>
+              <span class="val">Money Receipt, Service Invoice &amp; Repair Warranty Card</span>
+            </div>
+            <div class="summary-item">
+              <span class="label"><i class="fas fa-check-circle text-success mr-1"></i> Job Status</span>
+              <span class="val">100% Settled &middot; Archived in All Repair Jobs</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Financial Architecture & Anti-Double-Entry -->
+    <section class="guide-section" id="financials">
+      <div class="section-header">
+        <div class="section-icon"><i class="fas fa-balance-scale"></i></div>
+        <h2>3. Financial Architecture &amp; Anti-Double-Entry Protections</h2>
+      </div>
+      <p>
+        The Repair Module seamlessly ties physical device maintenance into the CRM financial core.
+        Every transaction follows strict double-entry ledger rules:
+      </p>
+
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Event / Step</th>
+            <th>Trigger Screen</th>
+            <th>Customer Ledger Impact</th>
+            <th>Supplier Ledger Impact</th>
+            <th>Anti-Duplication Guard</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Advance Deposit</strong></td>
+            <td>Stage 3 or Show Page</td>
+            <td><span class="badge badge-success">Credit (Money Receipt)</span></td>
+            <td>No impact</td>
+            <td>Locked against duplicate submission</td>
+          </tr>
+          <tr>
+            <td><strong>Supplier Lab Memo</strong></td>
+            <td>Stage 5: Receive from Lab</td>
+            <td>No impact</td>
+            <td><span class="badge badge-warning">Credit (Payable to Lab)</span></td>
+            <td><strong>Deduplication Engine:</strong> If bill ID or memo exists, row is updated rather than duplicated.</td>
+          </tr>
+          <tr>
+            <td><strong>Final Handover</strong></td>
+            <td>Stage 6: Deliver &amp; Collect</td>
+            <td><span class="badge badge-danger">Debit (Service Charge)</span><br><span class="badge badge-success">Credit (Final Payment)</span></td>
+            <td>No impact</td>
+            <td><strong>10s Rapid Click Lock:</strong> Prevents double-clicking cashier from charging customer twice.</td>
+          </tr>
+          <tr>
+            <td><strong>Voided / Declined Job</strong></td>
+            <td>Stage 3: Decision (Void)</td>
+            <td><span class="badge badge-gray">Debit Inspection Fee (If applicable)</span></td>
+            <td>No impact</td>
+            <td>Supplier ledger is never credited for voided parts.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+          <strong>Accounting Golden Rule for Clinic Staff:</strong>
+          Always enter the supplier's actual Cash Memo / Challan number when returning units from the lab in Stage 5.
+          This ensures the monthly statement from Signia, Phonak, or Oticon matches down to the exact paisa during reconciliation!
+        </div>
+      </div>
+    </section>
+
+    <!-- Supplier Reconciliation Protocol -->
+    <section class="guide-section" id="reconciliation">
+      <div class="section-header">
+        <div class="section-icon"><i class="fas fa-calculator"></i></div>
+        <h2>4. Monthly Supplier Statement Reconciliation</h2>
+      </div>
+      <p>
+        Clinic payments to external manufacturer labs (e.g. Signia BD / Phonak) are usually paid <strong>grossly / periodically</strong> at clinic convenience,
+        rather than paying each individual repair case by case.
+      </p>
+
+      <h3 style="font-size:16px; margin:20px 0 10px; font-weight:700;">How Accounts Reconciles Monthly Statements:</h3>
+      <ol style="padding-left:22px; line-height:1.7; font-size:14px;">
+        <li>Navigate to <strong>Repair &rarr; Supplier Reconciliation</strong> (<code style="font-family:'JetBrains Mono';">admin/repairs/supplier-reconciliation</code>).</li>
+        <li>Select the <strong>Supplier Name</strong> (e.g. Sivantos Bangladesh) and the <strong>Billing Month</strong>.</li>
+        <li>The system displays all lab repair jobs completed in that cycle with their respective <em>Clinic Challan #, Job #, Serial #, Lab Memo #</em>, and <em>Billed Cost</em>.</li>
+        <li>Compare the CRM total with the physical monthly statement sent by the supplier lab.</li>
+        <li>Click <strong>Bulk Settle &amp; Issue Payment Voucher</strong> when issuing a gross bank check or electronic fund transfer. The system records the gross payment against the supplier ledger without needing to touch individual customer invoices.</li>
+      </ol>
+    </section>
+
+    <!-- Supplier RMA Stock -->
+    <section class="guide-section" id="rma-stock">
+      <div class="section-header">
+        <div class="section-icon"><i class="fas fa-exchange-alt"></i></div>
+        <h2>5. Supplier RMA Replacement Stock &amp; Audit Trail</h2>
+      </div>
+      <p>
+        When a manufacturer lab determines that an in-warranty hearing aid cannot be repaired and sends a <strong>Brand New Replacement Unit</strong>:
+      </p>
+
+      <div class="submenus-grid" style="margin-top:16px;">
+        <div class="faq-card">
+          <h4><i class="fas fa-history"></i> Complete Serial Chain Integrity</h4>
+          <p>
+            The CRM records a permanent <em>Serial Chain Record</em>. If Hearing Aid <code style="font-family:'JetBrains Mono';">SN-10024</code> is replaced by <code style="font-family:'JetBrains Mono';">SN-99051</code>, both serials remain permanently linked in the patient's record.
+          </p>
+        </div>
+        <div class="faq-card">
+          <h4><i class="fas fa-lock"></i> Replaced Serial Protection</h4>
+          <p>
+            The original defective serial is automatically marked as <strong>Decommissioned / Returned to Factory</strong> in the database. Nobody in the clinic can accidentally re-sell or assign the old defective unit to another patient.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ & Troubleshooting -->
+    <section class="guide-section" id="faq">
+      <div class="section-header">
+        <div class="section-icon"><i class="fas fa-question"></i></div>
+        <h2>6. Frequently Asked Questions &amp; Troubleshooting</h2>
+      </div>
+
+      <div class="faq-grid">
+        <div class="faq-card">
+          <h4><i class="fas fa-question-circle"></i> What if a patient refuses the repair estimate?</h4>
+          <p>
+            In Stage 3, choose <strong>Patient Declined (Void)</strong>. The system cancels repair charges and immediately moves the job to Stage 5 (Ready for Pickup).
+            The patient can collect their un-repaired device by paying only the standard clinic inspection fee (if applicable).
+          </p>
+        </div>
+
+        <div class="faq-card">
+          <h4><i class="fas fa-question-circle"></i> What if the barcode scanner does not read the serial?</h4>
+          <p>
+            Hearing aid serials are laser-etched and can wear off. You can search by the patient's mobile number, national ID, or Job Card Number.
+            If the serial is completely worn off, verify it through the original sales invoice attached to the patient's CRM profile.
+          </p>
+        </div>
+
+        <div class="faq-card">
+          <h4><i class="fas fa-question-circle"></i> Can I switch between Board View and List View?</h4>
+          <p>
+            Yes! In the top toolbar of <strong>Repair Pipeline</strong>, toggle between <strong>Board View</strong> (visual Kanban cards across 6 columns) and <strong>List View</strong> (tabular spreadsheet view with sorting, export, and pagination).
+          </p>
+        </div>
+
+        <div class="faq-card">
+          <h4><i class="fas fa-question-circle"></i> Does syncing to accounts create double entries?</h4>
+          <p>
+            No. The deduplication engine automatically verifies existing invoice numbers and supplier memos. If you click sync multiple times or edit a repair cost, it updates the existing entry rather than adding a second ledger row.
+          </p>
+        </div>
+
+        <div class="faq-card">
+          <h4><i class="fas fa-question-circle"></i> What is the difference between Plan A and Plan B?</h4>
+          <p>
+            <strong>Plan B</strong> is the streamlined 6-stage workflow with automated tasks, courier waybills, and board cards.
+            <strong>Plan A</strong> is the legacy registry kept for backward compatibility and raw database audits.
+          </p>
+        </div>
+
+        <div class="faq-card">
+          <h4><i class="fas fa-question-circle"></i> How do I handle emergency Quick Walk-in service?</h4>
+          <p>
+            Click <strong>Quick Walk-in</strong> on the top right. Select patient, check off service (Cleaning / Wax Guard), enter amount (e.g. ৳300), and click <strong>Instant Settle</strong>.
+            The job completes in 30 seconds with immediate money receipt printing.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <p>&copy; 2026 Hearing Store CRM &middot; Zenhear Audiology Clinic &middot; All Rights Reserved.</p>
+  <p style="margin-top:4px; font-size:12px;">Standard Operating Procedure document for internal authorized clinic personnel only.</p>
+</footer>
+
+<script>
+  // Simple Topic Filter for Guide Search Bar
+  function filterGuideTopics() {
+    const input = document.getElementById('guideSearch').value.toLowerCase();
+    const sections = document.querySelectorAll('.guide-section, .stage-detail-card, .submenu-card, .faq-card');
+
+    sections.forEach(sec => {
+      const text = sec.innerText.toLowerCase();
+      if (text.includes(input)) {
+        sec.style.display = '';
+      } else {
+        sec.style.display = input.trim() === '' ? '' : 'none';
+      }
+    });
+  }
+
+  // Active TOC Link Highlighting on Scroll
+  window.addEventListener('scroll', () => {
+    const sections = document.querySelectorAll('.guide-section, header.header-card');
+    const scrollPos = window.scrollY + 120;
+
+    sections.forEach(sec => {
+      const top = sec.offsetTop;
+      const height = sec.offsetHeight;
+      const id = sec.getAttribute('id');
+      if (scrollPos >= top && scrollPos < top + height) {
+        document.querySelectorAll('.toc-menu a').forEach(a => {
+          a.classList.remove('active');
+          if (a.getAttribute('href') === `#${id}`) {
+            a.classList.add('active');
+          }
+        });
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

@@ -1,66 +1,59 @@
 @extends('admin.layouts.master')
-
+@section('page_title', 'Add Time Slot')
+@push('css')
+<link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
+@endpush
 @section('content')
-<section class="content pt-3">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card card-outline card-primary">
-                    <div class="card-header">
-                        <div class="row">
-                            <div class="col-md-6"><h5>Add Time Slot</h5></div>
-                            @can('permission', 'time_slot.index')
-                            <div class="col-md-6 text-right">
-                                <a href="{{ url('admin/time-slots') }}" class="btn-primary btn-cs-primary btn-sm">
-                                    <i class="fas fa-list mr-1"></i> Time Slot List
-                                </a>
-                            </div>
-                            @endcan
+<div class="container-fluid" style="padding: 0 24px;">
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-clock" style="color: var(--accent-500); margin-right: 8px;"></i>Add Time Slot</h1>
+            <p>Create a new appointment time slot</p>
+        </div>
+        <div class="header-actions">
+            @can('permission', 'time_slot.index')
+            <a href="{{ url('admin/time-slots') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i>Time Slot List</a>
+            @endcan
+        </div>
+    </div>
+    @include('admin.alert_message')
+    <form action="{{ url('admin/time-slots') }}" method="post">
+        @csrf
+        <div class="crm-form-section crm-animate-in delay-1">
+            <div class="crm-form-section-header">
+                <div class="section-icon" style="background: var(--accent-500);"><i class="fas fa-clock"></i></div>
+                <h6>Time Slot Information</h6>
+            </div>
+            <div class="crm-form-section-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Start Time <span style="color: var(--danger-500);">*</span></label>
+                            <input type="time" class="form-control" name="start_time" required>
                         </div>
                     </div>
-
-                    @include('admin.alert_message')
-
-                    <div class="card-body">
-                        <form action="{{ url('admin/time-slots') }}" method="post">
-                            @csrf
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <div class="form-group row">
-                                        <label class="col-sm-3 col-form-label">Start Time <i class="text-danger">*</i>:</label>
-                                        <div class="col-sm-6">
-                                            <input type="time" class="form-control" name="start_time" required>
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <label class="col-sm-3 col-form-label">End Time <i class="text-danger">*</i>:</label>
-                                        <div class="col-sm-6">
-                                            <input type="time" class="form-control" name="end_time" required>
-                                        </div>
-                                    </div>
-                                    <div class="form-group row">
-                                        <label class="col-sm-3 col-form-label">Status <i class="text-danger">*</i>:</label>
-                                        <div class="col-sm-3">
-                                            <label class="radio-inline my-2">
-                                                <input type="radio" name="status" value="1" checked> Active
-                                            </label>
-                                            <label class="radio-inline my-2">
-                                                <input type="radio" name="status" value="0"> Inactive
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>End Time <span style="color: var(--danger-500);">*</span></label>
+                            <input type="time" class="form-control" name="end_time" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Status <span style="color: var(--danger-500);">*</span></label>
+                            <div class="mt-1">
+                                <label class="radio-inline my-2"><input type="radio" name="status" value="1" checked> Active</label>
+                                <label class="radio-inline my-2 ml-3"><input type="radio" name="status" value="0"> Inactive</label>
                             </div>
-                            <div class="form-group row">
-                                <div class="col-md-6 text-right">
-                                    <button type="submit" class="btn btn-success">Save</button>
-                                </div>
-                            </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+        <div class="crm-form-submit-bar">
+            <a href="{{ url('admin/time-slots') }}" class="btn btn-secondary btn-sm">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i>Save</button>
+        </div>
+    </form>
+</div>
 @endsection

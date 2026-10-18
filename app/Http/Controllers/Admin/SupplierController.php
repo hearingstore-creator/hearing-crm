@@ -6,7 +6,10 @@ use App\Classes\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
 use App\Models\SupplierLedger;
+use App\Models\PurchaseMaster;
+use App\Models\Ledger;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +28,7 @@ class SupplierController extends Controller
         $this->middleware('permission:supplier_list.edit')->only(['edit', 'update']);
         $this->middleware('permission:supplier_list.delete')->only(['destroy']);
         $this->middleware('permission:supplier_ledger.view')->only(['createSupplierLedger', 'supplierLedger']);
-        $this->middleware('permission:supplier_payment.index')->only(['supplierPaymentIndex']);
+        $this->middleware('permission:supplier_payment.index')->only(['supplierPaymentIndex', 'supplierPaymentSlip', 'supplierUnpaidPurchases']);
         $this->middleware('permission:supplier_payment.create')->only(['supplierPaymentCreate', 'supplierPaymentStore']);
         $this->middleware('permission:supplier_payment.edit')->only(['supplierPaymentEdit', 'supplierPaymentUpdate']);
         $this->middleware('permission:supplier_payment.delete')->only(['supplierPaymentDestroy']);
@@ -38,8 +41,59 @@ class SupplierController extends Controller
      */
     public function index(): View
     {
-        $data['suppliers'] = Supplier::orderBy('id', 'desc')->get();
-        return view('admin.supplier.index', $data);
+        $suppliers = Supplier::orderBy('id', 'desc')->get();
+
+        // Aggregate purchases by supplier
+        $purchaseStats = DB::table('purchase_masters')
+            ->whereNull('deleted_at')
+            ->selectRaw('supplier_id, COUNT(*) as count, COALESCE(SUM(total_amount), 0) as total_amount')
+            ->groupBy('supplier_id')
+            ->get()
+            ->keyBy('supplier_id');
+
+        // Aggregate ledger by supplier (credits and debits)
+        $ledgerStats = DB::table('supplier_ledgers')
+            ->whereNull('deleted_at')
+            ->selectRaw('supplier_id, COALESCE(SUM(credit), 0) as total_credit, COALESCE(SUM(debit), 0) as total_debit')
+            ->groupBy('supplier_id')
+            ->get()
+            ->keyBy('supplier_id');
+
+        $totalPurchased = 0;
+        $totalPaid = 0;
+        $totalDue = 0;
+        $totalInvoices = 0;
+
+        foreach ($suppliers as $supplier) {
+            $p = $purchaseStats->get($supplier->id);
+            $l = $ledgerStats->get($supplier->id);
+
+            $supplier->purchases_count = $p ? (int) $p->count : 0;
+            $supplier->purchases_total = $p ? (float) $p->total_amount : 0.0;
+
+            $credit = $l ? (float) $l->total_credit : 0.0;
+            $debit = $l ? (float) $l->total_debit : 0.0;
+            $supplier->total_credit = $credit;
+            $supplier->total_debit = $debit;
+            $supplier->due_balance = max(0, $credit - $debit);
+
+            $totalPurchased += $supplier->purchases_total;
+            $totalPaid += $debit;
+            $totalDue += $supplier->due_balance;
+            $totalInvoices += $supplier->purchases_count;
+        }
+
+        $summary = [
+            'total' => $suppliers->count(),
+            'active' => $suppliers->where('status', 1)->count(),
+            'inactive' => $suppliers->where('status', '!=', 1)->count(),
+            'total_purchased' => $totalPurchased,
+            'total_paid' => $totalPaid,
+            'total_due' => $totalDue,
+            'total_invoices' => $totalInvoices,
+        ];
+
+        return view('admin.supplier.index', compact('suppliers', 'summary'));
     }
 
 
@@ -68,8 +122,8 @@ class SupplierController extends Controller
 
         $requestAll = $request->all();
 
-        if (auth()->user()->isVendor()) {
-            $requestAll['vendor_id'] = auth()->id();
+        if (auth()->user()->branchId()) {
+            $requestAll['vendor_id'] = auth()->user()->branchId();
         }
 
         $supplier = new Supplier($requestAll);
@@ -93,38 +147,24 @@ class SupplierController extends Controller
     }
 
     /**
-     * Show the form for creating a supplier ledger.
+     * Legacy ledger route: redirect to modern Supplier Statement report.
      *
-     * @return \Illuminate\Contracts\View\View
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function createSupplierLedger(): View
+    public function createSupplierLedger(): RedirectResponse
     {
-        $data['suppliers'] = Supplier::where('status', 1)->orderBy('id', 'desc')->get();
-
-        return view('admin.supplier.ledger', $data);
+        return redirect()->route('report.supplier-statement');
     }
 
     /**
-     * Display the supplier ledger within a date range.
+     * Legacy ledger route: redirect to modern Supplier Statement report.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Contracts\View\View
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function supplierLedger(Request $request): View
+    public function supplierLedger(Request $request): RedirectResponse
     {
-        $startDate = $request->start_date;
-        $endDate = $request->end_date;
-        $supplierId = $request->supplier_id;
-        $suppliers = Supplier::where('status', 1)->orderBy('id', 'desc')->get();
-        $supplierName = Supplier::where('id', $supplierId)->value('supplier_name');
-
-        $ledgers = SupplierLedger::where('supplier_id', $request->supplier_id)
-            ->whereBetween('date', [$startDate, $endDate])
-            ->ForAuthVendor()
-            ->orderBy('id', 'desc')
-            ->get();
-
-        return view('admin.supplier.ledger', compact('ledgers', 'startDate', 'endDate', 'suppliers', 'supplierId', 'supplierName'));
+        return redirect()->route('report.supplier-statement', $request->all());
     }
 
     /**
@@ -156,8 +196,8 @@ class SupplierController extends Controller
 
          $requestAll = $request->all();
 
-        if (auth()->user()->isVendor()) {
-            $requestAll['vendor_id'] = auth()->id();
+        if (auth()->user()->branchId()) {
+            $requestAll['vendor_id'] = auth()->user()->branchId();
         }
 
         $supplier = Supplier::findOrFail($id);
@@ -225,9 +265,29 @@ class SupplierController extends Controller
     public function destroy(int $id): RedirectResponse
     {
         $supplier = Supplier::findOrFail($id);
+
+        $purchaseCount = DB::table('purchase_masters')->where('supplier_id', $id)->whereNull('deleted_at')->count();
+        $ledgerCount = DB::table('supplier_ledgers')->where('supplier_id', $id)->whereNull('deleted_at')->count();
+
+        if ($purchaseCount > 0 || $ledgerCount > 0) {
+            $details = [];
+            if ($purchaseCount > 0) {
+                $details[] = "$purchaseCount purchase invoice" . ($purchaseCount > 1 ? 's' : '');
+            }
+            if ($ledgerCount > 0) {
+                $details[] = "$ledgerCount payment/ledger record" . ($ledgerCount > 1 ? 's' : '');
+            }
+            $linked = implode(' and ', $details);
+
+            return redirect('/admin/suppliers')->with(
+                'warning',
+                "Cannot delete supplier '{$supplier->supplier_name}' because it has {$linked}. You can mark it Inactive instead."
+            );
+        }
+
         $supplier->delete();
 
-        return redirect('/admin/suppliers')->with('success', 'Deleted Successfully');
+        return redirect('/admin/suppliers')->with('success', 'Supplier deleted successfully');
     }
 
     /**
@@ -235,12 +295,21 @@ class SupplierController extends Controller
      *
      * @return View
      */
-    public function supplierPaymentIndex(): View
+    public function supplierPaymentIndex(Request $request): View
     {
-        $data['payments'] = SupplierLedger::with('supplier')
-            ->where('type', 'Payment')
-            ->latest()
-            ->paginate(20);
+        $query = SupplierLedger::with('supplier')
+            ->where('type', 'Payment');
+
+        if ($request->filled('supplier_memo_no')) {
+            $query->where('supplier_memo_no', 'like', '%' . $request->supplier_memo_no . '%');
+        }
+
+        if ($request->filled('supplier_id')) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
+        $data['payments'] = $query->latest()->paginate(20)->withQueryString();
+        $data['suppliers'] = Supplier::where('status', 1)->orderBy('supplier_name', 'asc')->get();
 
         return view('admin.supplier_payment.index', $data);
     }
@@ -252,7 +321,8 @@ class SupplierController extends Controller
      */
     public function supplierPaymentCreate(): View
     {
-        $data['suppliers'] = Supplier::where('status', 1)->get();
+        $data['suppliers'] = Supplier::where('status', 1)->orderBy('supplier_name', 'asc')->get();
+        $data['paymentMethods'] = Helper::supplierPaymentMethods();
         return view('admin.supplier_payment.create', $data);
     }
 
@@ -265,49 +335,149 @@ class SupplierController extends Controller
     public function supplierPaymentStore(Request $request): RedirectResponse
     {
         $request->validate([
-            'supplier_id' => ['required'],
-            'date' => ['required'],
-            'debit' => ['required', 'numeric', 'min:0'],
-            'details' => ['nullable'],
+            'supplier_id'        => ['required', 'exists:suppliers,id'],
+            'date'               => ['required', 'date'],
+            'debit'              => ['required', 'numeric', 'min:0.01'],
+            'payment_method'     => ['required', 'string', 'in:Cash,Bank Deposit,Online Transfer'],
+            'supplier_memo_no'   => ['nullable', 'string', 'max:100'],
+            'bank_name'          => ['nullable', 'string', 'max:100'],
+            'transaction_no'     => ['nullable', 'string', 'max:100'],
+            'linked_purchase_id' => ['nullable', 'exists:purchase_masters,id'],
+            'details'            => ['nullable', 'string', 'max:500'],
         ]);
 
-        // Calculate supplier's due amount
-        $ledgers = SupplierLedger::where('supplier_id', $request->supplier_id)->get();
-        $totalCredit = $ledgers->sum('credit');
-        $totalDebit = $ledgers->sum('debit');
-        $dueAmount = $totalCredit - $totalDebit;
+        $supplier = Supplier::findOrFail($request->supplier_id);
 
-        // Validate payment amount doesn't exceed due amount
-        if ($request->debit > $dueAmount) {
+        // Calculate supplier's current due amount
+        $ledgers = SupplierLedger::where('supplier_id', $request->supplier_id)->get();
+        $totalCredit = (float) $ledgers->sum('credit');
+        $totalDebit = (float) $ledgers->sum('debit');
+        $dueAmount = max(0, $totalCredit - $totalDebit);
+
+        // If paying more than current due, check confirmation or block
+        if ($request->debit > $dueAmount && $dueAmount > 0) {
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['debit' => "Payment amount ({$request->debit}) cannot exceed due amount ({$dueAmount})."]);
+                ->withErrors(['debit' => "Payment amount (৳" . number_format($request->debit, 2) . ") exceeds the current outstanding due (৳" . number_format($dueAmount, 2) . ")."]);
         }
 
         DB::beginTransaction();
         try {
-            $refInvoiceNo = 'SP-' . date('ymdhis');
+            $refInvoiceNo = 'SP-' . date('ymd') . '-' . strtoupper(substr(uniqid(), -4));
 
+            $memoNote = 'Payment ref: ' . $refInvoiceNo . ' [' . $request->payment_method . ']';
+            if ($request->supplier_memo_no) {
+                $memoNote .= ' | Supplier Memo: ' . $request->supplier_memo_no;
+            }
+            if ($request->transaction_no) {
+                $memoNote .= ' Txn/Chq: ' . $request->transaction_no;
+            }
+            if ($request->bank_name) {
+                $memoNote .= ' (' . $request->bank_name . ')';
+            }
+            $fullDetails = $request->details ? $request->details . ' | ' . $memoNote : $memoNote;
+
+            // 1. Supplier Ledger entry (reduces Accounts Payable)
             $supplierLedger = new SupplierLedger();
             $supplierLedger->supplier_id = $request->supplier_id;
             $supplierLedger->date = $request->date;
-            $supplierLedger->details = $request->details ? $request->details . ' (Payment ref no - ' . $refInvoiceNo . ')' : 'Payment ref no - ' . $refInvoiceNo;
+            $supplierLedger->details = $fullDetails;
             $supplierLedger->debit = $request->debit;
             $supplierLedger->credit = 0;
             $supplierLedger->type = 'Payment';
             $supplierLedger->ref_invoice_no = $refInvoiceNo;
+            $supplierLedger->supplier_memo_no = $request->supplier_memo_no;
+            $supplierLedger->payment_method = $request->payment_method;
+            $supplierLedger->transaction_no = $request->transaction_no;
+            $supplierLedger->bank_name = $request->bank_name;
+            $supplierLedger->linked_purchase_id = $request->linked_purchase_id ?: null;
+            $supplierLedger->save();
 
-            if ($supplierLedger->save()) {
-                DB::commit();
-                return redirect('admin/suppliers-payment')->with('success', 'Payment Saved Successfully');
-            }
+            // 2. Financial Accounting Ledger entry (Cash/Bank Outflow)
+            $branchId = auth()->check() ? auth()->user()->branchId() : null;
+            $accLedger = new Ledger();
+            $accLedger->invoice_no = 'EX-' . date('ymdhis');
+            $accLedger->vendor_id = $branchId;
+            $accLedger->date = $request->date;
+            $accLedger->details = "Supplier Payment: {$supplier->supplier_name} via {$request->payment_method}" . ($request->transaction_no ? " (Ref: {$request->transaction_no})" : '') . ($request->details ? " - {$request->details}" : '');
+            $accLedger->expense_amount = $request->debit;
+            $accLedger->income_amount = 0;
+            $accLedger->amount_type = Helper::$expense;
+            $accLedger->type = 'Supplier Payment';
+            $accLedger->ref_invoice_no = $refInvoiceNo;
+            $accLedger->save();
 
-            DB::rollBack();
-            return redirect()->back()->with('warning', 'Payment Not Saved');
+            DB::commit();
+
+            return redirect()->route('suppliers.payment.slip', $supplierLedger->id)
+                ->with('success', 'Supplier Payment saved successfully. Payment Voucher / Slip generated below.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('warning', 'An error occurred: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('warning', 'An error occurred: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Display printable payment voucher / slip for a supplier payment.
+     *
+     * @param int $id
+     * @return View
+     */
+    public function supplierPaymentSlip(int $id): View
+    {
+        $payment = SupplierLedger::with(['supplier.vendor', 'linkedPurchase'])->findOrFail($id);
+
+        if ($payment->type !== 'Payment') {
+            abort(404, 'Voucher only available for payment transactions.');
+        }
+
+        // Calculate balances around this transaction
+        $allCredits = SupplierLedger::where('supplier_id', $payment->supplier_id)->sum('credit');
+        $allDebits = SupplierLedger::where('supplier_id', $payment->supplier_id)->sum('debit');
+        $remainingDue = max(0, (float)$allCredits - (float)$allDebits);
+        $previousDue = $remainingDue + (float)$payment->debit;
+
+        $amountInWords = Helper::numberToWords($payment->debit);
+        $setting = Helper::invoiceBranding($payment->supplier->vendor_id ?? (auth()->check() ? auth()->user()->branchId() : null));
+
+        return view('admin.supplier_payment.slip', compact(
+            'payment',
+            'previousDue',
+            'remainingDue',
+            'amountInWords',
+            'setting'
+        ));
+    }
+
+    /**
+     * Get unpaid / partially paid purchases for a supplier via AJAX.
+     *
+     * @param int $supplierId
+     * @return JsonResponse
+     */
+    public function supplierUnpaidPurchases(int $supplierId): JsonResponse
+    {
+        $purchases = PurchaseMaster::where('supplier_id', $supplierId)
+            ->select('id', 'purchase_invoice_no', 'supplier_memo_no', 'date', 'total_amount', 'paid')
+            ->orderBy('date', 'desc')
+            ->limit(30)
+            ->get()
+            ->map(function ($p) {
+                $total = (float) $p->total_amount;
+                $paid = (float) $p->paid;
+                $due = max(0, $total - $paid);
+                return [
+                    'id'         => $p->id,
+                    'invoice_no' => $p->purchase_invoice_no,
+                    'memo_no'    => $p->supplier_memo_no,
+                    'date'       => $p->date ? $p->date->format('d M Y') : '',
+                    'total'      => $total,
+                    'due'        => $due,
+                    'label'      => ($p->supplier_memo_no ? "Memo: {$p->supplier_memo_no} | " : '') . "Inv #{$p->purchase_invoice_no} ({$p->date->format('d M Y')}) - Bill: ৳" . number_format($total, 2) . ($due > 0 ? " [Due: ৳" . number_format($due, 2) . "]" : "")
+                ];
+            });
+
+        return response()->json(['success' => true, 'purchases' => $purchases]);
     }
 
     /**
@@ -318,14 +488,17 @@ class SupplierController extends Controller
      */
     public function supplierPaymentEdit(int $id): View
     {
-        $data['suppliers'] = Supplier::where('status', 1)->get();
-        $data['payment'] = SupplierLedger::where('id', $id)->where('type', 'Payment')->first();
+        $data['suppliers'] = Supplier::where('status', 1)->orderBy('supplier_name', 'asc')->get();
+        $data['paymentMethods'] = Helper::supplierPaymentMethods();
+        $data['payment'] = SupplierLedger::where('id', $id)->where('type', 'Payment')->firstOrFail();
 
-        // Calculate current due amount for this supplier
-        if ($data['payment']) {
-            $dueResponse = $this->getSupplierDue($data['payment']->supplier_id);
-            $data['due_amount'] = $dueResponse['due'] ?? 0.00;
-        }
+        // Calculate current due amount for this supplier (excluding this payment)
+        $ledgers = SupplierLedger::where('supplier_id', $data['payment']->supplier_id)
+            ->where('id', '!=', $id)
+            ->get();
+        $totalCredit = (float) $ledgers->sum('credit');
+        $totalDebit = (float) $ledgers->sum('debit');
+        $data['due_amount'] = max(0, $totalCredit - $totalDebit);
 
         return view('admin.supplier_payment.edit', $data);
     }
@@ -340,51 +513,87 @@ class SupplierController extends Controller
     public function supplierPaymentUpdate(Request $request, int $id): RedirectResponse
     {
         $request->validate([
-            'supplier_id' => ['required'],
-            'date' => ['required'],
-            'debit' => ['required', 'numeric', 'min:0'],
-            'details' => ['nullable'],
+            'supplier_id'      => ['required', 'exists:suppliers,id'],
+            'date'             => ['required', 'date'],
+            'debit'            => ['required', 'numeric', 'min:0.01'],
+            'payment_method'   => ['required', 'string', 'in:Cash,Bank Deposit,Online Transfer'],
+            'supplier_memo_no' => ['nullable', 'string', 'max:100'],
+            'bank_name'        => ['nullable', 'string', 'max:100'],
+            'transaction_no'   => ['nullable', 'string', 'max:100'],
+            'details'          => ['nullable', 'string', 'max:500'],
         ]);
 
         DB::beginTransaction();
         try {
-            $supplierLedger = SupplierLedger::where('id', $id)->where('type', 'Payment')->first();
-
-            if (!$supplierLedger) {
-                return redirect()->back()->with('warning', 'Payment not found');
-            }
+            $supplierLedger = SupplierLedger::where('id', $id)->where('type', 'Payment')->firstOrFail();
+            $supplier = Supplier::findOrFail($request->supplier_id);
 
             // Calculate supplier's due amount (excluding current payment being edited)
             $ledgers = SupplierLedger::where('supplier_id', $request->supplier_id)
                 ->where('id', '!=', $id)
                 ->get();
-            $totalCredit = $ledgers->sum('credit');
-            $totalDebit = $ledgers->sum('debit');
-            $dueAmount = $totalCredit - $totalDebit;
+            $totalCredit = (float) $ledgers->sum('credit');
+            $totalDebit = (float) $ledgers->sum('debit');
+            $dueAmount = max(0, $totalCredit - $totalDebit);
 
-            // Validate payment amount doesn't exceed due amount
-            if ($request->debit > $dueAmount) {
+            if ($request->debit > $dueAmount && $dueAmount > 0) {
                 return redirect()->back()
                     ->withInput()
-                    ->withErrors(['debit' => "Payment amount ({$request->debit}) cannot exceed due amount ({$dueAmount})."]);
+                    ->withErrors(['debit' => "Payment amount (৳" . number_format($request->debit, 2) . ") exceeds the outstanding due (৳" . number_format($dueAmount, 2) . ")."]);
             }
 
-            $refInvoiceNo = $supplierLedger->ref_invoice_no ?? 'SP-' . date('ymdhis');
+            $refInvoiceNo = $supplierLedger->ref_invoice_no ?? ('SP-' . date('ymd') . '-' . strtoupper(substr(uniqid(), -4)));
+
+            $memoNote = 'Payment ref: ' . $refInvoiceNo . ' [' . $request->payment_method . ']';
+            if ($request->supplier_memo_no) {
+                $memoNote .= ' | Supplier Memo: ' . $request->supplier_memo_no;
+            }
+            if ($request->transaction_no) {
+                $memoNote .= ' Txn/Chq: ' . $request->transaction_no;
+            }
+            if ($request->bank_name) {
+                $memoNote .= ' (' . $request->bank_name . ')';
+            }
+            $fullDetails = $request->details ? $request->details . ' | ' . $memoNote : $memoNote;
 
             $supplierLedger->supplier_id = $request->supplier_id;
             $supplierLedger->date = $request->date;
-            $supplierLedger->details = $request->details ? $request->details . ' (Payment ref no - ' . $refInvoiceNo . ')' : 'Payment ref no - ' . $refInvoiceNo;
+            $supplierLedger->details = $fullDetails;
             $supplierLedger->debit = $request->debit;
-            $supplierLedger->type = 'Payment';
-            $supplierLedger->ref_invoice_no = $refInvoiceNo;
+            $supplierLedger->supplier_memo_no = $request->supplier_memo_no;
+            $supplierLedger->payment_method = $request->payment_method;
+            $supplierLedger->transaction_no = $request->transaction_no;
+            $supplierLedger->bank_name = $request->bank_name;
+            if ($request->has('linked_purchase_id')) {
+                $supplierLedger->linked_purchase_id = $request->linked_purchase_id ?: null;
+            }
+            $supplierLedger->save();
 
-            if ($supplierLedger->save()) {
-                DB::commit();
-                return redirect('admin/suppliers-payment')->with('success', 'Payment Updated Successfully');
+            // Update corresponding Ledger outflow entry
+            $accLedger = Ledger::where('ref_invoice_no', $refInvoiceNo)->where('type', 'Supplier Payment')->first();
+            if ($accLedger) {
+                $accLedger->date = $request->date;
+                $accLedger->details = "Supplier Payment: {$supplier->supplier_name} via {$request->payment_method}" . ($request->transaction_no ? " (Ref: {$request->transaction_no})" : '') . ($request->details ? " - {$request->details}" : '');
+                $accLedger->expense_amount = $request->debit;
+                $accLedger->save();
+            } else {
+                $branchId = auth()->check() ? auth()->user()->branchId() : null;
+                $accLedger = new Ledger();
+                $accLedger->invoice_no = 'EX-' . date('ymdhis');
+                $accLedger->vendor_id = $branchId;
+                $accLedger->date = $request->date;
+                $accLedger->details = "Supplier Payment: {$supplier->supplier_name} via {$request->payment_method}" . ($request->transaction_no ? " (Ref: {$request->transaction_no})" : '') . ($request->details ? " - {$request->details}" : '');
+                $accLedger->expense_amount = $request->debit;
+                $accLedger->income_amount = 0;
+                $accLedger->amount_type = Helper::$expense;
+                $accLedger->type = 'Supplier Payment';
+                $accLedger->ref_invoice_no = $refInvoiceNo;
+                $accLedger->save();
             }
 
-            DB::rollBack();
-            return redirect()->back()->with('warning', 'Payment Not Updated');
+            DB::commit();
+            return redirect()->route('suppliers.payment.slip', $supplierLedger->id)
+                ->with('success', 'Payment Updated Successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('warning', 'An error occurred: ' . $e->getMessage());
@@ -399,15 +608,24 @@ class SupplierController extends Controller
      */
     public function supplierPaymentDestroy(int $id): RedirectResponse
     {
+        DB::beginTransaction();
         try {
             $ledger = SupplierLedger::where('id', $id)->where('type', 'Payment')->first();
 
             if ($ledger) {
+                // Also remove the cash/bank outflow from general ledger
+                if ($ledger->ref_invoice_no) {
+                    Ledger::where('ref_invoice_no', $ledger->ref_invoice_no)
+                        ->where('type', 'Supplier Payment')
+                        ->delete();
+                }
                 $ledger->delete();
             }
 
+            DB::commit();
             return redirect()->back()->with('success', 'Payment Deleted Successfully');
         } catch (\Exception $ex) {
+            DB::rollBack();
             return redirect()->back()->with('warning', $ex->getMessage());
         }
     }

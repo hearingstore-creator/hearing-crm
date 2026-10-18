@@ -62,8 +62,13 @@ class SMS {
     {
         $ch = curl_init(); // Initialize cURL
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        // Verify the gateway's certificate (turn off only via SMS_VERIFY_SSL=false where PHP has no CA bundle)
+        $verify = (bool) config('crm.sms_verify_ssl', true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verify);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verify ? 2 : 0);
+        // Never let a slow gateway hang a page or a job
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
         curl_setopt($ch, CURLOPT_POSTFIELDS, $params);

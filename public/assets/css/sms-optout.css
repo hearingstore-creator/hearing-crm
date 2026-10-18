@@ -1,0 +1,42 @@
+/* SMS Centre → Opt-out tab. Uses crm-module.css / theme.css tokens; light + dark. */
+.so-wrap { max-width: 980px; }
+.so-intro { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; border-radius: 14px; margin-bottom: 18px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent-500) 9%, var(--card-bg)), var(--card-bg));
+    border: 1px solid color-mix(in srgb, var(--accent-500) 25%, var(--card-border)); }
+.so-intro-icon { width: 42px; height: 42px; flex: none; border-radius: 12px; display: grid; place-items: center; font-size: 17px;
+    color: #fff; background: linear-gradient(135deg, var(--accent-500), var(--danger-500)); box-shadow: 0 6px 16px color-mix(in srgb, var(--accent-500) 35%, transparent); }
+.so-title { font-size: 15px; font-weight: 700; margin: 0 0 4px; color: var(--page-text); }
+.so-text { font-size: 12.5px; margin: 0; color: var(--page-text-muted); line-height: 1.55; }
+.so-muted { font-weight: 400; color: var(--page-text-muted); }
+
+.so-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 14px 16px; margin-bottom: 18px;
+    border-radius: 14px; background: var(--card-bg); border: 1px solid var(--card-border); }
+.so-field { display: flex; flex-direction: column; min-width: 180px; }
+.so-field-grow { flex: 1; min-width: 240px; }
+.so-field label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--page-text-muted); margin-bottom: 6px; }
+.so-btn { height: 38px; padding: 0 18px; border-radius: 10px; font-weight: 600; color: #fff; border: 0;
+    background: linear-gradient(135deg, var(--accent-500), var(--accent-600, var(--accent-500))); transition: transform .15s ease, box-shadow .15s ease; }
+.so-btn:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-500) 35%, transparent); }
+
+.so-list { display: flex; flex-direction: column; gap: 8px; }
+.so-row { display: grid; grid-template-columns: 200px 1fr 110px 36px; gap: 12px; align-items: center; padding: 11px 14px;
+    border-radius: 12px; background: var(--card-bg); border: 1px solid var(--card-border); transition: border-color .15s ease, transform .15s ease; }
+.so-row:hover { border-color: color-mix(in srgb, var(--danger-500) 40%, var(--card-border)); transform: translateX(2px); }
+.so-phone { font-weight: 700; font-size: 13.5px; color: var(--page-text); font-variant-numeric: tabular-nums; }
+.so-phone i { color: var(--danger-500); margin-right: 6px; }
+.so-reason { font-size: 12.5px; color: var(--page-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.so-date { font-size: 12px; color: var(--page-text-muted); text-align: right; }
+.so-remove { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--card-border); background: transparent;
+    color: var(--page-text-muted); cursor: pointer; transition: all .15s ease; }
+.so-remove:hover { color: #fff; background: var(--danger-500); border-color: var(--danger-500); }
+
+.so-empty { text-align: center; padding: 36px 16px; border-radius: 14px; border: 1px dashed var(--card-border); color: var(--page-text-muted); }
+.so-empty i { font-size: 28px; color: var(--success-500); margin-bottom: 8px; }
+.so-empty p { margin: 0; font-size: 13px; }
+
+[data-theme="dark"] .so-intro { background: linear-gradient(135deg, color-mix(in srgb, var(--accent-500) 14%, var(--card-bg)), var(--card-bg)); }
+
+@media (max-width: 640px) {
+    .so-row { grid-template-columns: 1fr 36px; }
+    .so-reason, .so-date { grid-column: 1; text-align: left; }
+}

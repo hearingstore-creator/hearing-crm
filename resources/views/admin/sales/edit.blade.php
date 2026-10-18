@@ -101,6 +101,26 @@
                            </div>
                         </div>
                      </div>
+                     <div class="form-group row" id="doctor-chamber-wrap" style="{{ $saleMaster->reference_by ? '' : 'display: none;' }}">
+                        <label for="doctor_chamber_id" class="col-md-2 col-form-label"><i class="fas fa-hospital-alt text-primary mr-1"></i>Doctor Chamber:</label>
+                        <div class="col-md-4">
+                           <select class="form-control select" name="doctor_chamber_id" id="doctor_chamber_id" data-initial-chamber="{{ $saleMaster->doctor_chamber_id }}">
+                              <option value="">Select Chamber (Optional)</option>
+                              @if($saleMaster->reference_by)
+                                 @php
+                                    $selectedDoc = ($doctors ?? collect())->firstWhere('id', $saleMaster->reference_by);
+                                 @endphp
+                                 @if($selectedDoc)
+                                    @foreach($selectedDoc->chambers as $chamber)
+                                       <option value="{{ $chamber->id }}" {{ $saleMaster->doctor_chamber_id == $chamber->id ? 'selected' : '' }}>
+                                          {{ $chamber->chamber_name }} ({{ $chamber->address }})
+                                       </option>
+                                    @endforeach
+                                 @endif
+                              @endif
+                           </select>
+                        </div>
+                     </div>
                      <div class="form-group row">
                         <label for="delivery_status" class="col-md-2 col-form-label">Delivery Status:</label>
                         <div class="col-md-4">
@@ -180,7 +200,7 @@
                                    $subTotalDiscount = 0;
                                @endphp
                                @foreach ($saleDetail as $key => $item)
-                              <tr>
+                              <tr data-category-id="{{ $item->product?->category_id }}">
                                  <td>
                                     <input type="hidden" autocomplete="off" name="old[{{ $key }}][id]" class="form-control" value="{{ $item->id }}">
                                     <select class="form-control product" name="old[{{ $key }}][product_id]" required>
@@ -366,6 +386,7 @@
                                  <td class="text-right" colspan="8"><b>Reference Amount (Doctor Commission):</b></td>
                                  <td class="text-right">
                                     <input type="text" class="text-right form-control reference-amount" name="reference_amount" value="{{ number_format($saleMaster->reference_amount, 2) }}" placeholder="0.00">
+                                    <div id="doc-comm-breakdown" style="display:none; font-size:11px; color:#4338ca; background:#eef2ff; border-radius:4px; padding:3px 6px; margin-top:4px;"></div>
                                  </td>
                                  <td></td>
                               </tr>
@@ -376,6 +397,42 @@
                                  </td>
                                  <td></td>
                               </tr>
+                              <tr id="wrap-due-date" style="{{ ($saleMaster->total_amount - $saleMaster->paid) > 0.009 ? '' : 'display:none;' }}">
+                                 <td class="text-right" colspan="8"><b style="color:#b91c1c;"><i class="far fa-calendar-alt mr-1"></i>Due Promise Date:</b></td>
+                                 <td class="text-right">
+                                    <input type="date" class="form-control" name="due_date" value="{{ old('due_date', $saleMaster->due_date?->format('Y-m-d')) }}" min="{{ date('Y-m-d') }}" style="border-color:#fda4af;">
+                                 </td>
+                                 <td></td>
+                              </tr>
+                              <tr>
+                                 <td class="text-right" colspan="8"><b style="color:var(--accent-600);"><i class="fas fa-clipboard-check mr-1"></i>Fulfillment Status:</b></td>
+                                 <td class="text-right">
+                                    <select class="form-control" name="delivery_status" style="font-weight:600;">
+                                       @foreach (\App\Enums\DeliveryStatus::casesFor($saleMaster->isServiceSale()) as $st)
+                                          <option value="{{ $st->value }}" @selected($saleMaster->delivery_status === $st->value)>
+                                             {{ $st->label($saleMaster->isServiceSale()) }}
+                                          </option>
+                                       @endforeach
+                                    </select>
+                                 </td>
+                                 <td></td>
+                              </tr>
+                              <tr>
+                                 <td class="text-right" colspan="8"><b><i class="far fa-clock mr-1"></i>Promised Delivery / Report Time:</b></td>
+                                 <td class="text-right">
+                                    <input type="datetime-local" class="form-control" name="delivery_date_time" value="{{ old('delivery_date_time', $saleMaster->delivery_date_time?->format('Y-m-d\TH:i')) }}">
+                                 </td>
+                                 <td></td>
+                              </tr>
+                              @if(!$saleMaster->isServiceSale())
+                              <tr>
+                                 <td class="text-right" colspan="8"><b style="color:#7c3aed;"><i class="fas fa-flask mr-1"></i>Lab / Fabricator:</b></td>
+                                 <td class="text-right">
+                                    <input type="text" class="form-control" name="lab_name" value="{{ old('lab_name', $saleMaster->lab_name) }}" placeholder="e.g. In-house Lab, Signia Lab">
+                                 </td>
+                                 <td></td>
+                              </tr>
+                              @endif
                            </tfoot>
 
                         </table>
@@ -402,7 +459,26 @@
 <!-- /.content -->
 
 @push('scripts')
+    <script>
+        window.crmDoctorRules = @json(($doctors ?? collect())->mapWithKeys(fn($d) => [$d->id => $d->getCommissionRulesArray()]));
+    </script>
     <script src="{{ asset('assets/plugins/select2/js/select2.full.min.js') }}"></script>
-    <script src="{{ asset('assets/sales.js') }}"></script>
+    <script src="{{ asset('assets/sales.js') }}?v={{ @filemtime(public_path('assets/sales.js')) ?: time() }}"></script>
+    <script>
+        $(function () {
+            function syncDueRow() {
+                var due = parseFloat($('.due-amount').val()) || 0;
+                if (due > 0.009) {
+                    $('#wrap-due-date').show();
+                } else {
+                    $('#wrap-due-date').hide();
+                }
+            }
+            $(document).on('keyup change input', '#editSaleForm, .paid-amount, .grand-total', function () {
+                setTimeout(syncDueRow, 50);
+            });
+            syncDueRow();
+        });
+    </script>
 @endpush
 @endsection

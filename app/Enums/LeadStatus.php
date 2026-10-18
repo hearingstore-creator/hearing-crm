@@ -11,6 +11,7 @@ enum LeadStatus: string
     case STORE_APPOINTMENT = 'store_appointment';
     case COUNSEL = 'counsel';
     case TRIAL = 'trial';
+    case DECISION = 'decision';
     case WON = 'won';
     case LOST = 'lost';
 
@@ -24,6 +25,7 @@ enum LeadStatus: string
             self::STORE_APPOINTMENT => 'Store Appointment',
             self::COUNSEL => 'Counsel',
             self::TRIAL => 'Trial',
+            self::DECISION => 'Decision',
             self::WON => 'Won',
             self::LOST => 'Loss (Need to note reason and from whom we lost)',
         };
@@ -39,6 +41,7 @@ enum LeadStatus: string
             self::STORE_APPOINTMENT => 'indigo',
             self::COUNSEL => 'pink',
             self::TRIAL => 'orange',
+            self::DECISION => 'teal',
             self::WON => 'green',
             self::LOST => 'red',
         };
@@ -54,6 +57,7 @@ enum LeadStatus: string
             self::STORE_APPOINTMENT => 'fas fa-hospital',
             self::COUNSEL => 'fas fa-user-md',
             self::TRIAL => 'fas fa-headphones',
+            self::DECISION => 'fas fa-balance-scale',
             self::WON => 'fas fa-trophy',
             self::LOST => 'fas fa-times-circle',
         };

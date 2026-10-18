@@ -26,23 +26,21 @@ class SmsService
     }
 
     /**
-     * Send a bulk campaign to all recipients using dynamic bulk SMS API (single call)
+     * Send a bulk campaign to all recipients using dynamic bulk SMS API (one call per 500 recipients).
+     * Audience Builder campaigns (recipient_type leads|customers) use their saved filter_criteria;
+     * older template-category audiences (lead, customer, member, warranty, appointment) still work.
      */
     public function sendBulkCampaign(SmsCampaign $campaign): void
     {
-        $audienceType = $campaign->filter_criteria['audience_type']
-            ?? $campaign->recipient_type
-            ?? '';
-        $recipients = $this->getRecipientsByAudience($audienceType);
-        $campaign->update([
-            'total_recipients' => $recipients->count(),
-            'status' => SmsCampaignStatus::SENDING->value,
-        ]);
+        $recipients = $this->campaignRecipients($campaign);
+        $optedOut = \App\Models\BlockedContact::where('type', \App\Models\BlockedContact::SMS_OPT_OUT)->pluck('value')->flip();
 
         $sentCount = 0;
         $failedCount = 0;
+        $skipped = 0;
         $smsData = [];
         $recipientData = [];
+        $seen = [];
 
         foreach ($recipients as $recipient) {
             $phone = $recipient->phone_number ?? $recipient->lead?->phone_number;
@@ -50,6 +48,12 @@ class SmsService
                 $failedCount++;
                 continue;
             }
+            $normalized = \App\Models\BlockedContact::normalize('phone', $phone);
+            if (isset($optedOut[$normalized]) || isset($seen[$normalized])) {
+                $skipped++;   // opted out, or the same number twice
+                continue;
+            }
+            $seen[$normalized] = true;
 
             $data = $this->buildRecipientData($recipient);
             $message = $this->replaceVariables($campaign->message_body, $data);
@@ -62,6 +66,7 @@ class SmsService
             ];
 
             $recipientData[] = [
+                'recipient_type' => $recipient instanceof Customer ? 'customer' : 'lead',
                 'recipient_id' => $recipient->id,
                 'phone_number' => $phone,
                 'message'      => $message,
@@ -69,17 +74,19 @@ class SmsService
             ];
         }
 
-        // Single dynamic bulk API call with all personalized messages
-        if (count($smsData) > 0) {
-            $result = $this->sendDynamicBulkSms($smsData);
+        $campaign->update([
+            'total_recipients' => count($smsData),
+            'status' => SmsCampaignStatus::SENDING->value,
+        ]);
 
-            // Build a lookup from csms_id -> per-recipient status
-            $smsInfo = $result['smsinfo'] ?? [];
+        foreach (array_chunk($smsData, 500, true) as $chunk) {
+            $result = $this->sendDynamicBulkSms(array_values($chunk));
+            $smsInfo = collect($result['smsinfo'] ?? [])->keyBy('csms_id');
 
-            foreach ($recipientData as $item) {
-                $info = collect($smsInfo)->firstWhere('csms_id', $item['csms_id']);
+            foreach (array_intersect_key($recipientData, $chunk) as $item) {
+                $info = $smsInfo->get($item['csms_id']);
 
-                if ($info && $info['sms_status'] === 'SUCCESS') {
+                if ($info && ($info['sms_status'] ?? null) === 'SUCCESS') {
                     $logStatus = SmsStatus::SENT->value;
                     $logError = null;
                     $sentCount++;
@@ -91,7 +98,7 @@ class SmsService
 
                 SmsLog::create([
                     'sms_campaign_id' => $campaign->id,
-                    'recipient_type' => $campaign->recipient_type,
+                    'recipient_type' => $item['recipient_type'],
                     'recipient_id' => $item['recipient_id'],
                     'phone_number' => $item['phone_number'],
                     'message' => $item['message'],
@@ -100,6 +107,7 @@ class SmsService
                     'gateway_response' => $result['response'] ?? null,
                     'error_message' => $logError,
                     'sent_at' => now(),
+                    'campaign_name' => $campaign->name,
                 ]);
             }
         }
@@ -110,6 +118,56 @@ class SmsService
             'status' => SmsCampaignStatus::COMPLETED->value,
             'sent_at' => now(),
         ]);
+
+        if ($skipped) {
+            Log::info("SMS campaign {$campaign->id}: {$skipped} opted-out/duplicate numbers skipped");
+        }
+    }
+
+    /** Recipients of a campaign: Audience Builder filters, or a legacy audience type. */
+    public function campaignRecipients(SmsCampaign $campaign): Collection
+    {
+        $type = $campaign->recipient_type ?? '';
+        if ($type === 'lead_ids') {   // Deals list → Send SMS: exactly the people that were ticked
+            return Lead::withoutGlobalScopes()->whereNull('deleted_at')
+                ->whereIn('id', $campaign->filter_criteria['lead_ids'] ?? [])->get();
+        }
+        if (in_array($type, ['leads', 'customers'], true)) {
+            $criteria = $campaign->filter_criteria ?? [];
+            $filters = array_is_list($criteria) ? $criteria : [];   // {audience_type: ..} = no filters
+            $service = app(SmsAudienceFilterService::class);
+
+            return $type === 'customers' ? $service->filterCustomers($filters) : $service->filterLeads($filters);
+        }
+
+        return $this->getRecipientsByAudience($campaign->filter_criteria['audience_type'] ?? $type);
+    }
+
+    /** Follow-up call for every successfully sent campaign SMS (lead-based follow-ups). */
+    public function createCampaignFollowUps(SmsCampaign $campaign): void
+    {
+        $sentLogs = SmsLog::where('sms_campaign_id', $campaign->id)->where('status', SmsStatus::SENT->value)->get();
+        $followUpDate = now()->addDays($campaign->follow_up_days ?: 3);
+        $mode = $campaign->follow_up_mode ?: 'phone_call';
+
+        foreach ($sentLogs as $log) {
+            $leadId = match ($log->recipient_type) {
+                'lead' => $log->recipient_id,
+                'customer' => Customer::withoutGlobalScopes()->whereKey($log->recipient_id)->value('lead_id'),
+                default => null,
+            };
+            if (!$leadId) {
+                continue;
+            }
+            \App\Models\LeadFollowUp::create([
+                'lead_id' => $leadId,
+                'assigned_user' => $campaign->follow_up_assigned_user,
+                'follow_up_date' => $followUpDate,
+                'follow_up_mode' => [$mode],
+                'follow_up_notes' => "Follow up on SMS campaign: \"{$campaign->name}\"",
+            ]);
+            $log->update(['follow_up_created' => true]);
+        }
     }
 
     /**

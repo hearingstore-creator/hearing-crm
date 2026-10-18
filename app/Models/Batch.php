@@ -31,6 +31,11 @@ class Batch extends Model
        return $this->belongsTo(Product::class);
     }
 
+    public function medicine()
+    {
+       return $this->belongsTo(Product::class, 'product_id');
+    }
+
     public function getStockAttribute()
     {
         $query = Batch::where('id', $this->id);

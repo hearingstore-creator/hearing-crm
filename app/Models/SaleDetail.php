@@ -34,6 +34,11 @@ class SaleDetail extends Model
         return $this->belongsTo(SaleMaster::class, 'sale_master_id');
     }
 
+    public function saleMaster()
+    {
+        return $this->belongsTo(SaleMaster::class, 'sale_master_id');
+    }
+
     public function product()
     {
        return $this->belongsTo(Product::class);

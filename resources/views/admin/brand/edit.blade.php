@@ -1,66 +1,64 @@
-
 @extends('admin.layouts.master')
+@section('page_title', 'Edit Brand')
+
+@push('css')
+<link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
+@endpush
 
 @section('content')
-    <!-- Main content -->
-    <section class="content pt-3">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card card-outline card-primary">
-                        <div class="card-header">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h5>Edit brand</h5>
-                                </div>
-                            </div>
+<div class="container-fluid" style="padding: 0 24px;">
+
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-tag" style="color: var(--accent-500); margin-right: 8px;"></i>Edit Brand</h1>
+            <p>Update brand information</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url('admin/brand') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left mr-1"></i>Brand List
+            </a>
+        </div>
+    </div>
+
+    @include('admin.alert_message')
+
+    <form action="{{ route('brand.update', $brand->id) }}" enctype="multipart/form-data" method="post">
+        @csrf
+        @method('put')
+        <div class="crm-form-section crm-animate-in delay-1">
+            <div class="crm-form-section-header">
+                <div class="section-icon" style="background: var(--accent-500);"><i class="fas fa-tag"></i></div>
+                <h6>Brand Information</h6>
+            </div>
+            <div class="crm-form-section-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="brand_name">Brand Name <span style="color: var(--danger-500);">*</span></label>
+                            <input type="text" class="form-control" id="brand_name" value="{{ $brand->brand_name }}" placeholder="Brand Name" name="brand_name" autocomplete="off">
                         </div>
-
-                        @include('admin.alert_message')
-
-                        <div class="card-body">
-                            <form action="{{ route('brand.update', $brand->id) }}" enctype="multipart/form-data" method="post">
-                                @csrf
-                                @method('put')
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="form-group row">
-                                            <label for="brand_name" class="col-sm-3 col-form-label">brand Name <i class="text-danger">*</i>:</label>
-                                            <div class="col-sm-6">
-                                                <input type="text" class="form-control" id="brand_name" value="{{ $brand->brand_name }}" placeholder="brand Name" name="brand_name" autocomplete="off">
-                                            </div>
-                                        </div>
-                                        <div class="form-group row">
-                                            <label for="status" class="col-sm-3 col-form-label">Status <i class="text-danger">*</i>:</label>
-                                            <div class="col-sm-3">
-                                                <label class="radio-inline my-2">
-                                                    <input type="radio" name="status" value="1" {{ $brand->status == 1 ? 'checked' : '' }} id="status">
-                                                    Active
-                                                </label>
-                                                <label class="radio-inline my-2">
-                                                    <input type="radio" name="status" value="0" {{ $brand->status == 0 ? 'checked' : '' }} id="status">
-                                                    Inactive
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group row">
-                                    <div class="col-md-6 text-right">
-                                    </div>
-                                    <div class="col-md-6 text-right">
-                                        <div>
-                                            <button type="submit" class="btn btn-success">Update</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </form>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Status <span style="color: var(--danger-500);">*</span></label>
+                            <div class="mt-1">
+                                <label class="radio-inline my-2">
+                                    <input type="radio" name="status" value="1" {{ $brand->status == 1 ? 'checked' : '' }}> Active
+                                </label>
+                                <label class="radio-inline my-2 ml-3">
+                                    <input type="radio" name="status" value="0" {{ $brand->status == 0 ? 'checked' : '' }}> Inactive
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- /.container-fluid -->
-    </section>
-    <!-- /.content -->
+
+        <div class="crm-form-submit-bar">
+            <a href="{{ url('admin/brand') }}" class="btn btn-secondary btn-sm">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i>Update</button>
+        </div>
+    </form>
+</div>
 @endsection

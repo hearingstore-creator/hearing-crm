@@ -33,7 +33,25 @@
                                             </div>
                                         </div>
                                         <div class="form-group row">
-                                            <label for="phone" class="col-sm-4 col-form-label">Phone: </label>
+                                            <label for="website_url" class="col-sm-4 col-form-label">Website Address:</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" id="website_url"
+                                                    placeholder="e.g. www.hearingstore.bd" name="website_url"
+                                                    value="{{ $setting->website_url ?? 'www.hearingstore.bd' }}">
+                                                <small class="text-muted">Displayed on all branch invoices and credit notes</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="partner_slogan" class="col-sm-4 col-form-label">Partner Tagline:</label>
+                                            <div class="col-sm-8">
+                                                <input type="text" class="form-control" id="partner_slogan"
+                                                    placeholder="e.g. An Authorized Partner of Hearing Store" name="partner_slogan"
+                                                    value="{{ $setting->partner_slogan ?? 'An Authorized Partner of Hearing Store' }}">
+                                                <small class="text-muted">Endorsement badge shown alongside branch letterhead</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="phone" class="col-sm-4 col-form-label">Phone / Hotline: </label>
                                             <div class="col-sm-8">
                                                 <input type="text" class="form-control" id="phone"
                                                     placeholder="Phone" name="phone" value="{{ $setting->phone }}">

@@ -13,7 +13,7 @@ enum LeadType: string
         return match($this) {
             self::NEW_CUSTOMER => 'New Customer',
             self::EXISTING_CUSTOMER => 'Existing Customer',
-            self::VENDOR_REFERRAL => 'Vendor Referral',
+            self::VENDOR_REFERRAL => 'Branch Referral',
         };
     }
 }

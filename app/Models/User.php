@@ -29,7 +29,8 @@ class User extends Authenticatable
         'image',
         'role',
         'details',
-        'status'
+        'status',
+        'vendor_id',
     ];
 
     /**
@@ -50,6 +51,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'designation' => Designation::class,
+        'notification_mutes' => 'array',
     ];
 
     /**
@@ -109,6 +111,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Get weekly roster shifts for this staff member
+     */
+    public function staffSchedules()
+    {
+        return $this->hasMany(StaffSchedule::class, 'user_id');
+    }
+
+    /**
+     * Get date overrides for this staff member
+     */
+    public function staffScheduleOverrides()
+    {
+        return $this->hasMany(StaffScheduleOverride::class, 'user_id');
+    }
+
+    /**
+     * Get leave requests for this staff member
+     */
+    public function staffLeaves()
+    {
+        return $this->hasMany(StaffLeave::class, 'user_id');
+    }
+
+    /**
      * Get the roles associated with the user
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
@@ -147,6 +173,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Branch this user works in: branch login = its own id, branch staff (e.g. professional) = users.vendor_id,
+     * Head Office users = null.
+     */
+    public function branchId(): ?int
+    {
+        if ($this->isVendor()) {
+            return (int) $this->id;
+        }
+
+        return $this->vendor_id ? (int) $this->vendor_id : null;
+    }
+
+    /** Read-only access to every branch's records (Super Admin, or role permission vendor_list.view_all_branches). */
+    public function canViewAllBranches(): bool
+    {
+        return $this->isSuperAdmin() || (!$this->branchId() && $this->hasPermission('vendor_list.view_all_branches'));
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(User::class, 'vendor_id');
+    }
+
+    /**
      * Get all permission names for the user (memoized per request)
      */
     public function loadedPermissionNames()
@@ -170,6 +220,25 @@ class User extends Authenticatable
     public function hasPermission(string $permissionName): bool
     {
         return $this->loadedPermissionNames()->contains($permissionName);
+    }
+
+    /**
+     * Same rule as the `permission:` route middleware: Super Admin, the fixed branch / professional
+     * permission lists (config/vendor.php, config/professional.php), then role permissions.
+     */
+    public function hasAccess(string $permissionName): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+        if ($this->isVendor() && in_array($permissionName, config('vendor.allowed_permissions', []), true)) {
+            return true;
+        }
+        if ($this->isProfessional() && in_array($permissionName, config('professional.allowed_permissions', []), true)) {
+            return true;
+        }
+
+        return $this->hasPermission($permissionName);
     }
 
     /**

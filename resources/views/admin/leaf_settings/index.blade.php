@@ -1,90 +1,43 @@
-@extends('admin.layouts.master')
+﻿@extends('admin.layouts.master')
+@section('page_title', 'Leaf Settings')
+@section('breadcrumb_parent', 'Inventory')
+@section('breadcrumb_parent_url', url('admin/leaf-settings'))
 
 @push('css')
-    <!-- DataTables -->
     @include('admin.partials.datatables-css')
+    <link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
 @endpush
 
 @section('content')
-<!-- Main content -->
-<section class="content pt-3">
-   <div class="container-fluid">
-      <div class="row">
-         <div class="col-md-12">
-            <div class="card card-outline card-primary">
-               <div class="card-header">
-                  <div class="row">
-                     <div class="col-md-6">
-                        <h5> Leaf Settings List</h5>
-                     </div>
-                     @can('permission', 'leaf_settings.create')
-                     <div class="col-md-6 text-right">
-                        <a href="{{url('admin/leaf-settings/create')}}" class="btn-primary btn-cs-primary btn-sm"><i class="fas fa-plus mr-1"></i>Add Leaf Settings</a>
-                     </div>
-                     @endcan
-                  </div>
-               </div>
+<div class="container-fluid" style="padding: 0 24px;">
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-leaf" style="color: var(--accent-500); margin-right: 8px;"></i>Leaf Settings</h1>
+            <p>Manage hearing aid leaf configurations</p>
+        </div>
+        <div class="header-actions">
+            @can('permission', 'leaf_setting.create')
+                <a href="{{ url('admin/leaf-settings/create') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i>Add Leaf Type</a>
+            @endcan
+        </div>
+    </div>
 
-               @include('admin.alert_message')
-              
-               <div class="card-body">
-                <table  class="table table-bordered table-striped yajra-datatable"
-                 data-datatable="leaf-settings-list">
-                    <thead>
-                        <tr>
-                            <th>SL</th>
-                            <th>Leaf Type</th>
-                            <th>Total Number Per Box</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($leafSettings as $key=> $val)
-                   <tr>
-                     <td>{{++$key}}</td> 
-                     <td>{{$val->leaf_type}}</td>
-                     <td>{{$val->total_number_per_box}}</td>
+    @include('admin.alert_message')
 
-                     <td>
-                     @if($val->status==1)
-                        <span class="badge badge-success">Active</span>
-                      @else
-                        <span class="badge badge-danger">Inactive</span>
-                      @endif
-                     </td>
-                     <td>
-                        <div class="d-flex flex-wrap gap-1 justify-content-center">
-                           @can('permission', 'leaf_settings.edit')
-                              <a href="{{ route('leaf-settings.edit', $val->id) }}" class="edit btn btn-success btn-sm mr-1">
-                                 <i class="fas fa-edit"></i>
-                              </a>
-                           @endcan
-                           @can('permission', 'leaf_settings.delete')
-                              <form action="{{ route('leaf-settings.destroy', $val->id) }}" method="POST">
-                                 <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                                 <input type="hidden" name="_method" value="delete">
-                                 <button type="submit" class="btn btn-danger btn-sm" onclick="confirmDelete(event)">
-                                    <i class="far fa-trash-alt"></i>
-                                 </button>
-                              </form>
-                           @endcan
-                        </div>
-                     </td>
-                   </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-              </div>
-            </div>
-         </div>
-      </div>
-   </div>
-   <!-- /.container-fluid -->
-</section>
-<!-- /.content -->
+    <div class="crm-table-card crm-animate-in delay-1">
+        <div class="crm-table-header">
+            <div class="table-title"><i class="fas fa-list" style="color: var(--page-text-muted);"></i> All Leaf Settings</div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="crm-table yajra-datatable" data-datatable="leaf-settings-list">
+                <thead><tr><th style="width: 50px;">SL</th><th>Leaf Type</th><th>Total Number Per Box</th><th>Status</th><th style="width: 110px; text-align: center;">Action</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
-@include('admin.partials.datatables-scripts')
+    @include('admin.partials.datatables-scripts')
 @endpush

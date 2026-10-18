@@ -18,6 +18,11 @@ class SupplierLedger extends Model
         'credit',
         'type',
         'ref_invoice_no',
+        'payment_method',
+        'transaction_no',
+        'bank_name',
+        'linked_purchase_id',
+        'supplier_memo_no',
     ];
 
     protected $casts = [
@@ -27,6 +32,11 @@ class SupplierLedger extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function linkedPurchase()
+    {
+        return $this->belongsTo(PurchaseMaster::class, 'linked_purchase_id');
     }
 
     protected static function booted(): void

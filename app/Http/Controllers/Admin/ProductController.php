@@ -79,6 +79,8 @@ class ProductController extends Controller
             'battery_size' => 'nullable|in:10,13,312,675',
             'warranty_inventory_months' => 'required|integer|min:1',
             'warranty_sales_months' => 'nullable|integer|min:1',
+            'reorder_level' => 'nullable|integer|min:0|max:100000',
+            'service_interval_months' => 'nullable|integer|min:1|max:60',
         ]);
 
         $data = $request->all();
@@ -132,6 +134,8 @@ class ProductController extends Controller
             'battery_size' => 'nullable|in:10,13,312,675',
             'warranty_inventory_months' => 'required|integer|min:1',
             'warranty_sales_months' => 'nullable|integer|min:1',
+            'reorder_level' => 'nullable|integer|min:0|max:100000',
+            'service_interval_months' => 'nullable|integer|min:1|max:60',
         ]);
 
         $product = Product::findOrFail($id);
@@ -209,6 +213,7 @@ class ProductController extends Controller
                 $response[] = [
                     "id" => $val['id'],
                     "text" => ($val['category']->category_name ?? 'Unknown') . ' - ' . ($val['model'] ?? 'N/A'),
+                    "category_id" => $val['category_id'],
                 ];
             }
         }

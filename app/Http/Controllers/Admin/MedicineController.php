@@ -328,7 +328,7 @@ class MedicineController extends Controller
      */
     public function batchWiseStockReport(): View
     {
-        $data['batchWiseStock'] = Batch::with('medicine.manufacturer:id,manufacturer_name')
+        $data['batchWiseStock'] = Batch::with(['product.brand'])
             ->groupBy('id')
             ->orderBy('id', 'desc')
             ->paginate(30);

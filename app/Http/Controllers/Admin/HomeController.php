@@ -41,8 +41,180 @@ class HomeController extends Controller
     public function dashboard(): View
     {
         $statistics = $this->dashboardService->getDashboardStatistics();
+        $analytics  = app(\App\Services\DashboardAnalyticsService::class)->build(request('period'));
+        $myDay      = $this->myDay($statistics, $analytics);
 
-        return view('admin.dashboard.index', compact('statistics'));
+        return view('admin.dashboard.index', compact('statistics', 'analytics', 'myDay'));
+    }
+
+    /** "My Day": my open deal activities, appointments, and actionable after-sales care tasks (service, warranty, birthdays). */
+    private function myDay(array $statistics = [], array $analytics = []): array
+    {
+        $user = auth()->user();
+        $today = today();
+
+        // 1. My Deal activities (calls, WhatsApp, visits overdue or due today)
+        $activities = \App\Models\LeadFollowUp::with([
+                'lead:id,full_name,phone_number',
+                'deal' => fn ($q) => $q->withoutGlobalScopes()->with('stage:id,name,color')
+            ])
+            ->where('assigned_user', $user->id)
+            ->where('status', 'pending')
+            ->where('follow_up_date', '<=', now()->endOfDay())
+            ->orderBy('follow_up_date')
+            ->limit(40)
+            ->get();
+
+        // 2. Today's appointments for this professional/user
+        $appointments = $user->type === 'professional'
+            ? \App\Models\Appointment::with(['lead:id,full_name,phone_number', 'service:id,name', 'professionalTimeSlot.timeSlot'])
+                ->where('user_id', $user->id)->whereDate('appointment_date', $today)
+                ->where('status', \App\Enums\AppointmentStatus::SCHEDULED)->get()
+            : collect();
+
+        // 3. Phase 3 After-Sales: 6-Month Service Due
+        $rawService = $analytics['service_due']['list'] ?? [];
+        $serviceDueItems = collect($rawService)->take(15)->map(function ($s) {
+            $isOverdue = ($s['days'] ?? 0) < 0 || ($s['stage'] ?? '') === 'overdue';
+            $custName = $s['name'] ?? 'Customer';
+            $model = $s['model'] ?? 'Hearing Aid';
+            $phone = $s['phone'] ?? '';
+            $waMsg = "Assalamu Alaikum {$custName}. This is Zenhear Hearing Care Centre. Your hearing aid ({$model}) is due for a 6-month checkup and complimentary cleaning service. Please let us know your preferred time to visit our branch.";
+
+            return [
+                'type'           => 'service_due',
+                'category'       => 'service',
+                'badge'          => $isOverdue ? 'Overdue' : 'Due Service',
+                'badge_tone'     => $isOverdue ? 'danger' : 'warning',
+                'time'           => $isOverdue ? abs($s['days']) . 'd late' : (($s['days'] ?? 0) === 0 ? 'Today' : 'in ' . $s['days'] . 'd'),
+                'is_overdue'     => $isOverdue,
+                'title'          => "{$custName} — {$model}",
+                'subtitle'       => '6-month service & cleaning checkup · ' . ($s['due_label'] ?? ''),
+                'customer_id'    => $s['customer_id'] ?? null,
+                'url'            => !empty($s['customer_id']) ? url('admin/customers/' . $s['customer_id']) : '#',
+                'phone'          => $phone,
+                'whatsapp_url'   => $phone ? 'https://wa.me/' . \App\Classes\Helper::normalizePhone($phone) . '?text=' . rawurlencode($waMsg) : null,
+                'can_done'       => true,
+                'after_sales'    => 'service_check',
+            ];
+        });
+
+        // 4. Phase 3 After-Sales: Warranty Expiry within 30 days
+        $rawWarranty = $statistics['daily_lookout']['warranty_expiry'] ?? collect();
+        $contactedWarrantyCusts = \App\Models\LeadFollowUp::where('status', 'completed')
+            ->where('follow_up_notes', 'LIKE', '%[Warranty Expiry%')
+            ->where('completed_at', '>=', now()->subDays(30))
+            ->pluck('lead_id')->all();
+
+        $warrantyItems = collect($rawWarranty)->filter(function ($w) use ($contactedWarrantyCusts) {
+            return !in_array($w['customer_id'] ?? 0, $contactedWarrantyCusts);
+        })->take(15)->map(function ($w) {
+            $isUrgent = ($w['days_left'] ?? 30) <= 7;
+            $custName = $w['customer'] ?? 'Customer';
+            $prod = $w['product'] ?? 'Hearing Aid';
+            $phone = $w['phone'] ?? '';
+            $expDate = $w['expiry_date'] ?? '';
+            $waMsg = "Assalamu Alaikum {$custName}. This is Zenhear Hearing Care Centre. The warranty for your {$prod} will expire on {$expDate}. We invite you for a complimentary end-of-warranty inspection before it expires. Contact us to schedule.";
+
+            return [
+                'type'           => 'warranty_expiry',
+                'category'       => 'warranty',
+                'badge'          => ($w['days_left'] ?? 0) <= 0 ? 'Expired' : ($w['days_left'] . 'd left'),
+                'badge_tone'     => $isUrgent ? 'danger' : 'warning',
+                'time'           => ($w['days_left'] ?? 0) <= 0 ? 'Expired' : ($w['days_left'] . 'd left'),
+                'is_overdue'     => ($w['days_left'] ?? 0) <= 0,
+                'title'          => "{$custName} — {$prod}",
+                'subtitle'       => "Warranty expires {$expDate} · Invoice #{$w['sale_id']}",
+                'customer_id'    => $w['customer_id'] ?? null,
+                'url'            => !empty($w['customer_id']) ? url('admin/customers/' . $w['customer_id']) : '#',
+                'phone'          => $phone,
+                'whatsapp_url'   => $phone ? 'https://wa.me/' . \App\Classes\Helper::normalizePhone($phone) . '?text=' . rawurlencode($waMsg) : null,
+                'can_done'       => true,
+                'after_sales'    => 'warranty_check',
+            ];
+        });
+
+        // 5. Phase 3 After-Sales: Birthdays Today
+        $rawBirthdays = $analytics['birthdays']['list'] ?? [];
+        $birthdayItems = collect($rawBirthdays)->where('in_days', 0)->take(10)->map(function ($b) {
+            $name = $b['name'] ?? 'Customer';
+            $phone = $b['phone'] ?? '';
+            $waMsg = "Happy Birthday {$name}! Wishing you good health, joy, and wonderful hearing moments today and throughout the year. Warm wishes from Zenhear Hearing Care Centre.";
+
+            return [
+                'type'           => 'birthday',
+                'category'       => 'birthday',
+                'badge'          => 'Today',
+                'badge_tone'     => 'purple',
+                'time'           => 'Today',
+                'is_overdue'     => false,
+                'title'          => "{$name} (turns " . ($b['turning'] ?? '') . ")",
+                'subtitle'       => 'Customer birthday celebration today',
+                'customer_id'    => $b['customer_id'] ?? null,
+                'lead_id'        => $b['lead_id'] ?? null,
+                'url'            => $b['url'] ?? '#',
+                'phone'          => $phone,
+                'whatsapp_url'   => $phone ? 'https://wa.me/' . \App\Classes\Helper::normalizePhone($phone) . '?text=' . rawurlencode($waMsg) : null,
+                'can_done'       => true,
+                'after_sales'    => 'birthday_wish',
+            ];
+        });
+
+        // 6. Phase 3 After-Sales: Battery Expiry within 15 days
+        $rawBattery = $statistics['daily_lookout']['battery_expiry'] ?? collect();
+        $contactedBatteryCusts = \App\Models\LeadFollowUp::where('status', 'completed')
+            ->where('follow_up_notes', 'LIKE', '%[Battery Refill%')
+            ->where('completed_at', '>=', now()->subDays(15))
+            ->pluck('lead_id')->all();
+
+        $batteryItems = collect($rawBattery)->filter(function ($b) use ($contactedBatteryCusts) {
+            return !in_array($b['customer_id'] ?? 0, $contactedBatteryCusts);
+        })->take(15)->map(function ($b) {
+            $custName = $b['customer'] ?? 'Customer';
+            $prod = $b['product'] ?? 'Hearing Aid';
+            $batSize = !empty($b['battery_size']) && $b['battery_size'] !== 'N/A' ? " (Size {$b['battery_size']})" : '';
+            $phone = $b['phone'] ?? '';
+            $expDate = $b['expiry_date'] ?? '';
+            $daysLeft = $b['days_left'] ?? 0;
+            $isUrgent = $daysLeft <= 3;
+            $waMsg = "Assalamu Alaikum {$custName}. This is Zenhear Hearing Care Centre. Your {$prod} battery supply{$batSize} is estimated to run out around {$expDate} ({$daysLeft} days left). We recommend stocking up fresh batteries now to prevent any hearing interruption. Contact us to collect or order refills.";
+
+            return [
+                'type'           => 'battery_expiry',
+                'category'       => 'battery',
+                'badge'          => $daysLeft <= 0 ? 'Expired' : ($daysLeft . 'd left'),
+                'badge_tone'     => $isUrgent ? 'danger' : 'amber',
+                'time'           => $daysLeft <= 0 ? 'Expired' : ($daysLeft . 'd left'),
+                'is_overdue'     => $daysLeft <= 0,
+                'title'          => "{$custName} — {$prod}" . ($batSize ? " [Bat: {$b['battery_size']}]" : ''),
+                'subtitle'       => "Battery runs out {$expDate} ({$daysLeft}d left) · Invoice #{$b['sale_id']}",
+                'customer_id'    => $b['customer_id'] ?? null,
+                'url'            => !empty($b['customer_id']) ? url('admin/customers/' . $b['customer_id']) : '#',
+                'phone'          => $phone,
+                'whatsapp_url'   => $phone ? 'https://wa.me/' . \App\Classes\Helper::normalizePhone($phone) . '?text=' . rawurlencode($waMsg) : null,
+                'can_done'       => true,
+                'after_sales'    => 'battery_reminder',
+            ];
+        });
+
+        $actOverdue = $activities->filter(fn ($a) => \Illuminate\Support\Carbon::parse($a->follow_up_date)->lt(today()))->count();
+        $totalOverdue = $actOverdue + $serviceDueItems->where('is_overdue', true)->count() + $batteryItems->where('is_overdue', true)->count();
+        $totalPersonal = $activities->count() + $appointments->count() + $serviceDueItems->count() + $warrantyItems->count() + $birthdayItems->count() + $batteryItems->count();
+
+        return [
+            'activities'      => $activities,
+            'appointments'    => $appointments,
+            'service_due'     => $serviceDueItems,
+            'warranty'        => $warrantyItems,
+            'birthdays'       => $birthdayItems,
+            'battery'         => $batteryItems,
+            'totalPersonal'   => $totalPersonal,
+            'overdue'         => $totalOverdue,
+            'tomorrow'        => \App\Models\LeadFollowUp::where('assigned_user', $user->id)->where('status', 'pending')
+                ->whereDate('follow_up_date', today()->addDay())->count(),
+            'canDone'         => $user->hasAccess('deal_board.move'),
+            'canBoard'        => $user->hasAccess('deal_board.index'),
+        ];
     }
 
     /**

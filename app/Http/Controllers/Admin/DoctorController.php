@@ -3,10 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Doctor;
-use Illuminate\Http\Request;
-use Illuminate\View\View;
+use App\Models\DoctorCategoryCommission;
+use App\Models\DoctorChamber;
+use App\Models\DoctorServiceCommission;
+use App\Models\ServiceType;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class DoctorController extends Controller
 {
@@ -66,9 +73,37 @@ class DoctorController extends Controller
             $query->whereDate('created_at', '<=', request('end_date'));
         }
 
-        $doctors = $query->with('ledgers')->orderBy('id', 'desc')->get();
+        // Per-doctor balance (credit = commission earned, debit = paid)
+        $balances = \App\Models\DoctorLedger::selectRaw('doctor_id, SUM(credit) as cr, SUM(debit) as dr')
+            ->groupBy('doctor_id')
+            ->get()
+            ->mapWithKeys(fn ($r) => [$r->doctor_id => (float) $r->cr - (float) $r->dr]);
 
-        return view('admin.doctor.index', compact('doctors'));
+        if (request()->boolean('has_due')) {
+            $query->whereIn('id', $balances->filter(fn ($b) => $b > 0)->keys());
+        }
+
+        $doctors = $query->with(['ledgers', 'chambers', 'categoryCommissions.category', 'serviceCommissions.serviceType'])
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $monthStart = now()->startOfMonth();
+        $referralSales = \App\Models\SaleMaster::whereNotNull('reference_by')
+            ->where('reference_by', '!=', '')
+            ->where('created_at', '>=', $monthStart);
+
+        $doctorStats = [
+            'total'             => Doctor::count(),
+            'active'            => Doctor::where('status', 1)->count(),
+            'due'               => $balances->filter(fn ($b) => $b > 0)->sum(),
+            'due_count'         => $balances->filter(fn ($b) => $b > 0)->count(),
+            'month_sales'       => (float) (clone $referralSales)->sum('total_amount'),
+            'month_sales_count' => (clone $referralSales)->count(),
+            'month_commission'  => (float) \App\Models\DoctorLedger::where('created_at', '>=', $monthStart)->sum('credit'),
+            'month_paid'        => (float) \App\Models\DoctorLedger::where('created_at', '>=', $monthStart)->sum('debit'),
+        ];
+
+        return view('admin.doctor.index', compact('doctors', 'doctorStats'));
     }
 
     /**
@@ -78,7 +113,10 @@ class DoctorController extends Controller
      */
     public function create(): View
     {
-        return view('admin.doctor.create');
+        $categories = Category::where('status', 1)->orderBy('category_name')->get();
+        $serviceTypes = ServiceType::where('status', 1)->orderBy('service_type_name')->get();
+
+        return view('admin.doctor.create', compact('categories', 'serviceTypes'));
     }
 
     /**
@@ -89,34 +127,135 @@ class DoctorController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $this->validate($request, [
-            'name' => 'required|string|max:255',
-            'contact_number' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'address' => 'nullable|string',
-            'qualification' => 'nullable|string|max:255',
+        $request->validate([
+            'name'                       => 'required|string|max:255',
+            'contact_number'             => 'nullable|string|max:50',
+            'email'                      => 'nullable|email|max:255',
+            'qualification'              => 'nullable|string|max:255',
             'product_commission_percent' => 'nullable|numeric|min:0|max:100',
-            'product_commission_amount' => 'nullable|numeric|min:0',
+            'product_commission_amount'  => 'nullable|numeric|min:0',
             'service_commission_percent' => 'nullable|numeric|min:0|max:100',
-            'service_commission_amount' => 'nullable|numeric|min:0',
-            'status' => 'nullable|boolean',
+            'service_commission_amount'  => 'nullable|numeric|min:0',
+            'status'                     => 'nullable|boolean',
+
+            // Chambers validation
+            'chambers'                   => 'nullable|array',
+            'chambers.*.chamber_name'    => 'required|string|max:255',
+            'chambers.*.address'         => 'required|string',
+            'chambers.*.phone'           => 'nullable|string|max:50',
+            'chambers.*.visiting_days'   => 'nullable|string|max:100',
+            'chambers.*.visiting_time'   => 'nullable|string|max:100',
+
+            // Category commissions validation
+            'category_commissions'                    => 'nullable|array',
+            'category_commissions.*.category_id'      => 'required|exists:categories,id',
+            'category_commissions.*.commission_type'  => 'required|in:percent,fixed',
+            'category_commissions.*.commission_value' => 'required|numeric|min:0',
+
+            // Service commissions validation
+            'service_commissions'                     => 'nullable|array',
+            'service_commissions.*.service_type_id'   => 'required|exists:service_types,id',
+            'service_commissions.*.commission_type'   => 'required|in:percent,fixed',
+            'service_commissions.*.commission_value'  => 'required|numeric|min:0',
         ]);
-        
-        $requestAll = $request->all();
 
-        if (auth()->user()->isVendor()) {
-            $requestAll['vendor_id'] = auth()->id();
+        DB::beginTransaction();
+        try {
+            $doctorData = $request->only([
+                'name',
+                'contact_number',
+                'email',
+                'qualification',
+                'product_commission_percent',
+                'product_commission_amount',
+                'service_commission_percent',
+                'service_commission_amount',
+            ]);
+
+            if (auth()->user()->branchId()) {
+                $doctorData['vendor_id'] = auth()->user()->branchId();
+            }
+
+            $doctorData['status'] = $request->has('status') ? (int) $request->status : 1;
+
+            $doctor = new Doctor($doctorData);
+            $doctor->save();
+
+            // 1. Process Chambers
+            $primaryIndex = (int) $request->input('primary_chamber_index', 0);
+            $primaryAddress = null;
+
+            if ($request->filled('chambers') && is_array($request->chambers)) {
+                foreach ($request->chambers as $idx => $chamberData) {
+                    if (empty($chamberData['chamber_name']) || empty($chamberData['address'])) {
+                        continue;
+                    }
+
+                    $isPrimary = ($idx === $primaryIndex);
+                    if ($isPrimary) {
+                        $primaryAddress = $chamberData['address'];
+                    }
+
+                    DoctorChamber::create([
+                        'doctor_id'     => $doctor->id,
+                        'chamber_name'  => $chamberData['chamber_name'],
+                        'address'       => $chamberData['address'],
+                        'phone'         => $chamberData['phone'] ?? null,
+                        'visiting_days' => $chamberData['visiting_days'] ?? null,
+                        'visiting_time' => $chamberData['visiting_time'] ?? null,
+                        'is_primary'    => $isPrimary,
+                    ]);
+                }
+            }
+
+            // Sync legacy address field for backward compatibility
+            if ($primaryAddress) {
+                $doctor->address = $primaryAddress;
+                $doctor->save();
+            }
+
+            // 2. Process Category Commissions
+            if ($request->filled('category_commissions') && is_array($request->category_commissions)) {
+                $seenCats = [];
+                foreach ($request->category_commissions as $catComm) {
+                    $catId = (int) ($catComm['category_id'] ?? 0);
+                    if ($catId && !in_array($catId, $seenCats)) {
+                        $seenCats[] = $catId;
+                        DoctorCategoryCommission::create([
+                            'doctor_id'        => $doctor->id,
+                            'category_id'      => $catId,
+                            'commission_type'  => $catComm['commission_type'] ?? 'percent',
+                            'commission_value' => (float) ($catComm['commission_value'] ?? 0),
+                        ]);
+                    }
+                }
+            }
+
+            // 3. Process Service Commissions
+            if ($request->filled('service_commissions') && is_array($request->service_commissions)) {
+                $seenServices = [];
+                foreach ($request->service_commissions as $srvComm) {
+                    $srvId = (int) ($srvComm['service_type_id'] ?? 0);
+                    if ($srvId && !in_array($srvId, $seenServices)) {
+                        $seenServices[] = $srvId;
+                        DoctorServiceCommission::create([
+                            'doctor_id'        => $doctor->id,
+                            'service_type_id'  => $srvId,
+                            'commission_type'  => $srvComm['commission_type'] ?? 'percent',
+                            'commission_value' => (float) ($srvComm['commission_value'] ?? 0),
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect('admin/doctor')->with('success', 'Doctor registered successfully with chambers and commission rules');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()->with('warning', 'Error saving doctor: ' . $e->getMessage())->withInput();
         }
-
-        $doctor = new Doctor($requestAll);
-        // Set default status if not provided
-        $doctor->status = $request->has('status') ? 1 : 0;
-
-        if ($doctor->save()) {
-            return redirect('admin/doctor')->with('success', 'Saved Successfully');
-        }
-
-        return redirect()->back()->with('warning', 'Not Saved');
     }
 
     /**
@@ -127,8 +266,11 @@ class DoctorController extends Controller
      */
     public function edit(int $id): View
     {
-        $doctor = Doctor::findOrFail($id);
-        return view('admin.doctor.edit', compact('doctor'));
+        $doctor = Doctor::with(['chambers', 'categoryCommissions.category', 'serviceCommissions.serviceType'])->findOrFail($id);
+        $categories = Category::where('status', 1)->orderBy('category_name')->get();
+        $serviceTypes = ServiceType::where('status', 1)->orderBy('service_type_name')->get();
+
+        return view('admin.doctor.edit', compact('doctor', 'categories', 'serviceTypes'));
     }
 
     /**
@@ -140,35 +282,155 @@ class DoctorController extends Controller
      */
     public function update(Request $request, int $id): RedirectResponse
     {
-        $this->validate($request, [
-            'name' => 'required|string|max:255',
-            'contact_number' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'address' => 'nullable|string',
-            'qualification' => 'nullable|string|max:255',
+        $request->validate([
+            'name'                       => 'required|string|max:255',
+            'contact_number'             => 'nullable|string|max:50',
+            'email'                      => 'nullable|email|max:255',
+            'qualification'              => 'nullable|string|max:255',
             'product_commission_percent' => 'nullable|numeric|min:0|max:100',
-            'product_commission_amount' => 'nullable|numeric|min:0',
+            'product_commission_amount'  => 'nullable|numeric|min:0',
             'service_commission_percent' => 'nullable|numeric|min:0|max:100',
-            'service_commission_amount' => 'nullable|numeric|min:0',
-            'status' => 'nullable|boolean',
+            'service_commission_amount'  => 'nullable|numeric|min:0',
+            'status'                     => 'nullable|boolean',
+
+            // Chambers validation
+            'chambers'                   => 'nullable|array',
+            'chambers.*.chamber_name'    => 'required|string|max:255',
+            'chambers.*.address'         => 'required|string',
+            'chambers.*.phone'           => 'nullable|string|max:50',
+            'chambers.*.visiting_days'   => 'nullable|string|max:100',
+            'chambers.*.visiting_time'   => 'nullable|string|max:100',
+
+            // Category commissions validation
+            'category_commissions'                    => 'nullable|array',
+            'category_commissions.*.category_id'      => 'required|exists:categories,id',
+            'category_commissions.*.commission_type'  => 'required|in:percent,fixed',
+            'category_commissions.*.commission_value' => 'required|numeric|min:0',
+
+            // Service commissions validation
+            'service_commissions'                     => 'nullable|array',
+            'service_commissions.*.service_type_id'   => 'required|exists:service_types,id',
+            'service_commissions.*.commission_type'   => 'required|in:percent,fixed',
+            'service_commissions.*.commission_value'  => 'required|numeric|min:0',
         ]);
 
-        $requestAll = $request->all();
-
-        if (auth()->user()->isVendor()) {
-            $requestAll['vendor_id'] = auth()->id();
-        }
-        
         $doctor = Doctor::findOrFail($id);
-        $doctor->fill($requestAll);
-        // Set default status if not provided
-        $doctor->status = $request->has('status') ? 1 : 0;
 
-        if ($doctor->save()) {
-            return redirect('admin/doctor')->with('success', 'Updated Successfully');
+        DB::beginTransaction();
+        try {
+            $doctorData = $request->only([
+                'name',
+                'contact_number',
+                'email',
+                'qualification',
+                'product_commission_percent',
+                'product_commission_amount',
+                'service_commission_percent',
+                'service_commission_amount',
+            ]);
+
+            if (auth()->user()->branchId()) {
+                $doctorData['vendor_id'] = auth()->user()->branchId();
+            }
+
+            $doctorData['status'] = $request->has('status') ? (int) $request->status : 1;
+
+            $doctor->update($doctorData);
+
+            // 1. Sync Chambers
+            $primaryIndex = (int) $request->input('primary_chamber_index', 0);
+            $primaryAddress = null;
+
+            DoctorChamber::where('doctor_id', $doctor->id)->delete();
+
+            if ($request->filled('chambers') && is_array($request->chambers)) {
+                $idx = 0;
+                foreach ($request->chambers as $chamberData) {
+                    if (empty($chamberData['chamber_name']) || empty($chamberData['address'])) {
+                        continue;
+                    }
+
+                    $isPrimary = ($idx === $primaryIndex);
+                    if ($isPrimary) {
+                        $primaryAddress = $chamberData['address'];
+                    }
+
+                    DoctorChamber::create([
+                        'doctor_id'     => $doctor->id,
+                        'chamber_name'  => $chamberData['chamber_name'],
+                        'address'       => $chamberData['address'],
+                        'phone'         => $chamberData['phone'] ?? null,
+                        'visiting_days' => $chamberData['visiting_days'] ?? null,
+                        'visiting_time' => $chamberData['visiting_time'] ?? null,
+                        'is_primary'    => $isPrimary,
+                    ]);
+                    $idx++;
+                }
+            }
+
+            // Sync legacy address field
+            if ($primaryAddress) {
+                $doctor->address = $primaryAddress;
+                $doctor->save();
+            }
+
+            // 2. Sync Category Commissions
+            DoctorCategoryCommission::where('doctor_id', $doctor->id)->delete();
+            if ($request->filled('category_commissions') && is_array($request->category_commissions)) {
+                $seenCats = [];
+                foreach ($request->category_commissions as $catComm) {
+                    $catId = (int) ($catComm['category_id'] ?? 0);
+                    if ($catId && !in_array($catId, $seenCats)) {
+                        $seenCats[] = $catId;
+                        DoctorCategoryCommission::create([
+                            'doctor_id'        => $doctor->id,
+                            'category_id'      => $catId,
+                            'commission_type'  => $catComm['commission_type'] ?? 'percent',
+                            'commission_value' => (float) ($catComm['commission_value'] ?? 0),
+                        ]);
+                    }
+                }
+            }
+
+            // 3. Sync Service Commissions
+            DoctorServiceCommission::where('doctor_id', $doctor->id)->delete();
+            if ($request->filled('service_commissions') && is_array($request->service_commissions)) {
+                $seenServices = [];
+                foreach ($request->service_commissions as $srvComm) {
+                    $srvId = (int) ($srvComm['service_type_id'] ?? 0);
+                    if ($srvId && !in_array($srvId, $seenServices)) {
+                        $seenServices[] = $srvId;
+                        DoctorServiceCommission::create([
+                            'doctor_id'        => $doctor->id,
+                            'service_type_id'  => $srvId,
+                            'commission_type'  => $srvComm['commission_type'] ?? 'percent',
+                            'commission_value' => (float) ($srvComm['commission_value'] ?? 0),
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect('admin/doctor')->with('success', 'Doctor updated successfully');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()->with('warning', 'Error updating doctor: ' . $e->getMessage())->withInput();
         }
+    }
 
-        return redirect()->back()->with('warning', 'Not Updated');
+    /**
+     * Get commission rules and chambers for a specific doctor as JSON.
+     *
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function commissionRules(int $id): JsonResponse
+    {
+        $doctor = Doctor::with(['chambers', 'categoryCommissions', 'serviceCommissions'])->findOrFail($id);
+
+        return response()->json($doctor->getCommissionRulesArray());
     }
 
     /**

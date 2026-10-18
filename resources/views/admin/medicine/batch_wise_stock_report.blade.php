@@ -36,8 +36,8 @@
                                 data-datatable="batch-wise-stock-report">
                                 <thead>
                                     <tr>
-                                        <th class="text-center">Medicine Name</th>
-                                        <th class="text-center">Manufacturer Name</th>
+                                        <th class="text-center">Product Name</th>
+                                        <th class="text-center">Brand</th>
                                         <th class="text-center">Batch No</th>
                                         <th class="text-center">Stock</th>
                                         <th class="text-center">Expiry Date</th>
@@ -46,14 +46,17 @@
                                 <tbody>
 
                                     @foreach ($batchWiseStock as $item)
-                                        @if (!empty($item->medicine->medicine_name))
+                                        @php
+                                            $product = $item->product ?? $item->medicine ?? null;
+                                            $brand = $product?->brand ?? $product?->manufacturer ?? null;
+                                        @endphp
+                                        @if (!empty($product))
                                             <tr>
-                                                <td class="text-center"> {{ $item->medicine->medicine_name ?? null }} </td>
-                                                <td class="text-center">
-                                                    {{ $item->medicine->manufacturer->manufacturer_name ?? null }} </td>
-                                                <td class="text-center">{{ $item->batch_no }} </td>
-                                                <td class="text-center">{{ $item->stock }} </td>
-                                                <td class="text-center">{{ $item->expiry_date }}</td>
+                                                <td class="text-center">{{ $product->product_name ?? $product->medicine_name ?? '-' }}</td>
+                                                <td class="text-center">{{ $brand->brand_name ?? $brand->manufacturer_name ?? '-' }}</td>
+                                                <td class="text-center">{{ $item->batch_no }}</td>
+                                                <td class="text-center">{{ $item->stock }}</td>
+                                                <td class="text-center">{{ $item->expiry_date ?? '-' }}</td>
                                             </tr>
                                         @endif
                                     @endforeach

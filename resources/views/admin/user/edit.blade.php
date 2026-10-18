@@ -1,121 +1,102 @@
 @extends('admin.layouts.master')
-
+@section('page_title', 'Edit User')
 @push('css')
-    <!-- Select2 -->
-    <link rel="stylesheet" href="{{ asset('assets/plugins/select2/css/select2.min.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/plugins/select2/css/select2.min.css') }}">
 @endpush
-
 @section('content')
-    <section class="content pt-3">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card card-outline card-primary">
-                        <div class="card-header">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h5>Edit User</h5>
-                                </div>
-                                <div class="col-md-6 text-right">
-                                    <a href="{{ url('admin/user') }}" class="btn-primary btn-cs-primary btn-sm">
-                                        <i class="fas fa-list mr-1"></i> User List
-                                    </a>
-                                </div>
-                            </div>
+<div class="container-fluid" style="padding: 0 24px;">
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-user-edit" style="color: var(--accent-500); margin-right: 8px;"></i>Edit User</h1>
+            <p>Update user account details</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url('admin/user') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i>User List</a>
+        </div>
+    </div>
+    @include('admin.alert_message')
+    <form action="{{ route('user.update', $user->id) }}" enctype="multipart/form-data" method="POST">
+        @csrf
+        @method('PUT')
+        <div class="crm-form-section crm-animate-in delay-1">
+            <div class="crm-form-section-header">
+                <div class="section-icon" style="background: var(--accent-500);"><i class="fas fa-user"></i></div>
+                <h6>User Information</h6>
+            </div>
+            <div class="crm-form-section-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="name">Name <span style="color: var(--danger-500);">*</span></label>
+                            <input type="text" class="form-control" name="name" id="name" value="{{ old('name', $user->name) }}" required>
                         </div>
-
-                        @include('admin.alert_message')
-
-                        <div class="card-body">
-                            <form action="{{ route('user.update', $user->id) }}" enctype="multipart/form-data" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <div class="row">
-                                    <div class="col-md-12">
-
-                                        <!-- Name -->
-                                        <div class="form-group row">
-                                            <label for="name" class="col-sm-2 col-form-label">Name <i class="text-danger">*</i>:</label>
-                                            <div class="col-sm-4">
-                                                <input type="text" class="form-control" name="name" id="name" value="{{ old('name', $user->name) }}" required>
-                                            </div>
-                                        </div>
-
-                                        <!-- Email -->
-                                        <div class="form-group row">
-                                            <label for="email" class="col-sm-2 col-form-label">Email <i class="text-danger">*</i>:</label>
-                                            <div class="col-sm-4">
-                                                <input type="email" class="form-control" name="email" id="email" value="{{ old('email', $user->email) }}" required>
-                                            </div>
-                                        </div>
-
-                                        <!-- Password -->
-                                        <div class="form-group row">
-                                            <label for="password" class="col-sm-2 col-form-label">Password:</label>
-                                            <div class="col-sm-4">
-                                                <input type="password" class="form-control" name="password" id="password" placeholder="Leave blank if unchanged">
-                                            </div>
-                                        </div>
-
-                                        <!-- Roles -->
-                                        @if(! $user->isVendor())
-                                        <div class="form-group row">
-                                            <label for="roles" class="col-sm-2 col-form-label">Roles <i class="text-danger">*</i>:</label>
-                                            <div class="col-sm-4">
-                                                <select name="roles[]" class="form-control select" id="roles" multiple required>
-                                                    @foreach ($roles as $role)
-                                                        <option value="{{ $role->id }}" 
-                                                            {{ in_array($role->id, $userRoles) ? 'selected' : '' }}>
-                                                            {{ $role->name }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                <small class="form-text text-muted">You can assign multiple roles to a user.</small>
-                                            </div>
-                                        </div>
-                                        @endif
-
-                                        <!-- Remarks -->
-                                        <div class="form-group row">
-                                            <label for="details" class="col-sm-2 col-form-label">Remarks</label>
-                                            <div class="col-sm-4">
-                                                <textarea class="form-control" name="details" id="details">{{ old('details', $user->details) }}</textarea>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group row">
-                                            <label for="status" class="col-sm-3 col-form-label">Status <i class="text-danger">*</i>:</label>
-                                            <div class="col-sm-3">
-                                                <label class="radio-inline my-2">
-                                                    <input type="radio" name="status" value="1" {{ $user->status == 1 ? 'checked' : '' }} id="status">
-                                                    Active
-                                                </label>
-                                                <label class="radio-inline my-2">
-                                                    <input type="radio" name="status" value="0" {{ $user->status == 0 ? 'checked' : '' }} id="status">
-                                                    Inactive
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                </div>
-
-                                <div class="form-group row">
-                                    <div class="col-md-6 text-right">
-                                        <button type="submit" class="btn btn-success">
-                                            Update
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="email">Email <span style="color: var(--danger-500);">*</span></label>
+                            <input type="email" class="form-control" name="email" id="email" value="{{ old('email', $user->email) }}" required>
                         </div>
                     </div>
                 </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" class="form-control" name="password" id="password" placeholder="Leave blank if unchanged">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        @if(! $user->isVendor())
+                        <div class="form-group">
+                            <label for="roles">Roles <span style="color: var(--danger-500);">*</span></label>
+                            <select name="roles[]" class="form-control select" id="roles" multiple required>
+                                @foreach ($roles as $role)
+                                    <option value="{{ $role->id }}" 
+                                        {{ in_array($role->id, $userRoles) ? 'selected' : '' }}>
+                                        {{ $role->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted">You can assign multiple roles to a user.</small>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="details">Remarks</label>
+                            <textarea class="form-control" name="details" id="details" rows="3">{{ old('details', $user->details) }}</textarea>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Status <span style="color: var(--danger-500);">*</span></label>
+                            <div class="mt-1">
+                                <label class="radio-inline my-2"><input type="radio" name="status" value="1" {{ $user->status == 1 ? 'checked' : '' }}> Active</label>
+                                <label class="radio-inline my-2 ml-3"><input type="radio" name="status" value="0" {{ $user->status == 0 ? 'checked' : '' }}> Inactive</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @if (! $user->isVendor() && ! $user->isSuperAdmin())
+                <div class="row">
+                    <div class="col-md-6">
+                        @include('admin.partials.branch_select', ['selected' => $user->vendor_id])
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
-    </section>
+        <div class="crm-form-submit-bar">
+            <a href="{{ url('admin/user') }}" class="btn btn-secondary btn-sm">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i>Update</button>
+        </div>
+    </form>
+</div>
 @endsection
 
 @push('scripts')
-    <script src="{{ asset('assets/plugins/select2/js/select2.full.min.js') }}"></script>
+<script src="{{ asset('assets/plugins/select2/js/select2.full.min.js') }}"></script>
 @endpush

@@ -21,16 +21,14 @@ class SmsAutomationController extends Controller
         $this->middleware('permission:sms_automation.delete')->only(['destroy']);
     }
 
-    public function index(): View
+    public function index()
     {
-        $automations = SmsAutomation::with('smsTemplate')->orderBy('id', 'desc')->get();
-        $triggers = SmsAutomationTrigger::cases();
-        return view('admin.sms-automation.index', compact('automations', 'triggers'));
+        return redirect('admin/sms#automation-tab');
     }
 
     public function create(): View
     {
-        $triggers = SmsAutomationTrigger::cases();
+        $triggers = SmsAutomationTrigger::selectable();
         $templates = SmsTemplate::where('is_active', true)->orderBy('name')->get();
         return view('admin.sms-automation.create', compact('triggers', 'templates'));
     }
@@ -39,7 +37,7 @@ class SmsAutomationController extends Controller
     {
         $this->validate($request, [
             'name' => 'required|string|unique:sms_automations,name',
-            'trigger_type' => 'required|in:' . implode(',', array_column(SmsAutomationTrigger::cases(), 'value')),
+            'trigger_type' => 'required|in:' . implode(',', array_column(SmsAutomationTrigger::selectable(), 'value')),
             'message_body' => 'required|string|max:1000',
             'sms_template_id' => 'nullable|exists:sms_templates,id',
             'is_active' => 'nullable',
@@ -50,7 +48,7 @@ class SmsAutomationController extends Controller
         ));
 
         if ($automation->save()) {
-            return redirect('admin/sms-automations')->with('success', 'Automation Saved Successfully');
+            return redirect('admin/sms#automation-tab')->with('success', 'Automation Saved Successfully');
         }
 
         return redirect()->back()->with('warning', 'Not Saved');
@@ -59,7 +57,8 @@ class SmsAutomationController extends Controller
     public function edit(int $id): View
     {
         $automation = SmsAutomation::findOrFail($id);
-        $triggers = SmsAutomationTrigger::cases();
+        $triggers = array_filter(SmsAutomationTrigger::cases(),
+            fn ($t) => $t !== SmsAutomationTrigger::POINTS_MILESTONE || $automation->trigger_type === $t->value);
         $templates = SmsTemplate::where('is_active', true)->orderBy('name')->get();
         return view('admin.sms-automation.edit', compact('automation', 'triggers', 'templates'));
     }
@@ -80,7 +79,7 @@ class SmsAutomationController extends Controller
         ));
 
         if ($automation->save()) {
-            return redirect('admin/sms-automations')->with('success', 'Automation Updated Successfully');
+            return redirect('admin/sms#automation-tab')->with('success', 'Automation Updated Successfully');
         }
 
         return redirect()->back()->with('warning', 'Not Updated');
@@ -91,7 +90,7 @@ class SmsAutomationController extends Controller
         $automation = SmsAutomation::findOrFail($id);
         $automation->delete();
 
-        return redirect('/admin/sms-automations')->with('success', 'Deleted Successfully');
+        return redirect('/admin/sms#automation-tab')->with('success', 'Deleted Successfully');
     }
 
     /**

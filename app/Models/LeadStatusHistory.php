@@ -19,8 +19,11 @@ class LeadStatusHistory extends Model
 
     protected $fillable = [
         'lead_id',
+        'deal_id',
         'from_status',
         'to_status',
+        'from_stage_id',
+        'to_stage_id',
         'notes',
     ];
 
@@ -32,12 +35,29 @@ class LeadStatusHistory extends Model
         return $this->belongsTo(Lead::class);
     }
 
+    public function deal()
+    {
+        return $this->belongsTo(Deal::class);
+    }
+
+    public function fromStage()
+    {
+        return $this->belongsTo(PipelineStage::class, 'from_stage_id');
+    }
+
+    public function toStage()
+    {
+        return $this->belongsTo(PipelineStage::class, 'to_stage_id');
+    }
+
     /**
      * Get the from status label.
      */
     public function getFromStatusLabelAttribute(): ?string
     {
-        return $this->from_status ? LeadStatus::from($this->from_status)?->label() : null;
+        return $this->from_status
+            ? (LeadStatus::tryFrom($this->from_status)?->label() ?? ucfirst(str_replace('_', ' ', $this->from_status)))
+            : null;
     }
 
     /**
@@ -45,6 +65,6 @@ class LeadStatusHistory extends Model
      */
     public function getToStatusLabelAttribute(): string
     {
-        return LeadStatus::from($this->to_status)?->label() ?? ucfirst($this->to_status);
+        return LeadStatus::tryFrom((string) $this->to_status)?->label() ?? ucfirst(str_replace('_', ' ', (string) $this->to_status));
     }
 }

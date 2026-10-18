@@ -68,6 +68,7 @@ class UserController extends Controller
             'email'    => $request->email,
             'password' => Hash::make($request->password),
             'details'  => $request->details,
+            'vendor_id' => \App\Classes\Helper::staffBranchFromRequest($request->vendor_id),
         ]);
 
         // Attach multiple roles
@@ -116,6 +117,9 @@ class UserController extends Controller
             $user->password = bcrypt($request->password);
         }
         $user->details = $request->details;
+        if (!$user->isVendor() && !$user->isSuperAdmin() && $request->has('vendor_id')) {
+            $user->vendor_id = \App\Classes\Helper::staffBranchFromRequest($request->vendor_id);
+        }
         $user->save();
 
         $user->roles()->sync($request->roles);

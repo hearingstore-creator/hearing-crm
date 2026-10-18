@@ -1,358 +1,528 @@
 <x-guest-layout>
     <style>
-        .login-wrapper {
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0510;
+        }
+        
+        .login-container {
             min-height: 100vh;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             display: flex;
             align-items: center;
             justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
             padding: 20px;
             position: relative;
             overflow: hidden;
         }
 
-        .login-wrapper::before {
-            content: '';
+        /* Abstract geometric shapes in the background */
+        .shape {
             position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 600px;
+            border-radius: 40px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            backdrop-filter: blur(5px);
+            z-index: 0;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .shape-1 {
+            width: 450px;
+            height: 140px;
+            transform: rotate(-35deg);
+            top: 5%;
+            right: -100px;
+        }
+        
+        .shape-2 {
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            bottom: -150px;
+            left: -50px;
+            border: 2px solid rgba(139, 92, 246, 0.1);
+            background: transparent;
+            backdrop-filter: none;
+        }
+
+        .shape-3 {
+            width: 250px;
             height: 600px;
-            background: radial-gradient(circle, rgba(232, 56, 61, 0.08) 0%, transparent 70%);
+            transform: rotate(45deg);
+            top: 10%;
+            left: 20%;
+            border: 1.5px solid rgba(255, 255, 255, 0.04);
+            background: transparent;
+            backdrop-filter: none;
+            border-radius: 80px;
+        }
+        
+        .shape-4 {
+            width: 150px;
+            height: 150px;
             border-radius: 50%;
+            top: 15%;
+            left: 10%;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.05) 0%, transparent 70%);
+            border: none;
+            backdrop-filter: none;
+        }
+        
+        .shape-5 {
+            width: 400px;
+            height: 400px;
+            border-radius: 20px;
+            transform: rotate(15deg);
+            bottom: -50px;
+            right: 15%;
+            border: 2px solid rgba(255, 255, 255, 0.02);
+            background: transparent;
+            backdrop-filter: none;
+            z-index: 0;
         }
 
-        .login-wrapper::after {
-            content: '';
-            position: absolute;
-            bottom: -30%;
-            left: -10%;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(232, 56, 61, 0.05) 0%, transparent 70%);
-            border-radius: 50%;
-        }
-
-        .login-card {
-            background: #ffffff;
-            border-radius: 24px;
-            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            max-width: 480px;
+        .login-box {
+            display: flex;
             width: 100%;
-            position: relative;
-            z-index: 1;
-            border: 1px solid rgba(232, 56, 61, 0.08);
-        }
-
-        .login-header {
-            background: linear-gradient(135deg, #E8383D 0%, #ef5d5f 100%);
-            padding: 50px 40px;
-            text-align: center;
-            position: relative;
+            max-width: 950px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 20px;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             overflow: hidden;
+            z-index: 1;
+            position: relative;
         }
 
-        .login-header::before {
+        .login-left {
+            flex: 1;
+            padding: 60px 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            color: #ffffff;
+            position: relative;
+        }
+
+        .login-left::before {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.1), transparent 60%);
+            z-index: -1;
         }
 
-        .login-logo {
-            max-width: 220px;
-            height: auto;
-            margin: 0 auto;
-            display: block;
-            position: relative;
-            z-index: 1;
+        .brand-logo {
+            margin-bottom: 60px;
+            max-width: 160px;
+            filter: brightness(0) invert(1);
         }
 
-        .login-title {
-            color: white;
-            font-size: 24px;
+        .login-left h1 {
+            font-size: 42px;
             font-weight: 700;
-            margin-top: 20px;
-            margin-bottom: 5px;
-            position: relative;
-            z-index: 1;
+            margin: 0 0 15px 0;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+        
+        .welcome-line {
+            width: 35px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.7);
+            margin-bottom: 25px;
+            border-radius: 2px;
         }
 
-        .login-subtitle {
-            color: rgba(255, 255, 255, 0.9);
+        .login-left p {
             font-size: 14px;
-            font-weight: 400;
-            position: relative;
-            z-index: 1;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+            margin-bottom: 40px;
+            max-width: 320px;
+            font-weight: 300;
         }
 
-        .login-body {
-            padding: 45px 40px;
+        .btn-outline {
+            display: inline-block;
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            width: fit-content;
+            box-shadow: 0 8px 15px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-outline:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px -5px rgba(99, 102, 241, 0.5);
+            color: white;
+        }
+
+        .login-right {
+            width: 440px;
+            padding: 50px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.02);
+            position: relative;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(25px);
+            border-radius: 12px;
+            padding: 45px 35px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-right h2 {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin: 0 0 35px 0;
+            position: relative;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .login-right h2::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 2px;
+            background: rgba(255,255,255,0.6);
+            border-radius: 2px;
         }
 
         .form-group {
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
 
         .form-group label {
-            font-weight: 600;
-            color: #1f2937;
-            font-size: 14px;
-            margin-bottom: 10px;
             display: block;
-        }
-
-        .input-wrapper {
-            position: relative;
-        }
-
-        .input-icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #9ca3af;
-            font-size: 18px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 10px;
         }
 
         .form-control {
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 14px 16px 14px 45px;
-            font-size: 15px;
-            transition: all 0.3s ease;
-            height: auto;
             width: 100%;
-            background: #f9fafb;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid transparent;
+            border-radius: 20px;
+            color: #ffffff;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
         }
 
         .form-control:focus {
-            border-color: #E8383D;
-            box-shadow: 0 0 0 4px rgba(232, 56, 61, 0.08);
             outline: none;
-            background: #ffffff;
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
         }
 
         .form-control::placeholder {
-            color: #9ca3af;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 1px;
         }
-
-        .form-check {
-            margin-bottom: 24px;
+        
+        .input-group {
+            position: relative;
             display: flex;
             align-items: center;
         }
-
-        .form-check-input {
-            width: 18px;
-            height: 18px;
-            margin-right: 10px;
-            border: 2px solid #d1d5db;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .form-check-input:checked {
-            background-color: #E8383D;
-            border-color: #E8383D;
-        }
-
-        .form-check-input:focus {
-            border-color: #E8383D;
-            box-shadow: 0 0 0 3px rgba(232, 56, 61, 0.1);
-        }
-
-        .form-check-label {
-            font-weight: 500;
-            color: #6b7280;
+        
+        .input-group i {
+            position: absolute;
+            left: 16px;
+            color: rgba(255, 255, 255, 0.5);
             font-size: 14px;
+        }
+        
+        .input-group .form-control {
+            padding-left: 40px;
+        }
+        
+        .toggle-password {
+            position: absolute;
+            right: 16px;
             cursor: pointer;
-            margin-bottom: 0;
+            color: rgba(255, 255, 255, 0.5);
+            transition: color 0.3s ease;
+        }
+        
+        .toggle-password:hover {
+            color: rgba(255, 255, 255, 0.9);
         }
 
-        .btn-login {
-            background: linear-gradient(135deg, #E8383D 0%, #d32f33 100%);
-            border: none;
-            color: white;
-            padding: 15px 30px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 16px;
+        .btn-submit {
             width: 100%;
-            transition: all 0.3s ease;
-            margin-top: 0;
-            box-shadow: 0 4px 12px rgba(232, 56, 61, 0.2);
-        }
-
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(232, 56, 61, 0.3);
-            color: white;
-            background: linear-gradient(135deg, #d32f33 0%, #c02a2e 100%);
-        }
-
-        .btn-login:focus {
-            box-shadow: 0 0 0 4px rgba(232, 56, 61, 0.2);
-            outline: none;
-        }
-
-        .btn-login:active {
-            transform: translateY(0);
-        }
-
-        .login-footer {
-            background: #f9fafb;
-            padding: 24px 40px;
-            text-align: center;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .login-footer h6 {
-            color: #6b7280;
-            font-size: 13px;
-            margin: 0;
-            font-weight: 500;
-        }
-
-        .login-footer .company-name {
-            color: #E8383D;
-            font-weight: 600;
-        }
-
-        .alert {
-            border-radius: 12px;
+            padding: 12px;
+            background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
             border: none;
-            padding: 14px 18px;
-            margin-bottom: 24px;
+            border-radius: 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 15px -5px rgba(99, 102, 241, 0.4);
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px -5px rgba(99, 102, 241, 0.5);
+        }
+        
+        .btn-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .social-login {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 25px;
+        }
+
+        .social-icon {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 16px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .social-icon:hover {
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+        
+        .alert {
+            padding: 12px 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+        
         .alert-danger {
-            background: #fef2f2;
-            color: #991b1b;
-            border-left: 4px solid #E8383D;
+            background: rgba(220, 38, 38, 0.15);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            color: #fca5a5;
         }
-
+        
         .alert-success {
-            background: #ecfdf5;
-            color: #047857;
-            border-left: 4px solid #10b981;
+            background: rgba(5, 150, 105, 0.15);
+            border: 1px solid rgba(5, 150, 105, 0.3);
+            color: #6ee7b7;
         }
-
-        .alert strong {
-            font-weight: 600;
-        }
-
+        
         .alert ul {
-            margin-bottom: 0;
-            margin-top: 8px;
+            margin: 5px 0 0 0;
             padding-left: 20px;
         }
 
-        @media (max-width: 576px) {
-            .login-body {
-                padding: 35px 28px;
-            }
-            
-            .login-header {
-                padding: 40px 28px;
-            }
+        .forgot-password {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .forgot-password:hover {
+            color: #ffffff;
+        }
+        
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .remember-me input[type="checkbox"] {
+            accent-color: #6366f1;
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
+        
+        .remember-me label {
+            margin: 0;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+        }
+        
+        .form-footer-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+        }
 
-            .login-footer {
-                padding: 20px 28px;
+        @media (max-width: 860px) {
+            .login-box {
+                flex-direction: column;
+                max-width: 480px;
             }
-
-            .login-card {
-                border-radius: 20px;
+            .login-left {
+                padding: 40px;
+                text-align: center;
+                align-items: center;
+            }
+            .welcome-line {
+                margin: 0 auto 20px auto;
+            }
+            .login-right {
+                width: 100%;
+                padding: 0 40px 40px 40px;
+                background: transparent;
             }
         }
     </style>
+    
+    <!-- Font Awesome for social icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <div class="login-wrapper">
-        <div class="login-card">
-            <!-- Logo Section -->
-            <div class="login-header">
+    <div class="login-container">
+        <!-- Abstract Background Shapes -->
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+        <div class="shape shape-4"></div>
+        <div class="shape shape-5"></div>
+
+        <div class="login-box">
+            <!-- Left Side -->
+            <div class="login-left">
                 <a href="/">
-                    <img src="{{asset('assets/images/hs-logo.png')}}" alt="Logo" class="login-logo">
+                    <img src="{{asset('assets/images/logo-full.png')}}" alt="HearingStore Logo" class="brand-logo">
                 </a>
-                <h2 class="login-title">Welcome Back</h2>
-                <p class="login-subtitle">Sign in to continue to your account</p>
+                <h1>Welcome to<br>Hearing Store CRM</h1>
+                <div class="welcome-line"></div>
+                <p>A modern, enterprise-grade platform built for audiology professionals. Streamline patient management, appointments, sales, inventory, service records, and business insights through one secure and intelligent system. Empower your team, enhance patient experience, and drive operational excellence with confidence.</p>
+                <a href="#" class="btn-outline">Learn More</a>
             </div>
 
-            <!-- Form Section -->
-            <div class="login-body">
-                <!-- Session Status -->
-                @if (session('status'))
-                    <div class="alert alert-success" role="alert">
-                        <strong>Success!</strong> {{ session('status') }}
-                    </div>
-                @endif
-
-                <!-- Validation Errors -->
-                @if ($errors->any())
-                    <div class="alert alert-danger" role="alert">
-                        <strong>Whoops!</strong> There were some problems with your input.
-                        <ul>
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-
-                <form method="POST" action="{{ route('login') }}">
-                    @csrf
-
-                    <!-- Email Address -->
-                    <div class="form-group">
-                        <label for="email">{{ __('Email Address') }}</label>
-                        <div class="input-wrapper">
-                            <span class="input-icon">📧</span>
-                            <input id="email" 
-                                   type="email" 
-                                   class="form-control @error('email') is-invalid @enderror" 
-                                   name="email" 
-                                   value="{{ old('email') }}" 
-                                   required 
-                                   autofocus
-                                   placeholder="yourmail@example.com">
+            <!-- Right Side (Form) -->
+            <div class="login-right">
+                <div class="glass-card">
+                    <h2>Sign in</h2>
+                    
+                    <!-- Session Status -->
+                    @if (session('status'))
+                        <div class="alert alert-success">
+                            {{ session('status') }}
                         </div>
-                    </div>
+                    @endif
 
-                    <!-- Password -->
-                    <div class="form-group">
-                        <label for="password">{{ __('Password') }}</label>
-                        <div class="input-wrapper">
-                            <span class="input-icon">🔒</span>
-                            <input id="password"
-                                   type="password"
-                                   class="form-control @error('password') is-invalid @enderror"
-                                   name="password"
-                                   required
-                                   autocomplete="current-password"
-                                   placeholder="Enter your password">
+                    <!-- Validation Errors -->
+                    @if ($errors->any())
+                        <div class="alert alert-danger">
+                            <strong>Whoops!</strong>
+                            <ul>
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
                         </div>
-                        <div class="text-end mt-2">
-                            <a href="{{ route('password.request') }}" class="text-decoration-none" style="color: #E8383D; font-size: 13px; font-weight: 600;">
-                                Forgot Password?
-                            </a>
+                    @endif
+
+                    <form method="POST" action="{{ route('login') }}" id="loginForm">
+                        @csrf
+                        
+                        <div class="form-group">
+                            <label for="email">Email or Username</label>
+                            <div class="input-group">
+                                <i class="fa-regular fa-envelope"></i>
+                                <input type="email" id="email" name="email" class="form-control" placeholder="admin@example.com" value="{{ old('email') }}" required autofocus>
+                            </div>
                         </div>
+                        
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <div class="input-group">
+                                <i class="fa-solid fa-lock"></i>
+                                <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+                                <i class="fa-regular fa-eye toggle-password" onclick="togglePasswordVisibility()"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="form-footer-actions">
+                            <div class="remember-me">
+                                <input type="checkbox" id="remember" name="remember">
+                                <label for="remember">Remember me</label>
+                            </div>
+                            <a href="{{ route('password.request') }}" class="forgot-password">Forgot Password?</a>
+                        </div>
+                        
+                        <button type="submit" class="btn-submit" id="submitBtn">
+                            <span>Sign In</span>
+                            <i class="fa-solid fa-arrow-right ml-1"></i>
+                        </button>
+                    </form>
+                    
+                    <div class="social-login">
+                        <a href="#" class="social-icon"><i class="fa-brands fa-facebook-f"></i></a>
+                        <a href="#" class="social-icon"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="#" class="social-icon"><i class="fa-brands fa-pinterest-p"></i></a>
                     </div>
-
-                    <!-- Submit Button -->
-                    <button type="submit" class="btn btn-login">
-                        {{ __('Sign In') }}
-                    </button>
-                </form>
-            </div>
-
-            <!-- Footer -->
-            <div class="login-footer">
-                <h6>Powered by <span class="company-name">{{ $settings->company_name ?? 'Hearing Store' }}</span></h6>
+                </div>
             </div>
         </div>
     </div>
+    
+    <script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.querySelector('.toggle-password');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+        
+        document.getElementById('loginForm').addEventListener('submit', function() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span>Signing in...</span>';
+        });
+    </script>
 </x-guest-layout>

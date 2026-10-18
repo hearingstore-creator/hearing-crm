@@ -1,0 +1,47 @@
+/* Deal Reports. Builds on crm-module.css tokens; light + dark. */
+.dr-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.dr-filters .form-control { width: auto; min-width: 140px; }
+.dr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.dr-card { padding: 18px 20px; margin-bottom: 0; }
+.dr-h { font-size: 15px; font-weight: 800; margin: 0; color: var(--page-text); }
+.dr-h i { color: var(--accent-500); margin-right: 6px; }
+.dr-sub { font-size: 12px; color: var(--page-text-muted); margin: 2px 0 12px; }
+.dr-bar-row { display: grid; grid-template-columns: 120px 1fr 52px 62px; gap: 10px; align-items: center; margin-bottom: 9px; font-size: 12.5px; }
+.dr-bar-label { color: var(--page-text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-bar { height: 12px; border-radius: 999px; background: color-mix(in srgb, var(--page-text-muted) 14%, transparent); overflow: hidden; }
+.dr-bar span { display: block; height: 100%; border-radius: 999px; transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.dr-bar-val { text-align: right; color: var(--page-text); }
+.dr-bar-pct { font-size: 11.5px; color: var(--page-text-muted); }
+.dr-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.dr-mini td, .dr-mini th { padding: 7px 8px !important; font-size: 12.5px; }
+.dr-empty { text-align: center; color: var(--page-text-muted); padding: 24px 0 !important; font-size: 13px; }
+.dr-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dr-compare-col { border: 1px solid var(--card-border); border-radius: 14px; padding: 14px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.dr-compare-col span { font-size: 12px; font-weight: 700; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.dr-compare-col b { font-size: 28px; color: var(--accent-600); line-height: 1.2; }
+[data-theme="dark"] .dr-compare-col b { color: var(--accent-300); }
+.dr-compare-col em { font-style: normal; font-size: 11.5px; color: var(--page-text-muted); }
+.dr-compare-col small { font-size: 11.5px; color: var(--page-text); margin-top: 6px; }
+.dr-rate { display: inline-block; padding: 2px 9px; border-radius: 999px; font-weight: 700; font-size: 12px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--success-500) 22%, transparent) var(--r), color-mix(in srgb, var(--page-text-muted) 12%, transparent) var(--r)); color: var(--page-text); }
+@media (max-width: 575px) { .dr-bar-row { grid-template-columns: 90px 1fr 44px; } .dr-bar-pct { display: none; } }
+
+/* Weighted forecast: full-width row (after the other cards), one readable tile per stage */
+.dr-wide { grid-column: 1 / -1; order: 10; }
+.dr-forecast-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.dr-forecast-total { text-align: right; display: flex; flex-direction: column; }
+.dr-forecast-total span { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--page-text-muted); }
+.dr-forecast-total b { font-size: 26px; line-height: 1.15; color: var(--success-600); }
+[data-theme="dark"] .dr-forecast-total b { color: var(--success-300); }
+.dr-forecast-total small { font-size: 12px; color: var(--page-text-muted); }
+.dr-forecast { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.dr-fc { border: 1px solid var(--card-border); border-top: 3px solid var(--c); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+    background: color-mix(in srgb, var(--c) 5%, var(--card-bg)); transition: transform .15s, box-shadow .15s; }
+.dr-fc:hover { transform: translateY(-2px); box-shadow: 0 8px 20px -12px rgba(15, 23, 42, .35); }
+.dr-fc-top { display: flex; align-items: center; font-size: 13px; font-weight: 700; color: var(--page-text); }
+.dr-fc-top em { margin-left: auto; font-style: normal; font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--page-text); }
+.dr-fc-weighted { font-size: 20px; color: var(--page-text); line-height: 1.2; }
+.dr-fc-bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--page-text-muted) 14%, transparent); overflow: hidden; }
+.dr-fc-bar span { display: block; height: 100%; background: var(--c); border-radius: 999px; }
+.dr-fc-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--page-text-muted); flex-wrap: wrap; }
+@media (max-width: 575px) { .dr-forecast-total { text-align: left; } }

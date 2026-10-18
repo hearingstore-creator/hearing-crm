@@ -50,9 +50,9 @@
                                         </div>
                                         <div class="col-md-2">
                                             <div class="form-group">
-                                                <label for="">Vendor</label>
+                                                <label for="">Branch</label>
                                                 <select name="vendor_id" class="form-control select" id="vendor_id">
-                                                    <option value="">All Vendors</option>
+                                                    <option value="">All Branches</option>
                                                     @foreach ($vendors ?? [] as $vendor)
                                                         <option value="{{ $vendor->id }}"
                                                             @isset($vendorId) {{ $vendorId == $vendor->id ? 'selected' : '' }} @endisset>
@@ -112,7 +112,7 @@
                                         @if(isset($vendorId))
                                             @php $selectedVendor = $vendors->firstWhere('id', $vendorId); @endphp
                                             @if($selectedVendor)
-                                                | <strong>Vendor:</strong> {{ $selectedVendor->supplier_name ?? $selectedVendor->name }}
+                                                | <strong>Branch:</strong> {{ $selectedVendor->supplier_name ?? $selectedVendor->name }}
                                             @endif
                                         @endif
                                         @if(isset($paymentStatus) && $paymentStatus != 'all')

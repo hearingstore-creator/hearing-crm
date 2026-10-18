@@ -223,19 +223,7 @@ $(function () {
         } else if (datatableType === 'expense-list') {
             var fileName = 'ExpenseList';
             var title = 'Expense List';
-            columns = [
-                {data: 'DT_RowIndex', name: 'DT_RowIndex'},
-                {data: 'date', name: 'date'},
-                {data: 'invoice_no', name: 'invoice_no'},
-                {data: 'expense_amount', name: 'expense_amount'},
-                {data: 'details', name: 'details'},
-                {
-                    data: 'action', 
-                    name: 'action', 
-                    orderable: true, 
-                    searchable: true
-                },
-            ];
+            serverSide = false;
         } else if (datatableType === 'designation-list') {
             var fileName = 'DesignationList';
             var title = 'Designation List';
@@ -343,6 +331,30 @@ $(function () {
         } else if (datatableType === 'user-list') {
             var fileName = 'UserList';
             var title = 'User List';
+            serverSide = false;
+        } else if (datatableType === 'brand-list') {
+            var fileName = 'BrandList';
+            var title = 'Brand List';
+            serverSide = false;
+        } else if (datatableType === 'products-list') {
+            var fileName = 'ProductList';
+            var title = 'Product List';
+            serverSide = false;
+        } else if (datatableType === 'proposal-list') {
+            var fileName = 'ProposalList';
+            var title = 'Proposal List';
+            serverSide = false;
+        } else if (datatableType === 'service-type-list') {
+            var fileName = 'ServiceTypeList';
+            var title = 'Service Type List';
+            serverSide = false;
+        } else if (datatableType === 'supplier-list') {
+            var fileName = 'SupplierList';
+            var title = 'Supplier List';
+            serverSide = false;
+        } else if (datatableType === 'template-list') {
+            var fileName = 'TemplateList';
+            var title = 'Template List';
             serverSide = false;
         }
 

@@ -34,7 +34,7 @@
                             <h5 class="mb-0">Battery Usage Expiry Alert Report</h5>
                             <small class="text-muted">
                                 Shows sold products approaching battery usage expiry
-                                ({{ $alertDaysBefore ?? 30 }} days before usage period ends)
+                                ({{ $alertDaysBefore ?? 15 }} days before usage period ends)
                             </small>
                         </div>
 

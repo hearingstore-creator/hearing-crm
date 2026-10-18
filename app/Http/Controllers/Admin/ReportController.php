@@ -12,12 +12,15 @@ use App\Models\DoctorLedger;
 use App\Models\Lead;
 use App\Models\Ledger;
 use App\Models\MembershipTier;
+use App\Models\CustomerAdvance;
 use App\Models\Product;
 use App\Models\PurchaseDetail;
 use App\Models\Referral;
 use App\Models\RewardLedger;
 use App\Models\SaleDetail;
 use App\Models\SaleMaster;
+use App\Models\ServiceDetail;
+use App\Models\ServiceType;
 use App\Models\Setting;
 use App\Models\User;
 use App\Enums\RewardLedgerType;
@@ -247,7 +250,7 @@ class ReportController extends Controller
      */
     public function batteryUsageExpiryReport()
     {
-        $alertDaysBefore = 30; // Alert 30 days before expiry
+        $alertDaysBefore = 15; // Alert 15 days before expiry
         $alertProducts = [];
         $today = now()->startOfDay();
 
@@ -279,8 +282,8 @@ class ReportController extends Controller
                 $daysUntilExpiry = $today->diffInDays($usageExpiryDate, false);
                 $daysUntilAlert = $today->diffInDays($alertDate, false);
 
-                // Show if within alert period (30 days before to 30 days after)
-                if ($daysUntilAlert <= 30) {
+                // Show if within alert period (15 days before expiry, up to 30 days after)
+                if ($daysUntilExpiry <= $alertDaysBefore && $daysUntilExpiry >= -30) {
                     // Determine identifier based on whether it's batch or serial
                     $identifier = null;
                     $type = null;
@@ -362,7 +365,12 @@ class ReportController extends Controller
         ];
 
         // Load filter options
-        $data['vendors'] = User::where('type', 'vendor')->get();
+        if ($branchId = auth()->user()->branchId()) {
+            $filters['vendor_id'] = $branchId; // branch users only see their own branch
+            $data['vendors'] = User::where('id', $branchId)->get(['id', 'name']);
+        } else {
+            $data['vendors'] = User::where('type', 'vendor')->orderBy('name')->get(['id', 'name']);
+        }
         $data['products'] = Product::with(['category', 'brand', 'type'])->get();
 
         // Get report data
@@ -395,11 +403,11 @@ class ReportController extends Controller
             ->when($filters['start_date'] && $filters['end_date'], fn($q) =>
                 $q->whereBetween('purchase_masters.date', [$filters['start_date'], $filters['end_date']])
             )
-            ->when($filters['vendor_id'], fn($q) =>
-                $q->where(function($query) use ($filters) {
-                    $query->where('purchase_masters.vendor_id', $filters['vendor_id'])
-                           ->orWhere('purchase_masters.supplier_id', $filters['vendor_id']);
-                })
+            ->when($filters['vendor_id'] === 'hq', fn($q) =>
+                $q->whereNull('purchase_masters.vendor_id')
+            )
+            ->when($filters['vendor_id'] && $filters['vendor_id'] !== 'hq', fn($q) =>
+                $q->where('purchase_masters.vendor_id', (int) $filters['vendor_id'])
             )
             ->when($filters['product_id'], fn($q) =>
                 $q->where('purchase_details.product_id', $filters['product_id'])
@@ -422,7 +430,6 @@ class ReportController extends Controller
         $productIds = $purchaseData->pluck('product_id')->unique()->toArray();
         $vendorIds = $purchaseData->pluck('vendor_id')->filter()->unique()->toArray();
         $supplierIds = $purchaseData->pluck('supplier_id')->filter()->unique()->toArray();
-        $userIds = array_unique(array_merge($vendorIds, $supplierIds));
 
         // Batch load products with relationships
         $products = Product::with(['category', 'brand', 'type'])
@@ -430,10 +437,9 @@ class ReportController extends Controller
             ->get()
             ->keyBy('id');
 
-        // Batch load vendors/suppliers
-        $users = User::whereIn('id', $userIds)
-            ->get()
-            ->keyBy('id');
+        // Batch load vendors (users) and suppliers (suppliers table)
+        $users = User::whereIn('id', $vendorIds)->pluck('name', 'id');
+        $supplierNames = \App\Models\Supplier::withoutGlobalScopes()->whereIn('id', $supplierIds)->pluck('supplier_name', 'id');
 
         // Get stock data for all products using Helper method
         $stockFilters = [
@@ -452,15 +458,9 @@ class ReportController extends Controller
                 continue;
             }
 
-            // Get vendor/supplier name
-            $vendorName = 'N/A';
-            if ($purchase->vendor_id) {
-                $vendor = $users->get($purchase->vendor_id);
-                $vendorName = $vendor ? ($vendor->supplier_name ?? $vendor->name) : 'N/A';
-            } elseif ($purchase->supplier_id) {
-                $supplier = $users->get($purchase->supplier_id);
-                $vendorName = $supplier ? ($supplier->supplier_name ?? $supplier->name) : 'N/A';
-            }
+            // Branch (vendor) name — purchases without vendor belong to Head Office
+            $vendorName = $purchase->vendor_id ? ($users[$purchase->vendor_id] ?? 'N/A') : 'Head Office';
+            $supplierName = $purchase->supplier_id ? ($supplierNames[$purchase->supplier_id] ?? 'N/A') : '—';
 
             // Get stock data from Helper result
             $stockInfo = $stockData->get($purchase->product_id);
@@ -470,6 +470,7 @@ class ReportController extends Controller
 
             $reportData[] = [
                 'vendor' => $vendorName,
+                'supplier' => $supplierName,
                 'product' => $product->model ?? 'N/A',
                 'product_id' => $product->id,
                 'category' => $product->category?->category_name ?? 'N/A',
@@ -514,6 +515,11 @@ class ReportController extends Controller
             'product_id' => $request->product_id,
         ];
 
+        // Vendors can only export their own branch
+        if ($branchId = auth()->user()->branchId()) {
+            $filters['vendor_id'] = $branchId;
+        }
+
         // Get report data
         $reportData = $this->getPurchaseStockReportData($filters);
         $reportData = $reportData['reportData'];
@@ -527,9 +533,10 @@ class ReportController extends Controller
 
         // Get vendor name if filtered
         $vendorName = '';
-        if (!empty($filters['vendor_id'])) {
-            $vendor = User::where('id', $filters['vendor_id'])->first(['supplier_name', 'name']);
-            $vendorName = $vendor ? ($vendor->supplier_name ?? $vendor->name) : '';
+        if ($filters['vendor_id'] === 'hq') {
+            $vendorName = 'Head Office';
+        } elseif (!empty($filters['vendor_id'])) {
+            $vendorName = (string) User::where('id', $filters['vendor_id'])->value('name');
         }
 
         // Get product model name if filtered
@@ -1653,5 +1660,200 @@ class ReportController extends Controller
         }
 
         return Excel::download($export, $filename . '.xlsx');
+    }
+
+    /**
+     * Customer Advances & Refund Report (Part E)
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Contracts\View\View
+     */
+    public function advancesReport(Request $request): View
+    {
+        $allBranches = Helper::isAllBranchesMode();
+        $branchFilter = $allBranches ? (string) $request->input('branch', 'all') : null;
+        $branches = Helper::branchOptions();
+
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate   = $request->input('end_date', now()->toDateString());
+        $status    = $request->input('status', 'all');
+        $search    = $request->input('search');
+
+        $query = CustomerAdvance::with(['customer.lead', 'appointment.service', 'creator', 'vendorUser']);
+
+        if (!auth()->user()->canViewAllBranches() && auth()->user()->branchId()) {
+            $query->where('vendor_id', auth()->user()->branchId());
+        } elseif ($allBranches && $branchFilter && $branchFilter !== 'all') {
+            if ($branchFilter === 'hq') {
+                $query->whereNull('vendor_id');
+            } else {
+                $query->where('vendor_id', (int) $branchFilter);
+            }
+        }
+
+        if ($startDate && $endDate) {
+            $query->whereBetween('date', [$startDate, $endDate]);
+        }
+
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('receipt_no', 'like', "%{$search}%")
+                  ->orWhere('refund_receipt_no', 'like', "%{$search}%")
+                  ->orWhere('reference', 'like', "%{$search}%")
+                  ->orWhereHas('customer.lead', function ($lq) use ($search) {
+                      $lq->where('full_name', 'like', "%{$search}%")
+                         ->orWhere('phone_number', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Summary Aggregates (scoped to the branch and date filter)
+        $summaryQuery = clone $query;
+        $aggregates = $summaryQuery->selectRaw("
+            COUNT(*) as total_count,
+            COALESCE(SUM(amount), 0) as total_received,
+            COALESCE(SUM(applied_amount), 0) as total_applied,
+            COALESCE(SUM(refunded_amount), 0) as total_refunded,
+            COALESCE(SUM(deduction_fee), 0) as total_deduction_fee,
+            COALESCE(SUM(CASE WHEN status = 'credit_kept' THEN balance ELSE 0 END), 0) as total_credit_kept,
+            COALESCE(SUM(CASE WHEN status = 'active' THEN balance ELSE 0 END), 0) as total_active_balance
+        ")->first();
+
+        $advances = $query->orderBy('date', 'desc')->orderBy('id', 'desc')->paginate(25)->withQueryString();
+
+        return view('admin.report.advances', compact(
+            'advances',
+            'aggregates',
+            'startDate',
+            'endDate',
+            'status',
+            'search',
+            'branchFilter',
+            'branches',
+            'allBranches'
+        ));
+    }
+
+    /**
+     * Services Status Report: Sold vs Done vs Pending (Part E)
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Contracts\View\View
+     */
+    public function servicesStatusReport(Request $request): View
+    {
+        $allBranches = Helper::isAllBranchesMode();
+        $branchFilter = $allBranches ? (string) $request->input('branch', 'all') : null;
+        $branches = Helper::branchOptions();
+
+        $startDate   = $request->input('start_date', now()->subDays(60)->toDateString());
+        $endDate     = $request->input('end_date', now()->toDateString());
+        $status      = $request->input('status', 'all');
+        $bookingType = $request->input('booking_type', 'all');
+        $serviceTypeId = $request->input('service_type_id');
+        $search      = $request->input('search');
+
+        $query = ServiceDetail::with([
+            'serviceType',
+            'saleMaster.customer.lead',
+            'saleMaster.vendor',
+            'appointment.user',
+            'doneByUser'
+        ])->whereHas('saleMaster', function ($sq) use ($startDate, $endDate) {
+            if ($startDate && $endDate) {
+                $sq->whereBetween('date', [$startDate, $endDate]);
+            }
+        });
+
+        // Branch filtering
+        if (!auth()->user()->canViewAllBranches() && auth()->user()->branchId()) {
+            $query->whereHas('saleMaster', function ($sq) {
+                $sq->where('vendor_id', auth()->user()->branchId());
+            });
+        } elseif ($allBranches && $branchFilter && $branchFilter !== 'all') {
+            $query->whereHas('saleMaster', function ($sq) use ($branchFilter) {
+                if ($branchFilter === 'hq') {
+                    $sq->whereNull('vendor_id');
+                } else {
+                    $sq->where('vendor_id', (int) $branchFilter);
+                }
+            });
+        }
+
+        if ($status && $status !== 'all') {
+            $query->where('fulfillment_status', $status);
+        }
+
+        if ($bookingType && $bookingType !== 'all') {
+            $query->whereHas('serviceType', function ($tq) use ($bookingType) {
+                $tq->where('booking_type', $bookingType);
+            });
+        }
+
+        if ($serviceTypeId) {
+            $query->where('service_type_id', $serviceTypeId);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('saleMaster', function ($sq) use ($search) {
+                    $sq->where('sale_invoice_no', 'like', "%{$search}%")
+                       ->orWhereHas('customer.lead', function ($lq) use ($search) {
+                           $lq->where('full_name', 'like', "%{$search}%")
+                              ->orWhere('phone_number', 'like', "%{$search}%");
+                       });
+                })->orWhereHas('serviceType', function ($tq) use ($search) {
+                    $tq->where('service_type_name', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        // Summary Aggregates
+        $summaryQuery = clone $query;
+        $allDetails = $summaryQuery->get();
+        $totalSold = $allDetails->count();
+        $doneCount = $allDetails->where('fulfillment_status', ServiceDetail::STATUS_DONE)->count();
+        $bookedCount = $allDetails->where('fulfillment_status', ServiceDetail::STATUS_BOOKED)->count();
+        $notBookedCount = $allDetails->where('fulfillment_status', ServiceDetail::STATUS_NOT_BOOKED)->count();
+        $totalRevenue = $allDetails->sum(function ($s) {
+            return ($s->qty * $s->service_price) - (($s->qty * $s->service_price / 100) * ($s->discount ?? 0));
+        });
+
+        // Calculate average waiting days for pending services
+        $pendingItems = $allDetails->whereIn('fulfillment_status', [ServiceDetail::STATUS_NOT_BOOKED, ServiceDetail::STATUS_BOOKED]);
+        $avgWaitingDays = 0;
+        if ($pendingItems->count() > 0) {
+            $totalDays = $pendingItems->sum(function ($item) {
+                return $item->daysWaiting();
+            });
+            $avgWaitingDays = round($totalDays / $pendingItems->count(), 1);
+        }
+
+        $services = $query->orderBy('created_at', 'desc')->paginate(25)->withQueryString();
+        $serviceTypes = ServiceType::where('status', 1)->orderBy('service_type_name')->get();
+
+        return view('admin.report.services_status', compact(
+            'services',
+            'totalSold',
+            'doneCount',
+            'bookedCount',
+            'notBookedCount',
+            'totalRevenue',
+            'avgWaitingDays',
+            'startDate',
+            'endDate',
+            'status',
+            'bookingType',
+            'serviceTypeId',
+            'serviceTypes',
+            'search',
+            'branchFilter',
+            'branches',
+            'allBranches'
+        ));
     }
 }

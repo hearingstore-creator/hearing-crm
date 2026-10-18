@@ -1,106 +1,67 @@
 @extends('admin.layouts.master')
+@section('page_title', 'SMS Templates')
+@section('breadcrumb_parent', 'Communication')
+@section('breadcrumb_parent_url', url('admin/sms-templates'))
+
+@push('css')
+<link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
+@endpush
 
 @section('content')
-<section class="content pt-3">
-   <div class="container-fluid">
-      <div class="row">
-         <div class="col-md-12">
-            <div class="card card-outline card-primary">
-               <div class="card-header">
-                  <div class="row">
-                     <div class="col-md-6">
-                        <h5><i class="fas fa-file-alt mr-2"></i>SMS Templates</h5>
-                     </div>
-                     <div class="col-md-6 text-right">
-                        @can('permission', 'templates.create')
-                        <a href="{{ url('admin/sms-templates/create') }}" class="btn-primary btn-cs-primary btn-sm">
-                           <i class="fas fa-plus mr-1"></i> Add Template
-                        </a>
-                        @endcan
-                        <a href="{{ url('admin/sms') }}" class="btn btn-sm btn-outline-primary ml-2">
-                           <i class="fas fa-comment-dots mr-1"></i> SMS Centre
-                        </a>
-                     </div>
-                  </div>
-               </div>
+<div class="container-fluid" style="padding: 0 24px;">
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-file-alt" style="color: var(--accent-500); margin-right: 8px;"></i>SMS Templates</h1>
+            <p>Create and manage message templates</p>
+        </div>
+        <div class="header-actions">
+            @can('permission', 'templates.create')
+                <a href="{{ url('admin/sms-templates/create') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i>Add Template</a>
+            @endcan
+            <a href="{{ url('admin/sms') }}" class="btn btn-secondary btn-sm" style="margin-left: 6px;">
+                <i class="fas fa-comment-dots mr-1"></i>SMS Centre
+            </a>
+        </div>
+    </div>
 
-               @include('admin.alert_message')
+    @include('admin.alert_message')
 
-               <div class="card-body">
-                  <table class="table table-bordered table-striped">
-                     <thead>
-                        <tr>
-                           <th>SL</th>
-                           <th>Name</th>
-                           <th>Category</th>
-                           <th>Body</th>
-                           <th>Variables</th>
-                           <th>Status</th>
-                           <th style="width:120px">Action</th>
-                        </tr>
-                     </thead>
-                     <tbody>
-                        @foreach ($templates as $key => $template)
-                        <tr>
-                           <td>{{ ++$key }}</td>
-                           <td>{{ $template->name }}</td>
-                           <td>
-                              <span class="sms-badge sms-badge-{{ $template->category_color ?? 'gray' }}">
-                                 {{ $template->category_label }}
-                              </span>
-                           </td>
-                           <td>{{ Str::limit($template->body, 80) }}</td>
-                           <td>
-                              @php $vars = is_array($template->variables) ? $template->variables : json_decode($template->getRawOriginal('variables'), true) ?? []; @endphp
-                              @if($vars)
-                              @foreach($vars as $var)
-                              @php $tag = '{{' . $var . '}}'; @endphp
-                              <small class="sms-template-var">{{ $tag }}</small>
-                              @endforeach
-                              @else
-                              <span class="text-muted">-</span>
-                              @endif
-                           </td>
-                           <td>
-                              @if($template->is_active)
-                              <span class="badge badge-success">Active</span>
-                              @else
-                              <span class="badge badge-danger">Inactive</span>
-                              @endif
-                           </td>
-                           <td class="text-center">
-                              @can('permission', 'templates.edit')
-                              <a href="{{ route('sms-templates.edit', $template->id) }}" class="btn btn-success btn-sm">
-                                 <i class="fas fa-edit"></i>
-                              </a>
-                              @endcan
-                              @can('permission', 'templates.delete')
-                              <form action="{{ route('sms-templates.destroy', $template->id) }}" method="POST" class="d-inline">
-                                 @csrf
-                                 @method('DELETE')
-                                 <button type="submit" class="btn btn-danger btn-sm" onclick="confirmDelete(event)">
-                                    <i class="far fa-trash-alt"></i>
-                                 </button>
-                              </form>
-                              @endcan
-                           </td>
-                        </tr>
-                        @endforeach
-
-                        @if($templates->isEmpty())
-                        <tr>
-                           <td colspan="7" class="text-center text-muted py-4">
-                              <i class="fas fa-file-alt fa-2x mb-2"></i>
-                              <p class="mb-0">No templates found.</p>
-                           </td>
-                        </tr>
-                        @endif
-                     </tbody>
-                  </table>
-               </div>
-            </div>
-         </div>
-      </div>
-   </div>
-</section>
+    <div class="crm-table-card crm-animate-in delay-1">
+        <div class="crm-table-header">
+            <div class="table-title"><i class="fas fa-list" style="color: var(--page-text-muted);"></i> All Templates <span class="table-count">{{ count($templates) }}</span></div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="crm-table">
+                <thead><tr><th style="width: 50px;">#</th><th>Name</th><th>Category</th><th>Body</th><th>Variables</th><th>Status</th><th style="width: 110px; text-align: center;">Actions</th></tr></thead>
+                <tbody>
+                    @forelse ($templates as $key => $template)
+                    <tr>
+                        <td style="color: var(--page-text-muted); font-size: 12px;">{{ ++$key }}</td>
+                        <td><span style="font-weight: 500;">{{ $template->name }}</span></td>
+                        <td>
+                            <span class="crm-status-badge badge-status-verified"><span class="dot"></span>{{ $template->category_label }}</span>
+                        </td>
+                        <td style="font-size: 12px; color: var(--page-text-secondary); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ Str::limit($template->body, 80) }}</td>
+                        <td>
+                            @php $vars = is_array($template->variables) ? $template->variables : json_decode($template->getRawOriginal('variables'), true) ?? []; @endphp
+                            @if($vars)
+                                @foreach($vars as $var)
+                                    @php $tag = '{{' . $var . '}}'; @endphp
+                                    <span style="display: inline-block; background: var(--accent-50); color: var(--accent-600); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: monospace; margin: 2px;">{{ $tag }}</span>
+                                @endforeach
+                            @else
+                                <span style="color: var(--page-text-muted);">—</span>
+                            @endif
+                        </td>
+                        <td>@if($template->is_active)<span class="crm-status-badge badge-status-won"><span class="dot"></span>Active</span>@else<span class="crm-status-badge badge-status-lost"><span class="dot"></span>Inactive</span>@endif</td>
+                        <td><div class="crm-actions">@can('permission', 'templates.edit')<a href="{{ route('sms-templates.edit', $template->id) }}" class="action-btn btn-edit" title="Edit"><i class="fas fa-pen"></i></a>@endcan @can('permission', 'templates.delete')<form action="{{ route('sms-templates.destroy', $template->id) }}" method="POST" style="display:inline;">@csrf @method('DELETE')<button type="submit" class="action-btn btn-delete" title="Delete" onclick="confirmDelete(event)"><i class="far fa-trash-alt"></i></button></form>@endcan</div></td>
+                    </tr>
+                    @empty
+                    <tr><td colspan="7" style="text-align: center; padding: 40px !important; color: var(--page-text-muted);"><i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 12px; color: var(--gray-300);"></i>No templates found.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 @endsection

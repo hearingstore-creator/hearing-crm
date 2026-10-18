@@ -13,36 +13,13 @@ class CheckPermission
      */
     public function handle($request, Closure $next, $permission)
     {
-        $user = auth()->user();
-
         if (!auth()->check()) {
             // Redirect to login for unauthenticated users
             return redirect()->route('login');
         }
 
-        if ($user->isSuperAdmin()) {
-            return $next($request);
-        }
-
-        // Allow vendors to access purchase, product, sale, and doctor payment routes
-        if ($user->isVendor()) {
-            $allowedVendorPermissions = config('vendor.allowed_permissions', []);
-
-            if (in_array($permission, $allowedVendorPermissions)) {
-                return $next($request);
-            }
-        }
-
-        // Allow professionals to access appointment and related routes
-        if ($user->isProfessional()) {
-            $allowedProfessionalPermissions = config('professional.allowed_permissions', []);
-
-            if (in_array($permission, $allowedProfessionalPermissions)) {
-                return $next($request);
-            }
-        }
-
-        if (!$user->hasPermission($permission)) {
+        // Super Admin, branch / professional permission lists, then role permissions (see User::hasAccess)
+        if (!auth()->user()->hasAccess($permission)) {
             abort(403, 'Unauthorized');
         }
 

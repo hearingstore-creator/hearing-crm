@@ -443,7 +443,7 @@ class MembershipLoyaltyReportExport implements FromCollection, WithHeadings, Wit
         }
 
         if (!empty($this->filters['vendor_id']) && !empty($this->vendorName)) {
-            $filters[] = 'Vendor: ' . $this->vendorName;
+            $filters[] = 'Branch: ' . $this->vendorName;
         }
 
         if (!empty($this->filters['points_status'])) {

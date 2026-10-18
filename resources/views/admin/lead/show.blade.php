@@ -1,562 +1,503 @@
 @extends('admin.layouts.master')
+@section('page_title', 'Lead Details')
+@section('breadcrumb_parent', 'Leads')
+@section('breadcrumb_parent_url', url('admin/leads'))
+
 @push('css')
   <link rel="stylesheet" href="{{ asset('assets/plugins/select2/css/select2.min.css') }}">
-  <style>
-    .info-label {
-      font-weight: 600;
-      color: #495057;
-    }
-    .info-value {
-      color: #212529;
-    }
-    .section-title {
-      border-bottom: 2px solid #007bff;
-      padding-bottom: 8px;
-      margin-bottom: 15px;
-    }
-  </style>
+  <link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
 @endpush
 
 @section('content')
+<div class="container-fluid" style="padding: 0 24px;">
 
-<!-- Main content -->
-<section class="content pt-3">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-md-12">
+    {{-- Page Header --}}
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-id-card" style="color: var(--accent-500); margin-right: 8px;"></i>Lead Details</h1>
+            <p>Viewing complete profile and journey for this lead</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url('admin/leads') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left mr-1"></i>Back to Leads
+            </a>
+            @can('permission', 'proposals.create')
+                <a href="{{ route('proposal.create', ['lead_id' => $lead->id]) }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-file-invoice mr-1"></i>Create Quotation
+                </a>
+            @endcan
+            @if ($lead->lead_status != 'won')
+                @can('permission', 'lead_list.edit')
+                    <a href="{{ route('leads.edit', $lead->id) }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-pen mr-1"></i>Edit Lead
+                    </a>
+                @endcan
+            @endif
+        </div>
+    </div>
 
-        <div class="card card-outline card-primary">
-          <div class="card-header">
-            <div class="row">
-              <div class="col-md-6">
-                <h5>Lead Details - {{ $lead->lead_uid }} </h5>
-              </div>
-              <div class="col-md-6 text-right">
-                @if ($lead->lead_status != 'won')
-                  @can('permission', 'lead_list.edit')
-                      <a href="{{ route('leads.edit', $lead->id) }}"
-                          class="btn btn-success btn-sm"> 
-                          <i class="fas fa-edit"></i> Edit
-                      </a>
-                  @endcan
-                @endif  
-              </div>
-            </div>
-          </div>
+    @include('admin.alert_message')
 
-          <div class="m-3">
-              <label class="font-weight-bold">Profile Completion</label>
-              
-              <div class="progress" style="height: 22px;border-radius: 20px;">
-                  <div class="progress-bar" role="progressbar"
-                      style="
-                        width: {{ $lead->profileCompletion() }}%;
-                        border-radius: 20px;
-                        background: linear-gradient(45deg, #007bff, #00d4ff);
-                      ">
-                      <strong>{{ $lead->profileCompletion() }}%</strong>
-                  </div>
-              </div>
-          </div>
-
-
-          @include('admin.alert_message')
-
-          <div class="card-body">
-            <!-- Lead Status Badge -->
-            <div class="row mb-3">
-              <div class="col-md-12">
-                <div class="alert alert-info">
-                  <div class="row">
-                    <div class="col-md-6">
-                      <strong>Status:</strong> 
-                      <span class="badge badge-{{ $lead->status_color }} badge-lg">
-                        {{ $lead->status_label }}
-                      </span>
+    {{-- Hero Card --}}
+    <div class="crm-hero-card crm-animate-in delay-1">
+        <div class="crm-hero-top">
+            <div class="crm-hero-identity">
+                <div class="crm-hero-avatar">{{ strtoupper(substr($lead->full_name, 0, 1)) }}</div>
+                <div class="crm-hero-info">
+                    <h2>{{ $lead->full_name }}</h2>
+                    <div class="crm-hero-meta">
+                        <span><i class="fas fa-hashtag"></i> {{ $lead->lead_uid ?? 'â€”' }}</span>
+                        <span><i class="fas fa-phone"></i> {{ $lead->phone_number }}</span>
+                        @if($lead->email)
+                            <span><i class="fas fa-envelope"></i> {{ $lead->email }}</span>
+                        @endif
+                        <span class="crm-status-badge lead-stage-badge" id="lead-stage-badge" style="--stage: {{ $lead->status_color }};">
+                            <span class="dot"></span>
+                            {{ $lead->status_label }}
+                        </span>
                     </div>
-                    <div class="col-md-6 text-right">
-                      <strong>Created:</strong> {{ $lead->created_at->format('d M Y, h:i A') }}<br>
-                      <strong>Last Updated:</strong> {{ $lead->updated_at->diffForHumans() }}
-                    </div>
-                  </div>
                 </div>
-              </div>
             </div>
 
-             <!-- Lead Journey Section -->
-            <h6 class="section-title text-primary"><i class="fas fa-route mr-2"></i>Lead Journey</h6>
+            {{-- Profile Completion Ring --}}
+            @php $completion = $lead->profileCompletion(); @endphp
+            <div style="display: flex; align-items: center; gap: var(--space-4);">
+                <div class="completion-ring">
+                    <svg width="60" height="60" viewBox="0 0 60 60">
+                        <circle class="ring-bg" cx="30" cy="30" r="25" />
+                        <circle class="ring-progress" cx="30" cy="30" r="25"
+                            stroke-dasharray="{{ 2 * 3.14159 * 25 }}"
+                            stroke-dashoffset="{{ 2 * 3.14159 * 25 * (1 - $completion / 100) }}" />
+                    </svg>
+                    <span class="ring-text">{{ $completion }}%</span>
+                </div>
+                <div>
+                    <div style="font-size: var(--font-size-xs); color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Profile</div>
+                    <div style="font-size: var(--font-size-sm); color: var(--page-text); font-weight: 500;">Completion</div>
+                </div>
+            </div>
+        </div>
 
-            <!-- Status Pipeline -->
-            <div style="overflow-x: auto;">
-              <div style="display: flex; align-items: center; justify-content: flex-start; padding: 25px 15px; min-width: max-content; background: #f8f9fa; border-radius: 10px;">
-                @foreach($leadJourney as $index => $step)
-                  @php
-                    $borderColor  = $step['is_current'] ? '#2563eb' : ($step['is_reached'] ? '#93c5fd' : '#e5e7eb');
-                    $bgColor      = $step['is_current'] ? '#2563eb' : ($step['is_reached'] ? '#eff6ff' : '#ffffff');
-                    $iconColor    = $step['is_current'] ? '#ffffff' : ($step['is_reached'] ? '#2563eb' : '#d1d5db');
-                    $textColor    = $step['is_current'] ? '#ffffff' : ($step['is_reached'] ? '#1e40af' : '#9ca3af');
-                    $fontWeight   = $step['is_current'] ? '700' : ($step['is_reached'] ? '600' : '400');
-                    $boxShadow    = $step['is_current'] ? '0 4px 15px rgba(37,99,235,0.3)' : '0 1px 4px rgba(0,0,0,0.05)';
-                    $opacity      = (!$step['is_reached'] && !$step['is_current']) ? '0.5' : '1';
-                  @endphp
-                  <div style="flex-shrink: 0; display: flex; align-items: center; opacity: {{ $opacity }};">
-                    <div style="
-                      border: 3px solid {{ $borderColor }};
-                      border-radius: 12px;
-                      padding: 15px 20px;
-                      text-align: center;
-                      background: {{ $bgColor }};
-                      min-width: 120px;
-                      box-shadow: {{ $boxShadow }};
-                      position: relative;
-                    ">
-                      <div style="font-size: 20px; color: {{ $iconColor }}; margin-bottom: 6px;">
+        {{-- Quick Meta Row --}}
+        <div style="display: flex; gap: var(--space-6); flex-wrap: wrap; padding-top: var(--space-4); border-top: 1px solid var(--card-border);">
+            <div>
+                <div style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Created</div>
+                <div style="font-size: var(--font-size-sm); font-weight: 500; color: var(--page-text);">{{ $lead->created_at->format('d M Y, h:i A') }}</div>
+            </div>
+            <div>
+                <div style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Last Updated</div>
+                <div style="font-size: var(--font-size-sm); font-weight: 500; color: var(--page-text);">{{ $lead->updated_at->diffForHumans() }}</div>
+            </div>
+            @if($lead->source_of_entry_label)
+            <div>
+                <div style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Source</div>
+                <div style="font-size: var(--font-size-sm); font-weight: 500; color: var(--page-text);">{{ $lead->source_of_entry_label }}</div>
+            </div>
+            @endif
+            @if($lead->lead_type_label)
+            <div>
+                <div style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Lead Type</div>
+                <div style="font-size: var(--font-size-sm); font-weight: 500; color: var(--page-text);">{{ $lead->lead_type_label }}</div>
+            </div>
+            @endif
+            @if($lead->vendor)
+            <div>
+                <div style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Branch</div>
+                <div style="font-size: var(--font-size-sm); font-weight: 500; color: var(--page-text);">{{ $lead->vendor->name ?? 'â€”' }}</div>
+            </div>
+            @endif
+            @if($lead->created_by)
+            <div>
+                <div style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Created By</div>
+                <div style="font-size: var(--font-size-sm); font-weight: 500; color: var(--page-text);">{{ optional($lead->creator)->name ?? 'â€”' }}</div>
+            </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- Lead Journey Pipeline --}}
+    <div class="crm-journey-card crm-animate-in delay-2">
+        <h5><i class="fas fa-route" style="color: var(--accent-500);"></i> Lead Journey</h5>
+        <div class="journey-pipeline">
+            @foreach($leadJourney as $index => $step)
+                @php
+                    $stepClass = $step['is_current'] ? 'current' : ($step['is_reached'] ? 'reached' : '');
+                @endphp
+                <div class="journey-step {{ $stepClass }}" style="--stage: {{ $step['color'] }};">
+                    <div class="journey-step-node">
                         <i class="{{ $step['icon'] }}"></i>
-                      </div>
-                      <div style="
-                        font-weight: {{ $fontWeight }};
-                        font-size: 12px;
-                        color: {{ $textColor }};
-                        line-height: 1.3;
-                      ">
-                        {{ $step['label'] }}
-                      </div>
-                      @if($step['is_reached'] && !$step['is_current'])
-                      <div style="margin-top: 6px;">
-                        <i class="fas fa-check-circle" style="color: #10b981; font-size: 14px;"></i>
-                      </div>
-                      @endif
                     </div>
-                    @if($index < $leadJourney->count() - 1)
-                    <div style="flex-shrink: 0; margin: 0 2px;">
-                      <i class="fas fa-chevron-right" style="color: {{ $step['is_reached'] ? '#93c5fd' : '#d1d5db' }}; font-size: 12px;"></i>
-                    </div>
-                    @endif
-                  </div>
-                @endforeach
-              </div>
-            </div>
-
-            <!-- Journey History Table -->
-            @if($lead->statusHistories->count() > 0)
-              <div class="mt-4">
-                <h6 class="text-muted"><i class="fas fa-list mr-2"></i>Journey History</h6>
-                <div class="table-responsive">
-                  <table class="table table-sm table-bordered">
-                    <thead class="thead-light">
-                      <tr>
-                        <th width="5%">#</th>
-                        <th width="20%">Date & Time</th>
-                        <th width="15%">From</th>
-                        <th width="15%">To</th>
-                        <th width="15%">Changed By</th>
-                        <th width="30%">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @foreach($lead->statusHistories as $index => $history)
-                      <tr>
-                        <td>{{ $index + 1 }}</td>
-                        <td>
-                          <strong>{{ $history->created_at->format('d M Y, h:i A') }}</strong>
-                        </td>
-                        <td>
-                          @if($history->from_status)
-                            <span class="badge badge-secondary">{{ $history->from_status_label }}</span>
-                          @else
-                            <span class="text-muted">-</span>
-                          @endif
-                        </td>
-                        <td>
-                          <span class="badge badge-{{ $history->to_status === 'won' ? 'success' : ($history->to_status === 'lost' ? 'danger' : 'primary') }}">
-                            {{ $history->to_status_label }}
-                          </span>
-                        </td>
-                        <td>
-                          @if($history->creator)
-                            <small>{{ $history->creator->name }}</small>
-                          @else
-                            <span class="text-muted">-</span>
-                          @endif
-                        </td>
-                        <td>
-                          <small>{{ $history->notes ?? '-' }}</small>
-                        </td>
-                      </tr>
-                      @endforeach
-                    </tbody>
-                  </table>
+                    <span class="journey-step-label">{{ $step['label'] }}</span>
                 </div>
-              </div>
-            @else
-              <div class="alert alert-warning mt-3">
-                <i class="fas fa-info-circle mr-2"></i> No journey history available for this lead.
-              </div>
-            @endif
+                @if($index < $leadJourney->count() - 1)
+                    <div class="journey-connector {{ $step['is_reached'] ? 'active' : '' }}"></div>
+                @endif
+            @endforeach
+        </div>
 
-            <!-- Personal Information -->
-            <h6 class="section-title text-primary"><i class="fas fa-user mr-2"></i>Personal Information</h6>
-            <div class="row mb-4">
-              <div class="col-md-6">
-                <table class="table table-sm table-borderless">
-                  <tr>
-                    <td width="40%" class="info-label">Full Name:</td>
-                    <td class="info-value">{{ $lead->full_name }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Email:</td>
-                    <td class="info-value">{{ $lead->email ?? 'N/A' }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Phone Number:</td>
-                    <td class="info-value">{{ $lead->phone_number }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Age:</td>
-                    <td class="info-value">{{ $lead->age ?? 'N/A' }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Gender:</td>
-                    <td class="info-value">{{ $lead->gender ? ucfirst($lead->gender) : 'N/A' }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">District:</td>
-                    <td class="info-value">{{ $lead->district->name ?? 'N/A' }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Address:</td>
-                    <td class="info-value">{{ $lead->address ?? 'N/A' }}</td>
-                  </tr>
-                </table>
-              </div>
-              <div class="col-md-6">
-                <table class="table table-sm table-borderless">
-                  <tr>
-                    <td width="40%" class="info-label">Contact Person:</td>
-                    <td class="info-value">{{ $lead->contact_person_name ?? 'N/A' }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Relation:</td>
-                    <td class="info-value">{{ $lead->relation ? ucfirst($lead->relation) : 'N/A' }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Contact Person Phone:</td>
-                    <td class="info-value">{{ $lead->contact_person_phone ?? 'N/A' }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Referred By:</td>
-                    <td class="info-value">{{ $lead->ref_by ?? 'N/A' }}</td>
-                  </tr>
-                </table>
-              </div>
-            </div>
-
-            <!-- Lead Details -->
-            <h6 class="section-title text-primary"><i class="fas fa-clipboard mr-2"></i>Lead Details</h6>
-            <div class="row mb-4">
-              <div class="col-md-6">
-                <table class="table table-sm table-borderless">
-                  <tr>
-                    <td width="40%" class="info-label">Lead Status:</td>
-                    <td class="info-value">
-                      <span class="badge bg-{{ $lead->status_color }}">{{ $lead->status_label }}</span>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Inquiry For:</td>
-                    <td class="info-value">
-                      {{ $lead->inquiry_for_label }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Interested Brand/Product:</td>
-                    <td class="info-value">{{ $lead->interest_brand_product ?? 'N/A' }}</td>
-                  </tr>
-                  <tr>
-                    <td class="info-label" style="vertical-align: top; padding-top: 12px;">Hearing Loss:</td>
-                    <td class="info-value">
-                      @if($hearingLoss)
-                        <div style="display: flex; gap: 14px; flex-wrap: wrap;">
-                          @foreach($hearingLoss as $item)
-                            <div style="
-                              flex: 1; min-width: 180px; max-width: 240px;
-                              border: 1px solid #dee2e6;
-                              border-radius: 10px; overflow: hidden;
-                              background: #f8f9fa;
-                            ">
-                              <div style="
-                                background: #6c757d; color: #fff;
-                                padding: 7px 12px; font-weight: 700; font-size: 13px;
-                                display: flex; align-items: center; gap: 6px;
-                              ">
-                                <i class="fas fa-ear-listen"></i>
-                                {{ $item['ear'] }} Ear
-                              </div>
-                              <div style="padding: 10px 12px;">
-                                <div style="font-size: 13px; margin-bottom: 4px;">
-                                  <span class="text-muted">Degree:</span>
-                                  <strong>{{ $item['degree'] }}</strong>
-                                </div>
-                                <div style="font-size: 13px;">
-                                  <span class="text-muted">Type:</span>
-                                  <strong>{{ $item['type'] }}</strong>
-                                </div>
-                              </div>
-                            </div>
-                          @endforeach
-                        </div>
-                      @else
-                        <span class="text-muted font-italic">No hearing loss data</span>
-                      @endif
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Approx Budget:</td>
-                    <td class="info-value">{{ $lead->approx_budget ? 'BDT ' . number_format($lead->approx_budget, 2) : 'N/A' }}</td>
-                  </tr>
-                </table>
-              </div>
-              <div class="col-md-6">
-                <table class="table table-sm table-borderless">
-                  <tr>
-                    <td width="40%" class="info-label">Source of Entry:</td>
-                    <td class="info-value">
-                      {{ $lead->source_of_entry_label }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="info-label">Lead Type:</td>
-                    <td class="info-value">
-                      {{ $lead->lead_type_label ?? 'N/A' }}
-                    </td>
-                  </tr>
-                </table>
-              </div>
-            </div>
-
-            <!-- Notes -->
-            @if($lead->notes)
-              <h6 class="section-title text-primary"><i class="fas fa-sticky-note mr-2"></i>Notes</h6>
-              <div class="alert alert-light">
-                {{ $lead->notes }}
-              </div>
-            @endif
-
-            <!-- Loss Details (if applicable) -->
-            @if($lead->lead_status === 'lost' && ($lead->loss_reason || $lead->loss_to_whom))
-              <div class="alert alert-danger">
-                <h6 class="text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Loss Details</h6>
-                <div class="row">
-                  <div class="col-md-6">
-                    <strong>Loss Reason:</strong><br>
-                    {{ $lead->loss_reason ?? 'N/A' }}
-                  </div>
-                  <div class="col-md-6">
-                    <strong>Lost to Whom:</strong><br>
-                    {{ $lead->loss_to_whom ?? 'N/A' }}
-                  </div>
-                </div>
-              </div>
-            @endif
-
-            <!-- Follow-ups Section -->
-            <h6 class="section-title text-primary mt-4"><i class="fas fa-calendar-check mr-2"></i>Follow-ups</h6>
-            
-            <!-- Add New Follow-up Button -->
-            <div class="mb-3">
-              <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addFollowUpModal">
-                <i class="fas fa-plus mr-1"></i> Add New Follow-up
-              </button>
-            </div>
-
-            @if($lead->followUps->count() > 0)
-              <div class="table-responsive">
-                <table class="table table-bordered table-hover">
-                  <thead class="thead-light">
-                    <tr>
-                      <th width="5%">#</th>
-                      <th width="15%">Date & Time</th>
-                      <th width="15%">Mode</th>
-                      <th width="30%">Remarks</th>
-                      <th width="15%">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @foreach($lead->followUps as $index => $followUp)
-                      <tr>
-                        <td>{{ $index + 1 }}</td>
-                        <td>
-                          <strong>{{ \Carbon\Carbon::parse($followUp->follow_up_date)->format('d M Y, h:i A') }}</strong><br>
-                        </td>
-                        <td>
-                         {{ $followUp->follow_up_mode_label }}
-                        </td>
-                        <td>
-                          <small>{{ $followUp->follow_up_notes ?? 'No remarks' }}</small>
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editFollowUpModal{{ $followUp->id }}">
-                              <i class="fas fa-edit"></i>
-                            </button>
-                        </td>
-                      </tr>
-
-                      <!-- Edit Follow-up Modal -->
-                      <div class="modal fade" id="editFollowUpModal{{ $followUp->id }}" tabindex="-1">
-                        <div class="modal-dialog">
-                          <div class="modal-content">
-                            <div class="modal-header">
-                              <h5 class="modal-title">Edit Follow-up</h5>
-                              <button type="button" class="close" data-dismiss="modal">&times;</button>
-                            </div>
-                            <form action="{{ url('admin/leads/follow-ups/' . $followUp->id) }}" method="POST">
-                              @csrf
-                              @method('PUT')
-                              <div class="modal-body">
-                                <div class="form-group">
-                                  <label>Follow-up Date <span class="text-danger">*</span></label>
-                                  <input type="datetime-local" name="follow_up_date" class="form-control" value="{{ \Carbon\Carbon::parse($followUp->follow_up_date)->format('Y-m-d H:i:s') }}" required>
-                                </div>
-                                <div class="form-group">
-                                  <label>Follow-up Mode <span class="text-danger">*</span></label>
-                                  <select name="follow_up_mode[]" class="form-control select" multiple required>
-                                    @foreach($followUpModes as $mode)
-                                      <option value="{{ $mode->value }}" {{ is_array($followUp->follow_up_mode) && in_array($mode->value, $followUp->follow_up_mode) ? 'selected' : '' }}>
-                                        {{ $mode->label() }}
-                                      </option>
-                                    @endforeach
-                                  </select>
-                                </div>
-                                <label for="assigned_user" class="col-sm-4 col-form-label">Assigned User:</label>
-                                <div class="form-group">
-                                    <select class="form-control select @error('assigned_user') is-invalid @enderror" name="assigned_user" id="assigned_user">
-                                        <option value="">Select</option>
-                                        @foreach($users as $user)
-                                            <option value="{{ $user->id }}" {{ $followUp->assigned_user == $user->id ? 'selected' : '' }}>
-                                            {{ $user->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('assigned_user')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
+        {{-- Journey History --}}
+        @if($lead->statusHistories->count() > 0)
+            <div style="margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--card-border);">
+                <h6 style="font-size: var(--font-size-xs); font-weight: 600; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-3);">
+                    <i class="fas fa-history mr-1"></i> Status History
+                </h6>
+                <div style="overflow-x: auto;">
+                    <table class="crm-table" style="min-width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">#</th>
+                                <th>Date & Time</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Changed By</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($lead->statusHistories as $index => $history)
+                            <tr>
+                                <td style="color: var(--page-text-muted);">{{ $index + 1 }}</td>
+                                <td style="font-weight: 500;">{{ $history->created_at->format('d M Y, h:i A') }}</td>
+                                <td>
+                                    @if($history->from_status)
+                                        <span class="crm-status-badge badge-status-{{ $history->from_status }}">
+                                            <span class="dot"></span>{{ ucfirst(str_replace('_', ' ', $history->from_status)) }}
+                                        </span>
+                                    @else
+                                        <span style="color: var(--page-text-muted);">â€”</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="crm-status-badge badge-status-{{ $history->to_status }}">
+                                        <span class="dot"></span>{{ ucfirst(str_replace('_', ' ', $history->to_status)) }}
                                     </span>
-                                    @enderror
-                                </div>
-                                <div class="form-group">
-                                  <label>Remarks</label>
-                                  <textarea name="follow_up_notes" class="form-control" rows="3">{{ $followUp->follow_up_notes }}</textarea>
-                                </div>
-                              </div>
-                              <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                <button type="submit" class="btn btn-primary">Update Follow-up</button>
-                              </div>
-                            </form>
-                          </div>
+                                </td>
+                                <td style="font-size: 12px;">{{ optional($history->creator)->name ?? 'â€”' }}</td>
+                                <td style="font-size: 12px; color: var(--page-text-secondary);">{{ $history->notes ?? 'â€”' }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+    </div>
+
+    {{-- Info Grid --}}
+    <div class="crm-info-grid crm-animate-in delay-3">
+
+        {{-- Personal Information --}}
+        <div class="crm-info-card">
+            <div class="crm-info-card-header">
+                <div class="info-icon" style="background: var(--accent-500);"><i class="fas fa-user"></i></div>
+                <h6>Personal Information</h6>
+            </div>
+            <div class="crm-info-card-body">
+                <div class="info-row">
+                    <span class="info-label">Full Name</span>
+                    <span class="info-value">{{ $lead->full_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone</span>
+                    <span class="info-value">{{ $lead->phone_number }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-value">{{ $lead->email ?? 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Age</span>
+                    <span class="info-value">{{ $lead->age ?? 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Gender</span>
+                    <span class="info-value">{{ $lead->gender ? ucfirst($lead->gender) : 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">District</span>
+                    <span class="info-value">{{ $lead->district->name ?? 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Address</span>
+                    <span class="info-value">{{ $lead->address ?? 'N/A' }}</span>
+                </div>
+            </div>
+        </div>
+
+        {{-- Contact Person --}}
+        <div class="crm-info-card">
+            <div class="crm-info-card-header">
+                <div class="info-icon" style="background: var(--gray-500);"><i class="fas fa-users"></i></div>
+                <h6>Contact Person</h6>
+            </div>
+            <div class="crm-info-card-body">
+                <div class="info-row">
+                    <span class="info-label">Name</span>
+                    <span class="info-value">{{ $lead->contact_person_name ?? 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Relation</span>
+                    <span class="info-value">{{ $lead->relation ? ucfirst($lead->relation) : 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone</span>
+                    <span class="info-value">{{ $lead->contact_person_phone ?? 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Referred By</span>
+                    <span class="info-value">{{ $lead->ref_by ?? 'N/A' }}</span>
+                </div>
+            </div>
+        </div>
+
+        {{-- Lead Details --}}
+        <div class="crm-info-card">
+            <div class="crm-info-card-header">
+                <div class="info-icon" style="background: #7C3AED;"><i class="fas fa-clipboard-list"></i></div>
+                <h6>Lead Details</h6>
+            </div>
+            <div class="crm-info-card-body">
+                <div class="info-row">
+                    <span class="info-label">Inquiry For</span>
+                    <span class="info-value">{{ $lead->inquiry_for_label ?: 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Interested Product</span>
+                    <span class="info-value">{{ $lead->interest_brand_product ?? 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Approx Budget</span>
+                    <span class="info-value">{{ $lead->approx_budget ? 'à§³ ' . number_format($lead->approx_budget, 2) : 'N/A' }}</span>
+                </div>
+
+                {{-- Hearing Loss Visual --}}
+                @if($hearingLoss)
+                    <div style="margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--table-border);">
+                        <div style="font-size: 11px; font-weight: 600; color: #7C3AED; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-3);">
+                            <i class="fas fa-ear-listen mr-1"></i> Hearing Loss
                         </div>
-                      </div>
-                    @endforeach
-                  </tbody>
-                </table>
-              </div>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            @foreach($hearingLoss as $item)
+                                <div style="flex: 1; min-width: 160px; background: var(--table-header-bg); border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden;">
+                                    <div style="background: #7C3AED; color: #fff; padding: 8px 12px; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                                        <i class="fas fa-ear-listen"></i> {{ $item['ear'] }} Ear
+                                    </div>
+                                    <div style="padding: 10px 12px;">
+                                        <div style="font-size: 12px; margin-bottom: 4px;">
+                                            <span style="color: var(--page-text-muted);">Degree:</span>
+                                            <strong style="color: var(--page-text);">{{ $item['degree'] }}</strong>
+                                        </div>
+                                        <div style="font-size: 12px;">
+                                            <span style="color: var(--page-text-muted);">Type:</span>
+                                            <strong style="color: var(--page-text);">{{ $item['type'] }}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Notes & Loss Details --}}
+        <div class="crm-info-card">
+            <div class="crm-info-card-header">
+                <div class="info-icon" style="background: var(--warning-500);"><i class="fas fa-sticky-note"></i></div>
+                <h6>Notes & Additional Info</h6>
+            </div>
+            <div class="crm-info-card-body">
+                @if($lead->notes)
+                    <div style="background: var(--table-header-bg); border-radius: 8px; padding: var(--space-4); margin-bottom: var(--space-3); font-size: var(--font-size-sm); color: var(--page-text-secondary); line-height: 1.6;">
+                        {{ $lead->notes }}
+                    </div>
+                @else
+                    <div style="color: var(--page-text-muted); font-size: var(--font-size-sm); font-style: italic;">No notes added</div>
+                @endif
+
+                @if($lead->lead_status === 'lost' && ($lead->loss_reason || $lead->loss_to_whom))
+                    <div style="background: var(--danger-50); border: 1px solid rgba(239,68,68,0.2); border-radius: 10px; padding: var(--space-4); margin-top: var(--space-4);">
+                        <div style="font-size: 11px; font-weight: 600; color: var(--danger-600); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-3);">
+                            <i class="fas fa-exclamation-triangle mr-1"></i> Loss Details
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label" style="color: var(--danger-500);">Loss Reason</span>
+                            <span class="info-value">{{ $lead->loss_reason ?? 'N/A' }}</span>
+                        </div>
+                        <div class="info-row" style="border-bottom: none;">
+                            <span class="info-label" style="color: var(--danger-500);">Lost to Whom</span>
+                            <span class="info-value">{{ $lead->loss_to_whom ?? 'N/A' }}</span>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- Communication Timeline (SMS + Follow-ups + Appointments) --}}
+    @include('admin.partials.communication-timeline', ['timelineItems' => $timelineItems])
+
+    {{-- Activities (same engine as the Deals board: schedule, one-tap call results, auto next step) --}}
+    <div class="crm-info-card crm-animate-in delay-4 lp-acts" id="lead-activities" style="margin-bottom: var(--space-6);">
+        <div class="crm-info-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+                <div class="info-icon" style="background: var(--success-500);"><i class="fas fa-bolt"></i></div>
+                <h6>Activities</h6>
+                <span class="lp-acts-count">{{ $pendingActivities->count() }} pending</span>
+                @if($openDeal && $openDeal->stage)
+                    <span class="lp-acts-stage" style="--stage: {{ $openDeal->stage->color ?? '#6366f1' }};">{{ $openDeal->stage->name }}</span>
+                @endif
+            </div>
+            @can('permission', 'deal_board.index')
+                <a href="{{ url('admin/deals') }}" class="btn btn-secondary btn-sm" id="lp-open-board"><i class="fas fa-columns mr-1"></i>Deals Board</a>
+            @endcan
+        </div>
+        <div class="crm-info-card-body">
+            @if(!$openDeal)
+                <div class="lp-acts-empty">
+                    <i class="fas fa-handshake"></i>
+                    This lead has no open deal. Activities are planned on deals, so open or reopen a deal from the Deals Board.
+                </div>
             @else
-              <div class="alert alert-warning">
-                <i class="fas fa-info-circle mr-2"></i> No follow-ups scheduled yet.
-              </div>
+                @forelse($pendingActivities as $act)
+                    @php
+                        $type = $act->activity_type instanceof \App\Enums\ActivityType ? $act->activity_type : \App\Enums\ActivityType::tryFrom((string) $act->activity_type) ?? \App\Enums\ActivityType::TASK;
+                        $due = \Carbon\Carbon::parse($act->follow_up_date);
+                        $isCall = in_array($type, [\App\Enums\ActivityType::CALL, \App\Enums\ActivityType::WHATSAPP], true);
+                    @endphp
+                    <div class="lp-act {{ $due->isPast() ? 'is-overdue' : ($due->isToday() ? 'is-today' : '') }}" id="lp-act-{{ $act->id }}">
+                        <div class="lp-act-icon"><i class="{{ $type->icon() }}"></i></div>
+                        <div class="lp-act-main">
+                            <div class="lp-act-title">
+                                {{ $type->label() }}
+                                <span class="lp-act-due"><i class="far fa-clock mr-1"></i>{{ $due->format('d M, h:i A') }}{{ $due->isPast() ? ' Â· overdue' : '' }}</span>
+                                @if($act->assignedUser)<span class="lp-act-who"><i class="fas fa-user mr-1"></i>{{ $act->assignedUser->name }}</span>@endif
+                            </div>
+                            @if($act->follow_up_notes)<div class="lp-act-note">{{ $act->follow_up_notes }}</div>@endif
+                            @if($canWorkDeal)
+                                <div class="lp-act-actions">
+                                    @if($isCall)
+                                        @foreach(\App\Enums\CallOutcome::cases() as $res)
+                                            <button type="button" class="lp-chip js-lp-result" data-id="{{ $act->id }}" data-result="{{ $res->value }}" id="lp-res-{{ $act->id }}-{{ $res->value }}">
+                                                <i class="{{ $res->icon() }}"></i>{{ $res->label() }}
+                                            </button>
+                                        @endforeach
+                                        <input type="datetime-local" class="lp-callback d-none" id="lp-cb-{{ $act->id }}">
+                                    @else
+                                        <button type="button" class="lp-chip lp-chip-done js-lp-done" data-id="{{ $act->id }}" id="lp-done-{{ $act->id }}"><i class="fas fa-check"></i>Done</button>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <div class="lp-acts-empty"><i class="fas fa-calendar-plus"></i>Nothing planned. Add the next step below so this lead is not forgotten.</div>
+                @endforelse
+
+                @if($canWorkDeal)
+                    <form class="lp-act-form" id="lp-act-form">
+                        <select name="activity_type" class="form-control" id="lp-act-type">
+                            @foreach(\App\Enums\ActivityType::cases() as $t)
+                                <option value="{{ $t->value }}">{{ $t->label() }}</option>
+                            @endforeach
+                        </select>
+                        <input type="datetime-local" name="due_at" class="form-control" id="lp-act-due" value="{{ now()->addHour()->format('Y-m-d\TH:i') }}">
+                        <select name="assigned_user" class="form-control" id="lp-act-user">
+                            <option value="">Deal owner</option>
+                            @foreach($users as $u)
+                                <option value="{{ $u->id }}">{{ $u->name }}</option>
+                            @endforeach
+                        </select>
+                        <input type="text" name="note" class="form-control lp-act-note-input" id="lp-act-note" maxlength="1000" placeholder="Note (optional)">
+                        <label class="lp-act-donechk"><input type="checkbox" name="done" value="1" id="lp-act-done"> Already done</label>
+                        <button type="submit" class="btn btn-primary btn-sm" id="lp-act-save"><i class="fas fa-plus mr-1"></i>Add</button>
+                    </form>
+                @endif
             @endif
-          </div>
         </div>
-      </div>
     </div>
-  </div>
-</section>
 
-<!-- Add Follow-up Modal -->
-<div class="modal fade" id="addFollowUpModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add New Follow-up</h5>
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-      </div>
-      <form action="{{ url('admin/leads/' . $lead->id . '/follow-ups') }}" method="POST">
-        @csrf
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Follow-up Date <span class="text-danger">*</span></label>
-            <input type="datetime-local" name="follow_up_date" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label>Follow-up Mode <span class="text-danger">*</span></label>
-            <select name="follow_up_mode[]" class="form-control select" multiple required>
-              @foreach($followUpModes as $mode)
-                <option value="{{ $mode->value }}">{{ $mode->label() }}</option>
-              @endforeach
-            </select>
-          </div>
-
-          <label for="assigned_user" class="col-sm-4 col-form-label">Assigned User:</label>
-          <div class="form-group">
-            <select class="form-control select @error('assigned_user') is-invalid @enderror" name="assigned_user" id="assigned_user">
-                <option value="">Select</option>
-                @foreach($users as $user)
-                    <option value="{{ $user->id }}" {{ old('assigned_user') == $user->id ? 'selected' : '' }}>
-                    {{ $user->name }}
-                    </option>
-                @endforeach
-            </select>
-            @error('assigned_user')
-            <span class="invalid-feedback" role="alert">
-                <strong>{{ $message }}</strong>
-            </span>
-            @enderror
-          </div>
-          
-          <div class="form-group">
-            <label>Remarks</label>
-            <textarea name="follow_up_notes" class="form-control" rows="3"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-success">Add Follow-up</button>
-        </div>
-      </form>
-    </div>
-  </div>
 </div>
 
 @endsection
 
+@push('css')
+<style>
+  .lp-acts-count { background: var(--success-50); color: var(--success-600); font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px; }
+  .lp-acts-stage { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px; color: var(--stage); border: 1px solid var(--stage); }
+  .lp-acts-empty { text-align: center; padding: 22px; color: var(--page-text-muted); font-size: 13px; }
+  .lp-acts-empty i { display: block; font-size: 26px; margin-bottom: 8px; opacity: .5; }
+  .lp-act { display: flex; gap: 12px; padding: 12px; border: 1px solid var(--card-border); border-left: 3px solid var(--accent-500, #6366f1); border-radius: 10px; margin-bottom: 10px; background: var(--card-bg); transition: transform .15s, box-shadow .15s; }
+  .lp-act:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.06); }
+  .lp-act.is-overdue { border-left-color: var(--danger-500, #ef4444); }
+  .lp-act.is-today { border-left-color: var(--warning-500, #f59e0b); }
+  .lp-act-icon { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 50%; display: grid; place-items: center; background: var(--table-header-bg); color: var(--accent-500, #6366f1); }
+  .lp-act-main { flex: 1; min-width: 0; }
+  .lp-act-title { font-weight: 600; font-size: 13px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--page-text); }
+  .lp-act-due, .lp-act-who { font-weight: 500; font-size: 11px; color: var(--page-text-muted); }
+  .lp-act.is-overdue .lp-act-due { color: var(--danger-500, #ef4444); }
+  .lp-act-note { font-size: 12px; color: var(--page-text-muted); margin-top: 4px; }
+  .lp-act-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  .lp-chip { border: 1px solid var(--card-border); background: var(--card-bg); color: var(--page-text); font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; transition: all .15s; }
+  .lp-chip:hover { border-color: var(--accent-500, #6366f1); color: var(--accent-500, #6366f1); }
+  .lp-chip-done:hover { border-color: var(--success-500); color: var(--success-600); }
+  .lp-chip:disabled { opacity: .5; cursor: wait; }
+  .lp-callback { font-size: 12px; padding: 3px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-bg); color: var(--page-text); }
+  .lp-act-form { display: grid; grid-template-columns: 150px 190px 160px 1fr auto auto; gap: 8px; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--card-border); }
+  .lp-act-form .form-control { height: 34px; font-size: 13px; }
+  .lp-act-donechk { margin: 0; font-size: 12px; white-space: nowrap; color: var(--page-text-muted); }
+  @media (max-width: 992px) { .lp-act-form { grid-template-columns: 1fr 1fr; } }
+</style>
+@endpush
+
 @push('scripts')
   <script src="{{ asset('assets/plugins/select2/js/select2.full.min.js') }}"></script>
-
-<script>
-    $('.select').select2({
+  <script>
+    $(document).ready(function() {
+      $('.select').select2({
         width: '100%'
       });
-  function completeFollowUp(followUpId) {
-    if (confirm('Mark this follow-up as completed?')) {
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = `/admin/follow-ups/${followUpId}/complete`;
-      
-      const csrfToken = document.createElement('input');
-      csrfToken.type = 'hidden';
-      csrfToken.name = '_token';
-      csrfToken.value = '{{ csrf_token() }}';
-      
-      const methodInput = document.createElement('input');
-      methodInput.type = 'hidden';
-      methodInput.name = '_method';
-      methodInput.value = 'PATCH';
-      
-      form.appendChild(csrfToken);
-      form.appendChild(methodInput);
-      document.body.appendChild(form);
-      form.submit();
-    }
-  }
-</script>
+
+      var csrf = '{{ csrf_token() }}';
+      var base = '{{ url('admin/deals') }}';
+      function notify(msg, ok) {
+        if (window.toastr) { ok ? toastr.success(msg) : toastr.error(msg); } else { alert(msg); }
+      }
+      function post(url, data, $btn) {
+        $btn && $btn.prop('disabled', true);
+        return $.ajax({ url: url, method: 'POST', data: data, headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } })
+          .done(function (r) {
+            notify(r.message || 'Saved.', true);
+            if (r.suggest_lost) { notify('This looks lost. Mark the deal Lost from the Deals Board.', false); }
+            setTimeout(function () { location.reload(); }, 700);
+          })
+          .fail(function (x) {
+            var e = x.responseJSON || {};
+            notify(e.errors ? Object.values(e.errors)[0][0] : (e.message || 'Something went wrong.'), false);
+            $btn && $btn.prop('disabled', false);
+          });
+      }
+
+      // One-tap call results ("Call back" asks for a time first)
+      $(document).on('click', '.js-lp-result', function () {
+        var $b = $(this), id = $b.data('id'), result = $b.data('result'), data = { result: result };
+        if (result === 'call_back') {
+          var $cb = $('#lp-cb-' + id);
+          if ($cb.hasClass('d-none') || !$cb.val()) { $cb.removeClass('d-none').focus(); notify('Pick the call-back time, then tap Call back again.', false); return; }
+          data.callback_at = $cb.val();
+        }
+        post(base + '/activities/' + id + '/complete', data, $b);
+      });
+      $(document).on('click', '.js-lp-done', function () {
+        post(base + '/activities/' + $(this).data('id') + '/complete', {}, $(this));
+      });
+
+      // Add activity / log note
+      $('#lp-act-type').on('change', function () { $('#lp-act-due').toggle(this.value !== 'note'); }).trigger('change');
+      $('#lp-act-form').on('submit', function (e) {
+        e.preventDefault();
+        post(base + '/{{ $openDeal->id ?? 0 }}/activities', $(this).serialize(), $('#lp-act-save'));
+      });
+    });
+  </script>
 @endpush

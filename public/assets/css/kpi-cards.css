@@ -1,0 +1,51 @@
+/* ==========================================================================
+   Shared KPI summary cards (light tinted) – used on module index pages
+   Matches the dashboard KPI style.
+   ========================================================================== */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.kpi-row.kpi-tight { gap: 12px; }
+.kpi-row-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--page-text-muted, #94a3b8); margin: 0 0 8px 2px; display: flex; align-items: center; gap: 6px; }
+
+.kpi {
+    --c: #6366f1; --bg: rgba(99,102,241,.07); --bd: rgba(99,102,241,.2); --tx: #4338ca;
+    position: relative; display: flex; gap: 14px; align-items: flex-start;
+    padding: 16px 18px; border-radius: 14px; background: var(--bg); border: 1px solid var(--bd);
+    text-decoration: none !important; color: var(--page-text, #1e293b); overflow: hidden;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    animation: kpiUp .4s ease both;
+}
+a.kpi:hover { transform: translateY(-2px); box-shadow: 0 10px 22px -12px var(--c); color: var(--page-text, #1e293b); }
+.kpi::after { content: ''; position: absolute; right: -28px; top: -28px; width: 96px; height: 96px; border-radius: 50%; background: var(--c); opacity: .07; pointer-events: none; }
+.kpi.active { border-color: var(--c); box-shadow: 0 0 0 2px var(--bd); }
+.kpi .k-ic { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; background: var(--c); color: #fff; box-shadow: 0 6px 14px -6px var(--c); }
+.kpi .k-body { min-width: 0; }
+.kpi .k-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--tx); opacity: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .k-val { font-size: 22px; font-weight: 800; line-height: 1.2; margin-top: 2px; color: var(--page-text, #1e293b); white-space: nowrap; }
+.kpi .k-sub { font-size: 11.5px; color: var(--page-text-secondary, #64748b); margin-top: 3px; }
+.kpi .k-sub b { color: var(--tx); }
+.kpi .k-go { position: absolute; right: 14px; bottom: 10px; font-size: 11px; color: var(--tx); opacity: 0; transition: opacity .15s; }
+a.kpi:hover .k-go { opacity: .9; }
+
+.kpi.k-indigo { --c: #6366f1; --bg: rgba(99,102,241,.07);  --bd: rgba(99,102,241,.2);  --tx: #4338ca; }
+.kpi.k-green  { --c: #10b981; --bg: rgba(16,185,129,.07);  --bd: rgba(16,185,129,.2);  --tx: #047857; }
+.kpi.k-blue   { --c: #3b82f6; --bg: rgba(59,130,246,.07);  --bd: rgba(59,130,246,.2);  --tx: #1d4ed8; }
+.kpi.k-amber  { --c: #f59e0b; --bg: rgba(245,158,11,.08);  --bd: rgba(245,158,11,.22); --tx: #b45309; }
+.kpi.k-rose   { --c: #f43f5e; --bg: rgba(244,63,94,.07);   --bd: rgba(244,63,94,.2);   --tx: #be123c; }
+.kpi.k-violet { --c: #8b5cf6; --bg: rgba(139,92,246,.07);  --bd: rgba(139,92,246,.2);  --tx: #6d28d9; }
+.kpi.k-teal   { --c: #14b8a6; --bg: rgba(20,184,166,.07);  --bd: rgba(20,184,166,.2);  --tx: #0f766e; }
+.kpi.k-sky    { --c: #0ea5e9; --bg: rgba(14,165,233,.07);  --bd: rgba(14,165,233,.2);  --tx: #0369a1; }
+.kpi.k-orange { --c: #f97316; --bg: rgba(249,115,22,.07);  --bd: rgba(249,115,22,.2);  --tx: #c2410c; }
+.kpi.k-slate  { --c: #64748b; --bg: rgba(100,116,139,.07); --bd: rgba(100,116,139,.2); --tx: #334155; }
+
+/* compact variant for secondary rows (e.g. membership tiers) */
+.kpi.kpi-sm { padding: 12px 14px; gap: 12px; border-radius: 12px; }
+.kpi.kpi-sm .k-ic { width: 34px; height: 34px; border-radius: 10px; font-size: 14px; }
+.kpi.kpi-sm .k-val { font-size: 18px; }
+
+@keyframes kpiUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 576px) { .kpi-row { grid-template-columns: 1fr 1fr; } .kpi .k-val { font-size: 18px; } }
+
+/* Dark theme: slightly stronger tints for contrast */
+[data-theme="dark"] .kpi, .dark-mode .kpi { --bg: color-mix(in srgb, var(--c) 12%, transparent); }
+[data-theme="dark"] .kpi .k-lbl, .dark-mode .kpi .k-lbl,
+[data-theme="dark"] .kpi .k-sub b, .dark-mode .kpi .k-sub b { color: var(--c); }

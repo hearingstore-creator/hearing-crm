@@ -11,6 +11,7 @@ use App\Enums\TaskPriority;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 
 class TaskController extends Controller
 {
@@ -23,7 +24,7 @@ class TaskController extends Controller
     {
         $this->middleware('permission:task_list.index')->only(['index']);
         $this->middleware('permission:add_task.create')->only(['create', 'store']);
-        $this->middleware('permission:task_list.edit')->only(['edit', 'update']);
+        $this->middleware('permission:task_list.edit')->only(['edit', 'update', 'updateStatus']);
         $this->middleware('permission:task_list.delete')->only(['destroy']);
     }
 
@@ -76,6 +77,13 @@ class TaskController extends Controller
             });
         }
 
+        if ($request->boolean('open_only')) {
+            $query->whereNotIn('status', ['completed', 'cancelled']);
+        }
+        if ($request->boolean('overdue')) {
+            $query->whereNotIn('status', ['completed', 'cancelled'])->whereDate('due_date', '<', today());
+        }
+
         $data['tasks'] = $query->latest()->paginate(20);
         $data['customers'] = Customer::with('lead')->orderBy('id', 'desc')->get();
         $data['users'] = User::select('id', 'name')->orderBy('id', 'desc')->get();
@@ -84,6 +92,19 @@ class TaskController extends Controller
 
         // Preserve filter parameters in pagination
         $data['tasks']->appends($request->all());
+
+        // Summary cards
+        $byStatus = Task::selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status');
+        $data['taskStats'] = [
+            'total' => (int) $byStatus->sum(),
+            'pending' => (int) (($byStatus['pending'] ?? 0) + ($byStatus['in_progress'] ?? 0)),
+            'in_progress' => (int) ($byStatus['in_progress'] ?? 0),
+            'completed' => (int) ($byStatus['completed'] ?? 0),
+            'cancelled' => (int) ($byStatus['cancelled'] ?? 0),
+            'overdue' => Task::whereNotIn('status', ['completed', 'cancelled'])->whereDate('due_date', '<', today())->count(),
+            'due_today' => Task::whereNotIn('status', ['completed', 'cancelled'])->whereDate('due_date', today())->count(),
+            'mine_open' => Task::where('assigned_to', auth()->id())->whereNotIn('status', ['completed', 'cancelled'])->count(),
+        ];
 
         return view('admin.task.index', $data);
     }
@@ -181,6 +202,26 @@ class TaskController extends Controller
         }
 
         return redirect()->back()->with('warning', 'Task not updated')->withInput();
+    }
+
+    /**
+     * Quick status update (used by dashboard Daily Lookout).
+     *
+     * @param Request $request
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function updateStatus(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'status' => 'required|in:' . implode(',', array_column(TaskStatus::cases(), 'value')),
+        ]);
+
+        $task = Task::findOrFail($id);
+        $task->status = $request->status;
+        $task->save();
+
+        return response()->json(['success' => true, 'message' => 'Task status updated']);
     }
 
     /**

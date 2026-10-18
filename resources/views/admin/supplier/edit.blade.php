@@ -1,159 +1,136 @@
 @extends('admin.layouts.master')
-
+@section('page_title', 'Edit Supplier')
+@push('css')
+<link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
+@endpush
 @section('content')
-<!-- Main content -->
-<section class="content pt-3">
-   <div class="container-fluid">
-      <div class="row">
-         <div class="col-md-12">
-            <div class="card card-outline card-primary">
-               <div class="card-header">
-                  <div class="row">
-                     <div class="col-md-6">
-                        <h5>Edit Supplier</h5>
-                     </div>
-                     @can('permission', 'supplier_list.index')
-                     <div class="col-md-6 text-right">
-                        <a href="{{ url('admin/suppliers') }}" class="btn-primary btn-cs-primary btn-sm">
-                           <i class="fas fa-align-justify mr-1"></i>Supplier List
-                        </a>
-                     </div>
-                     @endcan
-                  </div>
-               </div>
-
-               @include('admin.alert_message')
-
-               <div class="card-body">
-                  <form action="{{ route('suppliers.update', $supplier->id) }}" enctype="multipart/form-data" method="post">
-                     @csrf
-                     @method('put')
-                     <div class="row">
-                        <div class="col-md-6">
-                           <div class="form-group row">
-                              <label for="supplier_name" class="col-sm-4 col-form-label">
-                                 Supplier Name <i class="text-danger">*</i>:
-                              </label>
-                              <div class="col-sm-8">
-                                 <input type="text" class="form-control" id="supplier_name" name="supplier_name" value="{{ $supplier->supplier_name }}" placeholder="Supplier Name" autocomplete="off" required>
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="phone" class="col-sm-4 col-form-label">Phone :</label>
-                              <div class="col-sm-8">
-                                 <input type="text" class="form-control" id="phone" name="phone" value="{{ $supplier->phone }}" placeholder="Phone">
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="address1" class="col-sm-4 col-form-label">Address 1:</label>
-                              <div class="col-sm-8">
-                                 <textarea class="form-control" id="address1" name="address1">{{ $supplier->address1 }}</textarea>
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="email1" class="col-sm-4 col-form-label">Email Address 1:</label>
-                              <div class="col-sm-8">
-                                 <input type="email" class="form-control" id="email1" name="email1" value="{{ $supplier->email1 }}" placeholder="Email Address 1">
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="state" class="col-sm-4 col-form-label">State:</label>
-                              <div class="col-sm-8">
-                                 <input type="text" class="form-control" id="state" name="state" value="{{ $supplier->state }}" placeholder="State">
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="country" class="col-sm-4 col-form-label">Country:</label>
-                              <div class="col-sm-8">
-                                 <input type="text" class="form-control" id="country" name="country" value="{{ $supplier->country }}" placeholder="Country">
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="status" class="col-sm-4 col-form-label">
-                                 Status <i class="text-danger">*</i>:
-                              </label>
-                              <div class="col-sm-8">
-                                 <label class="radio-inline my-2">
-                                    <input type="radio" name="status" value="1" {{ $supplier->status == 1 ? 'checked' : '' }}> Active
-                                 </label>
-                                 <label class="radio-inline my-2 ml-3">
-                                    <input type="radio" name="status" value="0" {{ $supplier->status == 0 ? 'checked' : '' }}> Inactive
-                                 </label>
-                              </div>
-                           </div>
-                        </div>
-
-                        <div class="col-md-6">
-                           <div class="form-group row">
-                              <label for="mobile_no" class="col-sm-4 col-form-label">
-                                 Mobile No <i class="text-danger">*</i>:
-                              </label>
-                              <div class="col-sm-8">
-                                 <input type="text" class="form-control" id="mobile_no" name="mobile_no" value="{{ $supplier->mobile_no }}" placeholder="Mobile No" autocomplete="off" required>
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="fax" class="col-sm-4 col-form-label">Fax:</label>
-                              <div class="col-sm-8">
-                                 <input type="text" class="form-control" id="fax" name="fax" value="{{ $supplier->fax }}" placeholder="Fax">
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="address2" class="col-sm-4 col-form-label">Address 2:</label>
-                              <div class="col-sm-8">
-                                 <textarea class="form-control" id="address2" name="address2">{{ $supplier->address2 }}</textarea>
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="email2" class="col-sm-4 col-form-label">Email Address 2:</label>
-                              <div class="col-sm-8">
-                                 <input type="email" class="form-control" id="email2" name="email2" value="{{ $supplier->email2 }}" placeholder="Email Address 2">
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="city" class="col-sm-4 col-form-label">City:</label>
-                              <div class="col-sm-8">
-                                 <input type="text" class="form-control" id="city" name="city" value="{{ $supplier->city }}" placeholder="City">
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="zip" class="col-sm-4 col-form-label">Zip:</label>
-                              <div class="col-sm-8">
-                                 <input type="text" class="form-control" id="zip" name="zip" value="{{ $supplier->zip }}" placeholder="Zip">
-                              </div>
-                           </div>
-
-                           <div class="form-group row">
-                              <label for="previous_balance" class="col-sm-4 col-form-label">Previous Balance:</label>
-                              <div class="col-sm-8">
-                                 <input type="text" class="form-control" id="previous_balance" name="previous_balance" placeholder="Previous Balance">
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-
-                     <div class="form-group row">
-                        <div class="col-md-6"></div>
-                        <div class="col-md-6 text-right">
-                           <button type="submit" class="btn btn-success">Update</button>
-                        </div>
-                     </div>
-                  </form>
-               </div>
+<div class="container-fluid" style="padding: 0 24px;">
+    <div class="crm-page-header crm-animate-in">
+        <div class="page-title-group">
+            <h1><i class="fas fa-truck" style="color: var(--accent-500); margin-right: 8px;"></i>Edit Supplier</h1>
+            <p>Update supplier information</p>
+        </div>
+        <div class="header-actions">
+            @can('permission', 'supplier_list.index')
+            <a href="{{ url('admin/suppliers') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i>Supplier List</a>
+            @endcan
+        </div>
+    </div>
+    @include('admin.alert_message')
+    <form action="{{ route('suppliers.update', $supplier->id) }}" enctype="multipart/form-data" method="post">
+        @csrf
+        @method('put')
+        <div class="crm-form-section crm-animate-in delay-1">
+            <div class="crm-form-section-header">
+                <div class="section-icon" style="background: var(--accent-500);"><i class="fas fa-truck"></i></div>
+                <h6>Supplier Information</h6>
             </div>
-         </div>
-      </div>
-   </div>
-</section>
+            <div class="crm-form-section-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="supplier_name">Supplier Name <span style="color: var(--danger-500);">*</span></label>
+                            <input type="text" class="form-control" id="supplier_name" name="supplier_name" value="{{ $supplier->supplier_name }}" placeholder="Supplier Name" autocomplete="off" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="mobile_no">Mobile No <span style="color: var(--danger-500);">*</span></label>
+                            <input type="text" class="form-control" id="mobile_no" name="mobile_no" value="{{ $supplier->mobile_no }}" placeholder="Mobile No" autocomplete="off" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="phone">Phone</label>
+                            <input type="text" class="form-control" id="phone" name="phone" value="{{ $supplier->phone }}" placeholder="Phone">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="fax">Fax</label>
+                            <input type="text" class="form-control" id="fax" name="fax" value="{{ $supplier->fax }}" placeholder="Fax">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="email1">Email Address 1</label>
+                            <input type="email" class="form-control" id="email1" name="email1" value="{{ $supplier->email1 }}" placeholder="Email Address 1">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="email2">Email Address 2</label>
+                            <input type="email" class="form-control" id="email2" name="email2" value="{{ $supplier->email2 }}" placeholder="Email Address 2">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="address1">Address 1</label>
+                            <textarea class="form-control" id="address1" name="address1" rows="2">{{ $supplier->address1 }}</textarea>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="address2">Address 2</label>
+                            <textarea class="form-control" id="address2" name="address2" rows="2">{{ $supplier->address2 }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="city">City</label>
+                            <input type="text" class="form-control" id="city" name="city" value="{{ $supplier->city }}" placeholder="City">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="state">State</label>
+                            <input type="text" class="form-control" id="state" name="state" value="{{ $supplier->state }}" placeholder="State">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="country">Country</label>
+                            <input type="text" class="form-control" id="country" name="country" value="{{ $supplier->country }}" placeholder="Country">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="zip">Zip</label>
+                            <input type="text" class="form-control" id="zip" name="zip" value="{{ $supplier->zip }}" placeholder="Zip">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="previous_balance">Previous Balance</label>
+                            <input type="text" class="form-control" id="previous_balance" name="previous_balance" placeholder="Previous Balance">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Status <span style="color: var(--danger-500);">*</span></label>
+                            <div class="mt-1">
+                                <label class="radio-inline my-2"><input type="radio" name="status" value="1" {{ $supplier->status == 1 ? 'checked' : '' }}> Active</label>
+                                <label class="radio-inline my-2 ml-3"><input type="radio" name="status" value="0" {{ $supplier->status == 0 ? 'checked' : '' }}> Inactive</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="crm-form-submit-bar">
+            <a href="{{ url('admin/suppliers') }}" class="btn btn-secondary btn-sm">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i>Update</button>
+        </div>
+    </form>
+</div>
 @endsection

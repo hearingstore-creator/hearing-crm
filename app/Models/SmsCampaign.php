@@ -22,6 +22,10 @@ class SmsCampaign extends Model
         'failed_count',
         'status',
         'sent_at',
+        'create_follow_up',
+        'follow_up_days',
+        'follow_up_assigned_user',
+        'follow_up_mode',
     ];
 
     protected $casts = [

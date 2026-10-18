@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hearing Store – Website Consultation Form Integration</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 18mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Nirmala UI", Arial, sans-serif; color: #0f172a; font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  .cover { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 3px solid transparent;
+           border-image: linear-gradient(90deg, #dd3333, #f59e0b 35%, #10b981 70%, #14b8a6) 1; margin-bottom: 18px; }
+  .cover img { height: 40px; }
+  .cover .meta { text-align: right; font-size: 9pt; color: #64748b; }
+  .hero { background: linear-gradient(135deg, #047857, #059669 40%, #10b981 75%, #14b8a6); color: #fff; border-radius: 14px; padding: 18px 22px; margin-bottom: 18px; }
+  .hero h1 { margin: 0 0 4px; font-size: 20pt; }
+  .hero p { margin: 0; opacity: .95; }
+  h2 { font-size: 13.5pt; color: #047857; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #d1fae5; break-after: avoid; }
+  h3 { font-size: 11pt; margin: 14px 0 6px; break-after: avoid; }
+  p { margin: 6px 0; }
+  ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
+  code { font-family: Consolas, monospace; font-size: 9.3pt; background: #ecfdf5; color: #065f46; padding: 1px 5px; border-radius: 4px; }
+  pre { font-family: Consolas, monospace; font-size: 9pt; background: #0f172a; color: #e2e8f0; padding: 10px 12px; border-radius: 8px; white-space: pre-wrap; word-break: break-all; margin: 8px 0; break-inside: avoid; }
+  pre code { background: none; color: inherit; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 9.5pt; break-inside: avoid; }
+  th { background: #ecfdf5; color: #065f46; text-align: left; padding: 6px 8px; border: 1px solid #d1fae5; }
+  td { padding: 6px 8px; border: 1px solid #e2e8f0; vertical-align: top; }
+  .note { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 8px 12px; border-radius: 6px; margin: 8px 0; }
+  .ok { background: #ecfdf5; border-left: 4px solid #10b981; padding: 8px 12px; border-radius: 6px; margin: 8px 0; }
+  ol { padding-left: 20px; } 
+  .foot { margin-top: 24px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 8.5pt; color: #94a3b8; text-align: center; }
+  section { break-inside: auto; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <img src="../public/assets/img/hearing-store-logo.png" alt="Hearing Store">
+  <div class="meta">For: Website developer (hearingstore.com.bd)<br>Last updated: 14 Oct 2026</div>
+</div>
+
+<div class="hero">
+  <h1>Website Consultation Form Integration</h1>
+  <p>Add the Hearing Store "Free Consultation" popup to the WordPress site. Five minutes, one script tag.</p>
+</div>
+
+<h2>1. What this is</h2>
+<p>A hosted lead form that runs on the CRM server (<code>https://crm.zenhear.com</code>) and opens as a <b>popup on the WordPress site</b>. Visitors never leave the page, and each submission goes straight into the CRM as a lead, deal and follow-up for the team.</p>
+<ul>
+  <li>No plugin, no API key and no secret are needed on the website.</li>
+  <li>One <code>&lt;script&gt;</code> tag adds a <b>floating button (bottom-right)</b> and makes any <code>#crm-lead-form</code> link open the popup.</li>
+  <li>The existing <b>WhatsApp button stays on the left</b>; this button sits on the right.</li>
+</ul>
+<table>
+  <tr><th style="width:32%">Item</th><th>Value</th></tr>
+  <tr><td>Popup script</td><td><code>https://crm.zenhear.com/f/consultation/embed.js</code></td></tr>
+  <tr><td>Direct form link</td><td><code>https://crm.zenhear.com/f/consultation</code></td></tr>
+  <tr><td>Trigger link</td><td><code>#crm-lead-form</code> (or CSS class <code>crm-lead-popup</code>)</td></tr>
+  <tr><td>Fields</td><td>Name*, Mobile* (BD format), Interest (chips), Email, Message</td></tr>
+</table>
+
+<h2>2. Installation (5 minutes)</h2>
+<h3>Step 1 – Add the script once, site-wide (footer)</h3>
+<p>Use <b>WPCode</b> (Code Snippets → Header &amp; Footer → <i>Footer</i>) or the theme's footer hook:</p>
+<pre><code>&lt;script src="https://crm.zenhear.com/f/consultation/embed.js" data-label="Free Consultation" async&gt;&lt;/script&gt;</code></pre>
+<p>Theme alternative (<code>functions.php</code>):</p>
+<pre><code>add_action('wp_footer', function () {
+    echo '&lt;script src="https://crm.zenhear.com/f/consultation/embed.js" data-label="Free Consultation" async&gt;&lt;/script&gt;';
+});</code></pre>
+
+<h3>Step 2 – Connect the site buttons</h3>
+<p>Set the link of every "Free Consultation" / "Get Consultation" button to <code>#crm-lead-form</code></p>
+<table>
+  <tr><th style="width:32%">Editor</th><th>Where</th></tr>
+  <tr><td>Elementor</td><td>Button → Content → Link → <code>#crm-lead-form</code></td></tr>
+  <tr><td>Gutenberg</td><td>Button → Link → <code>#crm-lead-form</code></td></tr>
+  <tr><td>Menu</td><td>Appearance → Menus → Custom Link → URL <code>#crm-lead-form</code></td></tr>
+  <tr><td>Custom HTML</td><td><code>&lt;a href="#crm-lead-form"&gt;Free Consultation&lt;/a&gt;</code> or <code>&lt;button class="crm-lead-popup"&gt;…&lt;/button&gt;</code></td></tr>
+</table>
+<h3>Step 3 – Clear cache</h3>
+<p>Purge WP Rocket / LiteSpeed / Cloudflare cache after saving.</p>
+
+<h2>3. Options (attributes on the script tag)</h2>
+<table>
+  <tr><th style="width:28%">Attribute</th><th style="width:24%">Default</th><th>Effect</th></tr>
+  <tr><td><code>data-label="..."</code></td><td>Get free consultation</td><td>Floating button text (Bangla is fine, e.g. ফ্রি পরামর্শ)</td></tr>
+  <tr><td><code>data-button="false"</code></td><td>shown</td><td>Hide the floating button; only your own <code>#crm-lead-form</code> buttons open the popup</td></tr>
+  <tr><td><code>data-auto-open="20"</code></td><td>off</td><td>Open once per visit after N seconds (not again after it was opened or submitted)</td></tr>
+</table>
+<pre><code>&lt;script src="https://crm.zenhear.com/f/consultation/embed.js"
+        data-label="ফ্রি পরামর্শ" data-auto-open="25" async&gt;&lt;/script&gt;</code></pre>
+
+<h2>4. JavaScript API &amp; tracking</h2>
+<pre><code>CRMLeadForm.open();   // open the popup from your own code
+CRMLeadForm.close();  // close it</code></pre>
+<p><b>Conversion tracking:</b> after a successful submission the script pushes to Google Tag Manager:</p>
+<pre><code>window.dataLayer.push({ event: 'crm_lead_submitted' });</code></pre>
+<p>Create a GTM trigger on the custom event <code>crm_lead_submitted</code> for GA4 / Meta Pixel / Google Ads conversions.</p>
+<div class="ok"><b>Source tracking is automatic:</b> the page URL and any <code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code> are sent with the lead, so the CRM shows which page or campaign each lead came from. Keep UTM tags on ad links.</div>
+
+<h2>5. Behaviour (UX)</h2>
+<ul>
+  <li>Popup: centred card on desktop; slides up from the bottom on mobile.</li>
+  <li>Close: ✕ button, click outside, or <code>Esc</code>.</li>
+  <li>After submit: "Thank you" screen (English + Bangla) with a <b>Close</b> button; auto-closes after 8 s. The visitor stays on the same page.</li>
+  <li>Direct link (Facebook/SMS): full page with a <b>← Back to website</b> button (returns to the referring page, else hearingstore.com.bd).</li>
+  <li>Branding: Hearing Store logo, green gradient with a thin red brand accent.</li>
+  <li>Mobile number must be Bangladeshi (<code>01XXXXXXXXX</code>, <code>+8801…</code> accepted).</li>
+</ul>
+
+<h2>6. Security &amp; compatibility</h2>
+<ul>
+  <li><b>No secrets in the browser.</b> The form uses a signed time token, a honeypot field, rate limits and a blocklist on the CRM side. Spam is filtered automatically.</li>
+  <li>The form loads in an <b>iframe</b> from <code>crm.zenhear.com</code>. If the site sends a Content-Security-Policy, allow:</li>
+</ul>
+<pre><code>script-src  https://crm.zenhear.com;
+frame-src   https://crm.zenhear.com;</code></pre>
+<ul>
+  <li>Security plugins (Wordfence, iThemes) need no changes. Only strict CSP headers would block it.</li>
+  <li>Script is about 5 KB, loads <code>async</code>, needs no jQuery and does not block rendering.</li>
+  <li>Button/popup z-index is very high (<code>2147483000+</code>). If a chat widget sits bottom-right, move one of them.</li>
+</ul>
+<div class="note"><b>Please do not copy the form HTML into WordPress.</b> Always load the script, so design and logic updates from the CRM apply automatically.</div>
+
+<h2>7. Testing checklist</h2>
+<ol>
+  <li>Open the site in an incognito window → green button bottom-right, WhatsApp still on the left.</li>
+  <li>Click a page button linked to <code>#crm-lead-form</code> → popup opens.</li>
+  <li>Submit a test with a real BD number → "Thank you" → popup closes, same page.</li>
+  <li>Ask the CRM admin to confirm the lead in <b>Website Leads</b> and on the <b>Deals</b> board.</li>
+  <li>(If GTM used) check the <code>crm_lead_submitted</code> event in GTM Preview.</li>
+</ol>
+
+<h2>8. Troubleshooting</h2>
+<table>
+  <tr><th style="width:36%">Problem</th><th>Fix</th></tr>
+  <tr><td>Button not showing</td><td>Clear all caches; confirm the script is in the page source (footer); check the browser console for CSP errors</td></tr>
+  <tr><td>Popup opens but is blank</td><td>CSP <code>frame-src</code> is blocking <code>crm.zenhear.com</code></td></tr>
+  <tr><td><code>#crm-lead-form</code> jumps to top</td><td>Script not loaded on that page, or the page builder rewrote the link. Use class <code>crm-lead-popup</code> instead</td></tr>
+  <tr><td>"Please enter a valid mobile number"</td><td>Only Bangladeshi mobile numbers are accepted</td></tr>
+  <tr><td>Overlaps another widget</td><td>Use <code>data-button="false"</code> with page buttons, or move the other widget</td></tr>
+</table>
+
+<h2>9. Future domain change</h2>
+<p>The CRM will later move from <code>crm.zenhear.com</code> to a final domain. Only the domain in the <code>&lt;script src="..."&gt;</code> tag will change, and the old address will redirect for a transition period.</p>
+<p><b>Contact:</b> Hearing Store CRM admin, for form changes, new forms (other landing pages can have their own form/link) or lead questions.</p>
+
+<div class="foot">Hearing Store · Reliable hearing care in Bangladesh · hearingstore.com.bd</div>
+</body>
+</html>

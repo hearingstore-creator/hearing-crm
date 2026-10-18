@@ -27,12 +27,46 @@ class Supplier extends Model
         'status'
     ];
 
+    public function getManufacturerNameAttribute(): ?string
+    {
+        return $this->supplier_name;
+    }
+
+    public function getNameAttribute(): ?string
+    {
+        return $this->supplier_name;
+    }
+
     /**
      * Get the ledger entries for the supplier.
      */
     public function ledgers()
     {
         return $this->hasMany(SupplierLedger::class);
+    }
+
+    /**
+     * Get the purchase invoices for the supplier.
+     */
+    public function purchases()
+    {
+        return $this->hasMany(PurchaseMaster::class, 'supplier_id');
+    }
+
+    /**
+     * Get the branch/vendor associated with this supplier.
+     */
+    public function vendor()
+    {
+        return $this->belongsTo(User::class, 'vendor_id');
+    }
+
+    /**
+     * Alias for vendor relation.
+     */
+    public function branch()
+    {
+        return $this->belongsTo(User::class, 'vendor_id');
     }
 
     /**

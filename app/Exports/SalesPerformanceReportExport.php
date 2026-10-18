@@ -124,7 +124,7 @@ class SalesPerformanceReportExport implements FromCollection, WithHeadings, With
     private function getGroupLabel(): string
     {
         return match($this->filters['group_by'] ?? 'vendor') {
-            'vendor' => 'Vendor',
+            'vendor' => 'Branch',
             'staff' => 'Staff',
             'product' => 'Product Model',
             'doctor' => 'Doctor',
@@ -486,7 +486,7 @@ class SalesPerformanceReportExport implements FromCollection, WithHeadings, With
         }
 
         if (!empty($this->filters['vendor_id']) && !empty($this->vendorName)) {
-            $filters[] = 'Vendor: ' . $this->vendorName;
+            $filters[] = 'Branch: ' . $this->vendorName;
         }
 
         return !empty($filters) ? implode(' | ', $filters) : 'All Data';

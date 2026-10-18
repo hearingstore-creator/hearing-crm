@@ -89,7 +89,7 @@
                                                 <select class="form-control select" name="customer_id" required>
                                                     <option value="">Select Customer</option>
                                                     @foreach ($customers ?? [] as $customer)
-                                                        <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+                                                        <option value="{{ $customer->id }}" {{ old('customer_id', request('customer_id')) == $customer->id ? 'selected' : '' }}>
                                                             {{ $customer->lead->full_name }}
                                                         </option>
                                                     @endforeach

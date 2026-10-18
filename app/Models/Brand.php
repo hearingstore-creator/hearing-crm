@@ -10,4 +10,9 @@ class Brand extends Model
 {
     use HasFactory, HelperTrait;
     protected $fillable = ['brand_name', 'status'];
+
+    public function getManufacturerNameAttribute(): ?string
+    {
+        return $this->brand_name;
+    }
 }

@@ -70,7 +70,7 @@ $(function() {
             totalPurchasePrice += amt;
         });
 
-        $('.sub-total').val(totalPurchasePrice);
+        $('.sub-total').val(totalPurchasePrice.toFixed(2));
         var vat = parseFloat($('.vat').val());
         var discount = parseFloat($('.discount').val());
         if (isNaN(discount)) {
@@ -79,12 +79,53 @@ $(function() {
         if (isNaN(vat)) {
             vat = 0;
         }
-        $('.grand-total').val(totalPurchasePrice + vat - discount);
         var grandTotal = totalPurchasePrice + vat - discount;
-        var paid = parseFloat($('.paid-amount').val());
-        var due = grandTotal - paid;
-        $('.due-amount').val(due);
+        $('.grand-total').val(grandTotal.toFixed(2));
+
+        var paymentType = $('#payment_type_id').val();
+        if (paymentType === '4') {
+            $('.paid-amount').val('0.00').prop('readonly', true);
+            $('.due-amount').val(grandTotal.toFixed(2));
+        } else {
+            $('.paid-amount').prop('readonly', false);
+            var paid = parseFloat($('.paid-amount').val());
+            if (isNaN(paid)) {
+                paid = 0;
+            }
+            var due = grandTotal - paid;
+            $('.due-amount').val(due.toFixed(2));
+        }
     }
+
+    // Payment Type change handler
+    $('#payment_type_id').on('change', function() {
+        var type = $(this).val();
+        if (type === '4') { // Credit
+            $('.paid-amount').val('0.00').prop('readonly', true);
+            $('#purchase-bank-fields').slideUp(150);
+            $('#payment-type-note').html('<span class="text-info"><i class="fas fa-info-circle mr-1"></i><strong>Pure Credit Purchase:</strong> Stock arrives, full bill recorded as Accounts Payable to supplier. Cash/Bank ledger is <strong>NOT</strong> hit.</span>');
+        } else if (type === '1') { // Cash
+            $('.paid-amount').prop('readonly', false);
+            $('#purchase-bank-fields').slideUp(150);
+            $('#payment-type-note').html('<span class="text-success"><i class="fas fa-money-bill-wave mr-1"></i><strong>Cash Purchase:</strong> Amount in Paid box will be disbursed from Cash in Hand.</span>');
+        } else if (type === '2') { // Bank Deposit
+            $('.paid-amount').prop('readonly', false);
+            $('#purchase-bank-fields').slideDown(150);
+            $('#lbl-purchase-bank').text('Bank Name & Branch');
+            $('#lbl-purchase-ref').text('Cheque No / Deposit Slip No');
+            $('#payment-type-note').html('<span class="text-primary"><i class="fas fa-university mr-1"></i><strong>Bank Purchase:</strong> Amount in Paid box will be disbursed from Bank Account.</span>');
+        } else if (type === '3') { // Online Transfer
+            $('.paid-amount').prop('readonly', false);
+            $('#purchase-bank-fields').slideDown(150);
+            $('#lbl-purchase-bank').text('Bank / Transfer Platform');
+            $('#lbl-purchase-ref').text('EFT / RTGS / Transaction ID');
+            $('#payment-type-note').html('<span class="text-primary"><i class="fas fa-mobile-alt mr-1"></i><strong>Online Transfer:</strong> Amount in Paid box will be disbursed via Online Transfer.</span>');
+        } else {
+            $('#purchase-bank-fields').slideUp(150);
+            $('#payment-type-note').empty();
+        }
+        totalCalculation();
+    });
 
     
     // Handle VAT input changes

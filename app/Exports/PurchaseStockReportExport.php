@@ -85,7 +85,7 @@ class PurchaseStockReportExport implements FromCollection, WithHeadings, WithMap
     public function headings(): array
     {
         return [
-            ['Vendor', 'Product', 'Category', 'Brand', '', '', 'Qty Purchased', 'Purchase Value', 'Qty Sold', 'Stock Balance'],
+            ['Branch', 'Product', 'Category', 'Brand', '', '', 'Qty Purchased', 'Purchase Value', 'Qty Sold', 'Stock Balance'],
         ];
     }
 
@@ -353,7 +353,7 @@ class PurchaseStockReportExport implements FromCollection, WithHeadings, WithMap
         }
 
         if (!empty($this->filters['vendor_id']) && !empty($this->vendorName)) {
-            $filters[] = 'Vendor: ' . $this->vendorName;
+            $filters[] = 'Branch: ' . $this->vendorName;
         }
 
         if (!empty($this->filters['product_id']) && !empty($this->productName)) {
