@@ -569,7 +569,7 @@ class Helper
             $ledger->vendor_id = null;
         }
 
-        $ledger->invoice_no = $invoiceNo;
+        $ledger->invoice_no = self::freeLedgerInvoiceNo($invoiceNo);
         $ledger->date = $request->date;
         $ledger->details = $request->details;
         $ledger->expense_amount = $request->paid;
@@ -605,7 +605,7 @@ class Helper
             $ledger->vendor_id = null;
         }
 
-        $ledger->invoice_no = $invoiceNo;
+        $ledger->invoice_no = self::freeLedgerInvoiceNo($invoiceNo);
         $ledger->date = $request->date;
         $ledger->details = $request->details;
         $ledger->expense_amount = 0;
@@ -616,6 +616,20 @@ class Helper
         $ledger->save();
 
         return true;
+    }
+
+    /**
+     * Company ledger invoice numbers are time based (ymdhis) and unique; two entries in the same
+     * second would collide. Add -2, -3 ... until the number is free (soft-deleted rows count too).
+     */
+    public static function freeLedgerInvoiceNo(string $invoiceNo): string
+    {
+        $candidate = $invoiceNo;
+        for ($i = 2; DB::table('ledgers')->where('invoice_no', $candidate)->exists(); $i++) {
+            $candidate = $invoiceNo . '-' . $i;
+        }
+
+        return $candidate;
     }
 
     public static function hasPermission(string $permission): bool

@@ -28,6 +28,7 @@ use App\Models\Setting;
 use App\Models\Stock;
 use App\Models\User;
 use App\Services\MembershipService;
+use App\Services\LedgerReversal;
 use App\Services\StockGuard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -169,8 +170,8 @@ class SaleController extends Controller
                         $action .= '<a href="' . route('sale-returns.create', ['sale_invoice_no' => $row->sale_invoice_no]) . '" class="btn btn-warning btn-sm mr-1" title="Return / Credit Note"><i class="fas fa-undo-alt"></i></a>';
                     }
 
-                    if (Helper::hasPermission('sale_list.delete')) {
-                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" onsubmit="return confirmDelete(event)">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
+                    if (auth()->user()->isSuperAdmin()) {
+                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" onsubmit="return confirmCancelWithReason(event, \'this sale invoice\')">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
                     }
                     
                     $action .= '</div>';
@@ -1187,8 +1188,8 @@ class SaleController extends Controller
                         $action .= '<a href="' . route('sale.show', $row->sale_invoice_no) . '" class="btn btn-info btn-sm mr-1" title="Details"><i class="fas fa-eye"></i></a>';
                     }
                     $action .= '<a href="' . route('sale.pos-print', $row->sale_invoice_no) . '" class="btn btn-secondary btn-sm mr-1" target="_blank" title="POS Print"><i class="fas fa-print"></i></a>';
-                    if (Helper::hasPermission('sale_list.delete')) {
-                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" style="display:inline-block;" onsubmit="return confirmDelete(event)">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
+                    if (auth()->user()->isSuperAdmin()) {
+                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" style="display:inline-block;" onsubmit="return confirmCancelWithReason(event, \'this sale invoice\')">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
                     }
                     $action .= '</div>';
                     return $action;
@@ -1503,8 +1504,8 @@ class SaleController extends Controller
                         $action .= '<a href="' . route('sale-returns.create', ['sale_invoice_no' => $row->sale_invoice_no]) . '" class="btn btn-warning btn-sm mr-1" title="Return / Credit Note"><i class="fas fa-undo-alt"></i></a>';
                     }
                     
-                    if (Helper::hasPermission('sale_list.delete')) {
-                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" style="display:inline-block;" onsubmit="return confirmDelete(event)">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
+                    if (auth()->user()->isSuperAdmin()) {
+                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" style="display:inline-block;" onsubmit="return confirmCancelWithReason(event, \'this sale invoice\')">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
                     }
                     $action .= '</div>';
                     return $action;
@@ -1520,8 +1521,11 @@ class SaleController extends Controller
      * @param string $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function destroy(string $id): RedirectResponse
+    public function destroy(Request $request, string $id): RedirectResponse
     {
+        // Cancelling an invoice: Super Admin only, with a reason
+        $reason = LedgerReversal::reasonFrom($request);
+
         $saleMaster = $this->resolveSaleMaster($id);
 
         // Check if the user has access to this sale
@@ -1588,10 +1592,22 @@ class SaleController extends Controller
             SaleMaster::where('sale_invoice_no', $saleInvoiceNo)->delete();
             SaleDetail::where('sale_master_id', $realId)->delete();
             ServiceDetail::where('sale_master_id', $realId)->delete();
-            CustomerLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
             Stock::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
-            Ledger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
-            DoctorLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
+
+            // Money history is kept: patient, company and doctor ledger rows get reversal entries
+            $reversal = app(LedgerReversal::class);
+            $what = "Sale {$saleInvoiceNo}";
+            $sameInvoice = fn ($q) => $q->where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales);
+            $reversal->reverse('customer_ledgers', $sameInvoice, $reason, $what);
+            $reversal->reverse('ledgers', $sameInvoice, $reason, $what);
+            $reversal->reverse('doctor_ledgers', $sameInvoice, $reason, $what);
+            $reversal->log('sale_cancelled', $saleMaster, [
+                'sale_invoice_no' => $saleInvoiceNo,
+                'customer_id'     => $customerId,
+                'total_amount'    => $saleMaster->total_amount,
+                'paid'            => $saleMaster->paid,
+            ], $reason);
+
             // Delete membership upgrade history if customer's tier should be downgraded
             $this->handleMembershipTierDowngrade($customerId);
 
@@ -1599,10 +1615,10 @@ class SaleController extends Controller
         } catch (\Throwable $ex) {
             DB::rollback();
             Log::error("Sale delete failed for {$saleInvoiceNo}: " . $ex->getMessage());
-            return redirect()->back()->with('warning', 'The sale could not be deleted. Nothing was changed. Please try again or contact the administrator.');
+            return redirect()->back()->with('warning', 'The sale could not be cancelled. Nothing was changed. Please try again or contact the administrator.');
         }
 
-        return redirect()->back()->with('success', 'Deleted Successfully');
+        return redirect()->back()->with('success', "Sale {$saleInvoiceNo} cancelled. Its ledger entries were reversed, not deleted.");
     }
 
     /**

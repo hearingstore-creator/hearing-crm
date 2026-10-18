@@ -10,6 +10,7 @@ use App\Models\IncomeExpenseHead;
 use App\Models\Ledger;
 use App\Models\SaleMaster;
 use App\Models\Setting;
+use App\Services\LedgerReversal;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -223,6 +224,17 @@ class DoctorPaymentController extends Controller
 
         DB::beginTransaction();
         try {
+            // Never pay more than the commission still due (same sum as the due shown on the form)
+            DB::table('doctors')->where('id', $doctor->id)->lockForUpdate()->first();
+            $balances = DoctorLedger::where('doctor_id', $doctor->id)->selectRaw('SUM(credit) as cr, SUM(debit) as dr')->first();
+            $due = round(max(0, (float) ($balances->cr ?? 0) - (float) ($balances->dr ?? 0)), 2);
+            if ((float) $request->debit > $due + 0.009) {
+                DB::rollback();
+                return redirect()->back()->withInput()->withErrors([
+                    'debit' => 'Payment ৳' . number_format((float) $request->debit, 2) . ' is more than the commission due (৳' . number_format($due, 2) . ').',
+                ]);
+            }
+
             $voucherNo = 'DP-' . date('Ymd') . '-' . str_pad((string) (DoctorLedger::where('type', 'Payment')->count() + 1), 4, '0', STR_PAD_LEFT);
 
             // Construct meaningful details text
@@ -356,26 +368,33 @@ class DoctorPaymentController extends Controller
     /**
      * Remove the specified doctor payment and reverse general ledger expense.
      */
-    public function destroy(int $id): RedirectResponse
+    public function destroy(Request $request, int $id): RedirectResponse
     {
+        // Cancelling a payment: Super Admin only, with a reason; ledger rows are reversed, not deleted
+        $reason = LedgerReversal::reasonFrom($request);
         $payment = DoctorLedger::where('id', $id)->where('type', 'Payment')->firstOrFail();
 
         DB::beginTransaction();
         try {
-            // Delete corresponding entry in company ledgers
+            $reversal = app(LedgerReversal::class);
+            $what = 'Doctor payment ' . ($payment->ref_invoice_no ?: "#{$payment->id}");
+            $reversal->reverse('doctor_ledgers', fn ($q) => $q->where('id', $payment->id), $reason, $what);
             if (!empty($payment->ref_invoice_no)) {
-                Ledger::where('ref_invoice_no', $payment->ref_invoice_no)
-                    ->where('type', 'Doctor Payment')
-                    ->delete();
+                $reversal->reverse('ledgers', fn ($q) => $q->where('ref_invoice_no', $payment->ref_invoice_no)->where('type', 'Doctor Payment'), $reason, $what);
             }
-
-            $payment->delete();
+            $reversal->log('doctor_payment_cancelled', $payment, [
+                'doctor_id'      => $payment->doctor_id,
+                'amount'         => $payment->debit,
+                'date'           => $payment->date,
+                'ref_invoice_no' => $payment->ref_invoice_no,
+            ], $reason);
 
             DB::commit();
-            return redirect()->route('doctors.payment.index')->with('success', 'Doctor payment deleted and company ledger updated successfully.');
+            return redirect()->route('doctors.payment.index')->with('success', 'Doctor payment cancelled. Its ledger entries were reversed, not deleted.');
         } catch (\Throwable $e) {
             DB::rollback();
-            return redirect()->back()->with('warning', 'Error deleting payment: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Doctor payment cancel failed for #{$id}: " . $e->getMessage());
+            return redirect()->back()->with('warning', 'The payment could not be cancelled. Nothing was changed.');
         }
     }
 }

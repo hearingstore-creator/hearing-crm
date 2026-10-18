@@ -75,7 +75,7 @@
                             <div class="crm-actions">
                                 <a href="{{ route('suppliers.payment.slip', $payment->id) }}" class="action-btn btn-view" title="Print Payment Voucher" style="color: var(--accent-600);"><i class="fas fa-print"></i></a>
                                 @can('permission','supplier_payment.edit')<a href="{{ route('suppliers.payment.edit', $payment->id) }}" class="action-btn btn-edit" title="Edit"><i class="fas fa-pen"></i></a>@endcan
-                                @can('permission','supplier_payment.delete')<form action="{{ route('suppliers.payment.destroy', $payment->id) }}" method="POST" style="display:inline;">@csrf @method('DELETE')<button type="submit" class="action-btn btn-delete" title="Delete" onclick="confirmDelete(event)"><i class="far fa-trash-alt"></i></button></form>@endcan
+                                @if(auth()->user()->isSuperAdmin())<form action="{{ route('suppliers.payment.destroy', $payment->id) }}" method="POST" style="display:inline;">@csrf @method('DELETE')<button type="submit" class="action-btn btn-delete" title="Cancel payment" onclick="confirmCancelWithReason(event, 'this supplier payment')"><i class="far fa-trash-alt"></i></button></form>@endif
                             </div>
                         </td>
                     </tr>

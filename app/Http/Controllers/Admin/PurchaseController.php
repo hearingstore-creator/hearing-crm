@@ -13,6 +13,7 @@ use App\Models\PurchaseDetail;
 use App\Models\PurchaseMaster;
 use App\Models\Setting;
 use App\Models\Stock;
+use App\Services\LedgerReversal;
 use App\Services\StockGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -553,8 +554,11 @@ class PurchaseController extends Controller
      * @param string $purchaseInvoiceNo The purchase invoice number.
      * @return RedirectResponse
      */
-    public function destroy(int $id): RedirectResponse
+    public function destroy(Request $request, int $id): RedirectResponse
     {
+        // Cancelling a purchase bill: Super Admin only, with a reason
+        $reason = LedgerReversal::reasonFrom($request);
+
         $purchaseMaster = PurchaseMaster::findOrFail($id);
 
         // Check if the user has access to this purchase
@@ -574,19 +578,29 @@ class PurchaseController extends Controller
         try {
             $purchaseMaster->delete();
             PurchaseDetail::where('purchase_master_id', $id)->delete();
-            SupplierLedger::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
             Stock::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
-            Ledger::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
             Batch::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
+
+            // Money history is kept: supplier and company ledger rows get reversal entries
+            $reversal = app(LedgerReversal::class);
+            $what = "Purchase {$purchaseInvoiceNo}";
+            $sameInvoice = fn ($q) => $q->where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase);
+            $reversal->reverse('supplier_ledgers', $sameInvoice, $reason, $what);
+            $reversal->reverse('ledgers', $sameInvoice, $reason, $what);
+            $reversal->log('purchase_cancelled', $purchaseMaster, [
+                'purchase_invoice_no' => $purchaseInvoiceNo,
+                'supplier_id'         => $purchaseMaster->supplier_id,
+                'total_amount'        => $purchaseMaster->total_amount,
+            ], $reason);
 
             DB::commit();
         } catch (\Throwable $ex) {
             DB::rollback();
             Log::error("Purchase delete failed for {$purchaseInvoiceNo}: " . $ex->getMessage());
-            return redirect()->back()->with('warning', 'The purchase could not be deleted. Nothing was changed. Please try again or contact the administrator.');
+            return redirect()->back()->with('warning', 'The purchase could not be cancelled. Nothing was changed. Please try again or contact the administrator.');
         }
 
-        return redirect()->back()->with('success', 'Deleted Successfully');
+        return redirect()->back()->with('success', "Purchase {$purchaseInvoiceNo} cancelled. Its ledger entries were reversed, not deleted.");
     }
 
     /**

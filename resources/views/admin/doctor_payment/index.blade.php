@@ -205,15 +205,15 @@
                                 <a href="{{ route('doctors.payment.slip', $payment->id) }}" class="action-btn" title="Print Payment Voucher" style="color: #4f46e5;">
                                     <i class="fas fa-print"></i>
                                 </a>
-                                @can('permission','doctor_payment.delete')
+                                @if(auth()->user()->isSuperAdmin())
                                 <form action="{{ route('doctors.payment.destroy', $payment->id) }}" method="POST" style="display:inline;">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="action-btn btn-delete" title="Cancel/Delete Payment" onclick="confirmDelete(event)">
+                                    <button type="submit" class="action-btn btn-delete" title="Cancel payment" onclick="confirmCancelWithReason(event, 'this doctor payment')">
                                         <i class="far fa-trash-alt"></i>
                                     </button>
                                 </form>
-                                @endcan
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -234,13 +234,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-function confirmDelete(e) {
-    if (!confirm('Are you sure you want to delete this payment record? The corresponding entry in company ledger will also be reversed.')) {
-        e.preventDefault();
-    }
-}
-</script>
-@endpush

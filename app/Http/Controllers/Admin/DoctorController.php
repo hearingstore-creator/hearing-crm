@@ -443,6 +443,14 @@ class DoctorController extends Controller
     public function destroy(int $id): RedirectResponse
     {
         $doctor = Doctor::findOrFail($id);
+
+        // A doctor with referred sales or commission history stays, so statements and reports keep their name
+        $hasSales = DB::table('sale_masters')->where('reference_by', $doctor->id)->whereNull('deleted_at')->exists();
+        $hasLedger = DB::table('doctor_ledgers')->where('doctor_id', $doctor->id)->whereNull('deleted_at')->exists();
+        if ($hasSales || $hasLedger) {
+            return redirect()->back()->with('warning', "Cannot delete {$doctor->name}: this doctor has referred sales or commission history. Set the doctor to Inactive instead.");
+        }
+
         $doctor->delete();
 
         return redirect('/admin/doctor')->with('success', 'Deleted Successfully');

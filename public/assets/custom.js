@@ -12,6 +12,36 @@ function confirmDelete(event) {
     return false;
 }
 
+/**
+ * Asks for a cancellation reason before submitting an invoice / payment cancel form.
+ * The reason is sent as "reason"; the server reverses the ledger entries instead of deleting them.
+ * @param {Event} event The click event of the submit button.
+ * @param {string} what Short description shown in the prompt, e.g. "this sale".
+ */
+function confirmCancelWithReason(event, what) {
+    event.preventDefault();
+    var form = event.target.closest('form');
+    var reason = window.prompt('Cancel ' + (what || 'this record') + '?\n\nIts ledger entries will be reversed (kept in history), not deleted.\nPlease enter the reason:');
+    if (reason === null) {
+        return false;
+    }
+    reason = reason.trim();
+    if (reason.length < 5) {
+        alert('Please enter a clear reason (at least 5 characters).');
+        return false;
+    }
+    var input = form.querySelector('input[name="reason"]');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'reason';
+        form.appendChild(input);
+    }
+    input.value = reason;
+    form.submit();
+    return false;
+}
+
 $(document).ready(function($) {
     /**
      * Checks if a user has already seen the eBook modal.

@@ -294,16 +294,16 @@
                                             <i class="fas fa-pen"></i>
                                         </a>
                                     @endcan
-                                    @can('permission', 'sale_list.delete')
+                                    @if(auth()->user()->isSuperAdmin())
                                         <form action="{{ route('sale.destroy', $item->id) }}" method="POST" style="display:inline;">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="action-btn btn-delete" title="Delete"
-                                                onclick="confirmDelete(event)">
+                                            <button type="submit" class="action-btn btn-delete" title="Cancel invoice"
+                                                onclick="confirmCancelWithReason(event, 'this sale invoice')">
                                                 <i class="far fa-trash-alt"></i>
                                             </button>
                                         </form>
-                                    @endcan
+                                    @endif
                                     @endif
                                 </div>
                             </td>

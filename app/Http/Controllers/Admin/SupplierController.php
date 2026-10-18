@@ -8,11 +8,13 @@ use App\Models\Supplier;
 use App\Models\SupplierLedger;
 use App\Models\PurchaseMaster;
 use App\Models\Ledger;
+use App\Services\LedgerReversal;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SupplierController extends Controller
 {
@@ -608,27 +610,34 @@ class SupplierController extends Controller
      * @param int $id
      * @return RedirectResponse
      */
-    public function supplierPaymentDestroy(int $id): RedirectResponse
+    public function supplierPaymentDestroy(Request $request, int $id): RedirectResponse
     {
+        // Cancelling a payment: Super Admin only, with a reason; ledger rows are reversed, not deleted
+        $reason = LedgerReversal::reasonFrom($request);
+        $ledger = SupplierLedger::where('id', $id)->where('type', 'Payment')->firstOrFail();
+
         DB::beginTransaction();
         try {
-            $ledger = SupplierLedger::where('id', $id)->where('type', 'Payment')->first();
-
-            if ($ledger) {
-                // Also remove the cash/bank outflow from general ledger
-                if ($ledger->ref_invoice_no) {
-                    Ledger::where('ref_invoice_no', $ledger->ref_invoice_no)
-                        ->where('type', 'Supplier Payment')
-                        ->delete();
-                }
-                $ledger->delete();
+            $reversal = app(LedgerReversal::class);
+            $what = 'Supplier payment ' . ($ledger->ref_invoice_no ?: "#{$ledger->id}");
+            $reversal->reverse('supplier_ledgers', fn ($q) => $q->where('id', $ledger->id), $reason, $what);
+            if ($ledger->ref_invoice_no) {
+                // The cash/bank outflow in the company ledger
+                $reversal->reverse('ledgers', fn ($q) => $q->where('ref_invoice_no', $ledger->ref_invoice_no)->where('type', 'Supplier Payment'), $reason, $what);
             }
+            $reversal->log('supplier_payment_cancelled', $ledger, [
+                'supplier_id'    => $ledger->supplier_id,
+                'amount'         => $ledger->debit,
+                'date'           => $ledger->date,
+                'ref_invoice_no' => $ledger->ref_invoice_no,
+            ], $reason);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Payment Deleted Successfully');
-        } catch (\Exception $ex) {
+            return redirect()->back()->with('success', 'Payment cancelled. Its ledger entries were reversed, not deleted.');
+        } catch (\Throwable $ex) {
             DB::rollBack();
-            return redirect()->back()->with('warning', $ex->getMessage());
+            Log::error("Supplier payment cancel failed for #{$id}: " . $ex->getMessage());
+            return redirect()->back()->with('warning', 'The payment could not be cancelled. Nothing was changed.');
         }
     }
 

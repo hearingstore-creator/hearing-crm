@@ -619,10 +619,8 @@ class ProposalController extends Controller
             return redirect()->back()->with('warning', 'Please link a Patient / Customer to this proposal before converting to invoice.');
         }
 
-        // Redirect to Sale Create with pre-fill query parameters
-        $proposal->status = ProposalStatus::CONVERTED->value;
-        $proposal->save();
-
+        // Redirect to Sale Create with pre-fill query parameters.
+        // The proposal becomes Converted only when that sale is saved (SaleController@store links converted_sale_id).
         return redirect()->route('sale.create', [
             'from_proposal_id' => $proposal->id,
             'customer_id' => $customer->id,
@@ -635,19 +633,27 @@ class ProposalController extends Controller
     public function sendEmail(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'email' => 'required|email',
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string',
+            'message' => 'required|string|max:3000',
         ]);
 
-        $proposal = Proposal::with(['items', 'vendor', 'lead', 'customer'])->findOrFail($id);
+        $proposal = Proposal::with(['items', 'vendor', 'lead', 'customer.lead'])->findOrFail($id);
         $setting = Setting::first();
         $senderName = $proposal->vendor ? $proposal->vendor->name : ($setting->company_name ?? 'ZenHear Hearing Care');
 
+        // Only to the proposal's own patient email, with a fixed subject (not an open mail relay)
+        $recipient = $proposal->recipient_email_display;
+        if (!$recipient || $recipient === 'N/A' || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This proposal has no valid patient email. Add the email to the patient or proposal first.',
+            ], 422);
+        }
+        $subject = "Quotation {$proposal->proposal_no} from {$senderName}";
+
         try {
-            \Illuminate\Support\Facades\Mail::raw($request->input('message'), function ($message) use ($request, $senderName) {
-                $message->to($request->input('email'))
-                        ->subject($request->input('subject'));
+            \Illuminate\Support\Facades\Mail::raw($request->input('message'), function ($message) use ($recipient, $subject) {
+                $message->to($recipient)
+                        ->subject($subject);
             });
 
             // Mark proposal as Sent if it was draft
@@ -658,13 +664,13 @@ class ProposalController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Quotation email sent successfully to ' . $request->input('email') . '!',
+                'message' => 'Quotation email sent successfully to ' . $recipient . '!',
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Proposal email sending failed: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Proposal email sending failed for {$proposal->proposal_no}: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Could not send via system SMTP (' . $e->getMessage() . '). Please click "Open in Email App" to send via your local email client.',
+                'message' => 'The email could not be sent from the system. Please click "Open in Email App" to send it from your own email.',
             ], 422);
         }
     }

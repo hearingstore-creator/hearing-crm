@@ -179,16 +179,16 @@
                                             <i class="fas fa-pen"></i>
                                         </a>
                                     @endcan
-                                    @can('permission', 'purchase_list.delete')
+                                    @if(auth()->user()->isSuperAdmin())
                                         <form action="{{ route('purchase.destroy', $item->id) }}" method="POST" style="display:inline;">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="action-btn btn-delete" title="Delete"
-                                                onclick="confirmDelete(event)">
+                                            <button type="submit" class="action-btn btn-delete" title="Cancel purchase"
+                                                onclick="confirmCancelWithReason(event, 'this purchase bill')">
                                                 <i class="far fa-trash-alt"></i>
                                             </button>
                                         </form>
-                                    @endcan
+                                    @endif
                                     @endif
                                 </div>
                             </td>
