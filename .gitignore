@@ -49,3 +49,8 @@ storage/logs/*.log
 
 # Zip archives
 *.zip
+
+# Local-only files
+/scratch/
+/.claude/launch.json
+/public/file/setting/
