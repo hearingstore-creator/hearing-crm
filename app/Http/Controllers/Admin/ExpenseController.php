@@ -6,9 +6,11 @@ use App\Classes\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\IncomeExpenseHead;
 use App\Models\Ledger;
+use App\Services\LedgerReversal;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ExpenseController extends Controller
 {
@@ -73,11 +75,33 @@ class ExpenseController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function destroy(int $id): RedirectResponse
+    public function destroy(Request $request, int $id): RedirectResponse
     {
-        $ledger = Ledger::findOrFail($id);
-        $ledger->delete();
+        // Super Admin only, with a reason; the row is reversed, not deleted
+        $reason = LedgerReversal::reasonFrom($request);
 
-        return redirect('/admin/expense')->with('success', 'Deleted Successfully');
+        // Only expenses entered on this screen: sale income, purchase, supplier / doctor payments and
+        // refunds are cancelled from their own screens so their linked records stay consistent.
+        $ledger = Ledger::where('id', $id)
+            ->where('amount_type', Helper::$expense)
+            ->whereNull('type')
+            ->whereNull('ref_invoice_no')
+            ->first();
+        if (!$ledger) {
+            return redirect('/admin/expense')->with('warning', 'Only expenses entered on this screen can be cancelled here. Cancel payments and invoices from their own screens.');
+        }
+
+        DB::transaction(function () use ($ledger, $reason) {
+            $reversal = app(LedgerReversal::class);
+            $reversal->reverse('ledgers', fn ($q) => $q->where('id', $ledger->id), $reason, 'Expense ' . ($ledger->invoice_no ?: "#{$ledger->id}"));
+            $reversal->log('expense_cancelled', $ledger, [
+                'amount'  => $ledger->expense_amount,
+                'date'    => $ledger->date,
+                'head_id' => $ledger->income_expense_head_id,
+                'details' => $ledger->details,
+            ], $reason);
+        });
+
+        return redirect('/admin/expense')->with('success', 'Expense cancelled. Its ledger entry was reversed, not deleted.');
     }
 }

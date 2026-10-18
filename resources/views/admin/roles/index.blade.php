@@ -49,21 +49,16 @@
                             <td>
                                 <span style="font-weight: 500;">{{ $val->name }}</span>
                             </td>
-                            @if($val->name != 'Super Admin')
+                            @if($val->name != 'Super Admin' && isset($editable[$val->id]))
                             <td>
                                 <div class="crm-actions">
                                     <a href="{{ route('roles.edit', $val->id) }}" class="action-btn btn-edit" title="Edit">
                                         <i class="fas fa-pen"></i>
                                     </a>
-                                    <form action="{{ route('roles.destroy', $val->id) }}" method="POST" style="display:inline;">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="action-btn btn-delete" title="Delete" onclick="confirmDelete(event)">
-                                            <i class="far fa-trash-alt"></i>
-                                        </button>
-                                    </form>
                                 </div>
                             </td>
+                            @else
+                            <td></td>
                             @endif
                         </tr>
                     @endforeach

@@ -33,8 +33,9 @@ class LedgerReversal
     {
         $query = DB::table($table)
             ->whereNull('deleted_at')
-            ->where('type', 'not like', '%(Reversed)')
-            ->where('type', 'not like', '% Reversal');
+            ->where(fn ($q) => $q->whereNull('type')->orWhere(fn ($q) => $q
+                ->where('type', 'not like', '%(Reversed)')
+                ->where('type', 'not like', '% Reversal')));
         $filter($query);
         $rows = $query->lockForUpdate()->get();
 
@@ -44,16 +45,18 @@ class LedgerReversal
 
         foreach ($rows as $row) {
             $original = (array) $row;
+            // Manual company-ledger rows (e.g. expenses) have no type; name them by their kind
+            $baseType = $row->type ?: ($row->amount_type ?? 'Entry');
 
             DB::table($table)->where('id', $row->id)->update([
-                'type'       => mb_substr($row->type . ' (Reversed)', 0, 191),
+                'type'       => mb_substr($baseType . ' (Reversed)', 0, 191),
                 'updated_at' => $now,
                 'updated_by' => $user->id ?? null,
             ]);
 
             $mirror = $original;
             unset($mirror['id'], $mirror['deleted_at'], $mirror['deleted_by'], $mirror['updated_by']);
-            $mirror['type'] = mb_substr($row->type . ' Reversal', 0, 191);
+            $mirror['type'] = mb_substr($baseType . ' Reversal', 0, 191);
             $mirror['details'] = $note . ($row->details ? " | Original: {$row->details}" : '');
             $mirror['created_at'] = $now;
             $mirror['updated_at'] = $now;

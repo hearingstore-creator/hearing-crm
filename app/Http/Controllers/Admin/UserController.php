@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AccessGuard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,9 @@ class UserController extends Controller
     public function index(): View
     {
         $users = User::orderBy('id', 'desc')->get();
-        return view('admin.user.index', compact('users'));
+        $guard = new AccessGuard();
+        $manageable = $users->filter(fn ($u) => $guard->canManageUser($u))->pluck('id')->flip();
+        return view('admin.user.index', compact('users', 'manageable'));
     }
 
     /**
@@ -44,7 +47,8 @@ class UserController extends Controller
     public function create(): View
     {
         $data['users'] = User::with('roles')->get();
-        $data['roles'] = Role::all();
+        // Only roles this person may hand out (never Super Admin unless they are one)
+        $data['roles'] = (new AccessGuard())->grantableRoles();
         return view('admin.user.create', $data);
     }
 
@@ -62,6 +66,10 @@ class UserController extends Controller
             'password' => 'required|min:6',
             'roles'    => 'required|array',
         ]);
+
+        if (!(new AccessGuard())->canGrantRoleIds($request->roles)) {
+            return back()->withInput()->withErrors(['roles' => 'You can only give roles whose permissions you have yourself.']);
+        }
 
         $user = User::create([
             'name'     => $request->name,
@@ -86,7 +94,10 @@ class UserController extends Controller
     public function edit(int $id): View
     {
         $user = User::with('roles')->findOrFail($id);
-        $roles = Role::all();
+        $guard = new AccessGuard();
+        abort_unless($guard->canManageUser($user), 403, 'You cannot edit this user.');
+        // Grantable roles, plus the ones the user already has so they stay visible
+        $roles = $guard->grantableRoles()->merge($user->roles)->unique('id')->values();
         $userRoles = $user->roles->pluck('id')->toArray();
 
         return view('admin.user.edit', compact('user', 'roles', 'userRoles'));
@@ -102,13 +113,30 @@ class UserController extends Controller
     public function update(Request $request, int $id): RedirectResponse
     {
         $user = User::findOrFail($id);
-        
+        $guard = new AccessGuard();
+        abort_unless($guard->canManageUser($user), 403, 'You cannot edit this user.');
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
+            'password' => 'nullable|string|min:6',
             'roles'    => ! $user->isVendor() ? 'required|array' : 'nullable',
             'status' => 'required|in:0,1',
        ]);
+
+        $currentRoleIds = $user->roles()->pluck('roles.id')->map(fn ($r) => (int) $r)->sort()->values()->all();
+        $newRoleIds = collect($request->roles ?? [])->map(fn ($r) => (int) $r)->sort()->values()->all();
+        if (!$guard->isSuper()) {
+            if ($user->id === auth()->id() && $newRoleIds !== $currentRoleIds) {
+                return back()->withInput()->withErrors(['roles' => 'You cannot change your own roles.']);
+            }
+            if ($user->id === auth()->id() && (int) $request->status !== (int) $user->status) {
+                return back()->withInput()->withErrors(['status' => 'You cannot change your own status.']);
+            }
+            if ($user->id !== auth()->id() && !$guard->canGrantRoleIds($newRoleIds)) {
+                return back()->withInput()->withErrors(['roles' => 'You can only give roles whose permissions you have yourself.']);
+            }
+        }
 
         $user->name = $request->name;
         $user->email = $request->email;
@@ -135,7 +163,13 @@ class UserController extends Controller
      */
     public function destroy(int $id): RedirectResponse
     {
-        $user = User::find($id);
+        $user = User::findOrFail($id);
+
+        // Not yourself, not the last Super Admin, not branch logins / professionals, not people with history
+        if ($problem = (new AccessGuard())->deleteProblem($user)) {
+            return redirect()->back()->with('warning', $problem);
+        }
+
         $user->delete();
         return redirect('/admin/user')->with('success', 'Deleted Successfully');
     }

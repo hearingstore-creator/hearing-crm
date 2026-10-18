@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Role;
 use App\Models\Menu;
+use App\Services\AccessGuard;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
@@ -24,7 +25,8 @@ class RoleController extends Controller
     public function index()
     {
         $roles = Role::all();
-        return view('admin.roles.index', compact('roles'));
+        $editable = (new AccessGuard())->grantableRoles()->pluck('id')->flip();
+        return view('admin.roles.index', compact('roles', 'editable'));
     }
 
     public function create()
@@ -48,6 +50,11 @@ class RoleController extends Controller
     public function edit(int $id)
     {
         $role = Role::findOrFail($id);
+        abort_unless(
+            (new AccessGuard())->canEditRole($role, $role->permissions()->pluck('permissions.id')->all()),
+            403,
+            'You cannot edit this role: it is Super Admin, one of your own roles, or has permissions you do not have.'
+        );
         $menus = Menu::with(['children.permissions'])->whereNull('parent_id')->orderBy('order', 'asc')->get();
         $rolePermissions = $role->permissions->pluck('id')->toArray();
 
@@ -57,7 +64,16 @@ class RoleController extends Controller
     public function update(Request $request, int $id)
     {
         $role = Role::findOrFail($id);
+        $request->validate(['permissions' => 'nullable|array', 'permissions.*' => 'integer|exists:permissions,id']);
         $permissionIds = $request->input('permissions', []);
+
+        // Nobody can give a role permissions they do not hold, edit their own role, or touch Super Admin
+        $guard = new AccessGuard();
+        if (!$guard->canEditRole($role, $role->permissions()->pluck('permissions.id')->all())
+            || !$guard->canEditRole($role, $permissionIds)) {
+            return redirect()->back()->with('warning', 'You can only give a role permissions you have yourself, and you cannot edit your own role or Super Admin.');
+        }
+
         $role->permissions()->sync($permissionIds);
 
         return redirect()->back()->with('success', 'Role updated successfully!');

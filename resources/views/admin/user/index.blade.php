@@ -80,9 +80,11 @@
                             </td>
                             <td>
                                 <div class="crm-actions">
+                                    @if(isset($manageable[$user->id]))
                                     <a href="{{ route('user.edit', $user->id) }}" class="action-btn btn-edit" title="Edit">
                                         <i class="fas fa-pen"></i>
                                     </a>
+                                    @if($user->id !== auth()->id())
                                     <form action="{{ route('user.destroy', $user->id) }}" method="POST" style="display:inline;">
                                         @csrf
                                         @method('DELETE')
@@ -90,6 +92,8 @@
                                             <i class="far fa-trash-alt"></i>
                                         </button>
                                     </form>
+                                    @endif
+                                    @endif
                                 </div>
                             </td>
                         </tr>

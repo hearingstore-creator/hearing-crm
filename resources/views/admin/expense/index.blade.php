@@ -74,18 +74,17 @@
                             </td>
                             <td>
                                 <div class="crm-actions">
-                                    @can('permission', 'expense.delete')
-                                        @if(!empty($val->income_expense_head_id))
-                                            <form action="{{ route('expense.destroy', $val->id) }}" method="POST" style="display:inline;">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="action-btn btn-delete" title="Delete"
-                                                    onclick="confirmDelete(event)">
-                                                    <i class="far fa-trash-alt"></i>
-                                                </button>
-                                            </form>
-                                        @endif
-                                    @endcan
+                                    {{-- Only manual expenses (no type, no linked invoice) can be cancelled here, by Super Admin, with a reason --}}
+                                    @if(auth()->user()->isSuperAdmin() && $val->type === null && $val->ref_invoice_no === null)
+                                        <form action="{{ route('expense.destroy', $val->id) }}" method="POST" style="display:inline;">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="action-btn btn-delete" title="Cancel expense"
+                                                onclick="confirmCancelWithReason(event, 'this expense')">
+                                                <i class="far fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
