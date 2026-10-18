@@ -231,6 +231,16 @@ class User extends Authenticatable
         if ($this->isSuperAdmin()) {
             return true;
         }
+
+        if (str_contains($permissionName, '|')) {
+            foreach (explode('|', $permissionName) as $part) {
+                if ($this->hasAccess(trim($part))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         if ($this->isVendor() && in_array($permissionName, config('vendor.allowed_permissions', []), true)) {
             return true;
         }
