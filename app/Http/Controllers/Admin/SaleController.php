@@ -6,6 +6,7 @@ use App\Classes\Helper;
 use App\Enums\DeliveryStatus;
 use App\Enums\ReferralStatus;
 use App\Enums\RewardLedgerType;
+use App\Exceptions\StockGuardException;
 use App\Http\Controllers\Controller;
 use App\Models\Batch;
 use App\Models\Customer;
@@ -27,6 +28,7 @@ use App\Models\Setting;
 use App\Models\Stock;
 use App\Models\User;
 use App\Services\MembershipService;
+use App\Services\StockGuard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -294,7 +296,7 @@ class SaleController extends Controller
         if (! empty($requestProductIds)) {
             foreach ($requestProductIds as $key => $val) {
                 $rules["product_id.$key"] = 'required';
-                $rules["qty.$key"] = 'required';
+                $rules["qty.$key"] = 'required|numeric|gt:0';
                 $rules["unit_price.$key"] = 'required';
                 $rules["product_id"] = 'array';
             }
@@ -331,7 +333,7 @@ class SaleController extends Controller
                     ->withInput()
                     ->withErrors(['product_validation' => 'Please select either a batch or serial number for each product.']);
             }
-            
+
         }
 
         DB::beginTransaction();
@@ -340,6 +342,18 @@ class SaleController extends Controller
         $incomeInvoiceNo = date('ymdhis');
 
         try {
+            // Re-check serials and batch stock on the server, with row locks (stale forms, two counters)
+            $stockLines = [];
+            foreach ($requestProductIds as $key => $productId) {
+                $stockLines[] = [
+                    'product_id' => $productId,
+                    'qty'        => $request->qty[$key] ?? null,
+                    'batch_id'   => $batchIds[$key] ?? null,
+                    'serials'    => $serialNos[$key] ?? null,
+                ];
+            }
+            app(StockGuard::class)->assertSaleLines($stockLines, auth()->user()->branchId() ?: null);
+
             $saleMaster = new SaleMaster();
             $saleMaster->customer_id = $request->customer_id;
             $saleMaster->payment_id = $request->payment_type_id;
@@ -528,6 +542,9 @@ class SaleController extends Controller
 
             DB::commit();
             return redirect()->back()->with('warning', 'Not Saved');
+        } catch (StockGuardException $ex) {
+            DB::rollback();
+            return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
             return redirect()->back()->with('warning', $ex->getMessage());
@@ -743,7 +760,7 @@ class SaleController extends Controller
         if (! empty($requestProductIds)) {
             foreach ($requestProductIds as $key => $val) {
                 $rules["product_id.$key"] = 'required';
-                $rules["qty.$key"] = 'required';
+                $rules["qty.$key"] = 'required|numeric|gt:0';
                 $rules["unit_price.$key"] = 'required';
                 $rules["product_id"] = 'array';
             }
@@ -756,6 +773,10 @@ class SaleController extends Controller
                 $rules["service_price.$key"] = 'required';
                 $rules["service_type_id"] = 'array';
             }
+        }
+
+        foreach (array_keys($request->old ?? []) as $key) {
+            $rules["old.$key.qty"] = 'required|numeric|gt:0';
         }
 
         $this->validate(
@@ -823,6 +844,30 @@ class SaleController extends Controller
             if (!$saleMaster || !$saleMaster->isAccessibleByAuthUser()) {
                 abort(403, 'You do not have permission to update this sale.');
             }
+
+            // Re-check the final product lines against this sale's branch stock (its own units stay available)
+            $stockLines = [];
+            foreach ($request->old ?? [] as $key => $val) {
+                $stockLines[] = [
+                    'product_id' => $val['product_id'] ?? null,
+                    'qty'        => $val['qty'] ?? null,
+                    'batch_id'   => $oldBatches[$key] ?? null,
+                    'serials'    => $oldSerials[$key] ?? null,
+                ];
+            }
+            foreach ($requestProductIds as $key => $productId) {
+                $stockLines[] = [
+                    'product_id' => $productId,
+                    'qty'        => $request->qty[$key] ?? null,
+                    'batch_id'   => $batchIds[$key] ?? null,
+                    'serials'    => $serialNos[$key] ?? null,
+                ];
+            }
+            app(StockGuard::class)->assertSaleLines($stockLines, $saleMaster->vendor_id ?: null, $saleMaster->id);
+
+            // Advance applied at checkout was already credited when it was received; keep it out of cash paid
+            $appliedAdvance = (float) ($saleMaster->applied_advance_amount ?? 0);
+            $netCashPaid = max(0, round((float) $request->paid - $appliedAdvance, 2));
 
             $saleMaster->customer_id = $request->customer_id;
             $saleMaster->payment_id = $request->payment_type_id;
@@ -912,13 +957,24 @@ class SaleController extends Controller
                 CustomerLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
                 Stock::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
 
+                $cashRequest = clone $request;
+                $cashRequest->paid = $netCashPaid;
+
                 $ledger = Ledger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->first();
                 if (isset($ledger)) {
-                    $ledger->income_amount = $request->paid;
+                    $ledger->income_amount = $netCashPaid;
                     $ledger->update();
-                } else {
+                } elseif ($netCashPaid > 0) {
                     $incomeInvoiceNo = date('ymdhis');
-                    Helper::incomeLedger($request, $incomeInvoiceNo, $saleInvoiceNo, $type);
+                    Helper::incomeLedger($cashRequest, $incomeInvoiceNo, $saleInvoiceNo, $type);
+                }
+
+                // Give back every batch quantity this sale held; the final lines below take it again.
+                // (Covers lines removed in the edit and lines moved to another batch.)
+                $currentDetails = SaleDetail::where('sale_master_id', $saleMaster->id)->whereNotNull('batch_id')->get(['batch_id', 'product_id', 'qty']);
+                foreach ($currentDetails as $detail) {
+                    DB::table('batches')->where('id', $detail->batch_id)->where('product_id', $detail->product_id)
+                        ->decrement('sale_qty', (float) $detail->qty);
                 }
 
                 // Handle existing products
@@ -926,24 +982,15 @@ class SaleController extends Controller
                     $saleDetailsId = [];
                     foreach ($request->old as $key => $val) {
                         $saleDetailsId[] = $val['id'];
-                        $saleDetails = SaleDetail::find($val['id']);
+                        $saleDetails = SaleDetail::where('sale_master_id', $saleMaster->id)->findOrFail($val['id']);
 
                         // Use formatted old arrays - either batch_id or serial_no will be set, not both
                         $batchId = isset($oldBatches[$key]) ? $oldBatches[$key] : null;
                         $serialNo = isset($oldSerials[$key]) ? $oldSerials[$key] : null;
 
                         if (! empty($batchId)) {
-                            if ($saleDetails->qty < $val['qty']) {
-                                $batch = Batch::where('id', $batchId)->where('product_id', $val['product_id'])->first();
-                                $new_qty = $val['qty'] - $saleDetails->qty;
-                                $batch->sale_qty += $new_qty;
-                                $batch->update();
-                            } elseif ($saleDetails->qty > $val['qty']) {
-                                $batch = Batch::where('id', $batchId)->where('product_id', $val['product_id'])->first();
-                                $new_qty = $saleDetails->qty - $val['qty'];
-                                $batch->sale_qty -= $new_qty;
-                                $batch->update();
-                            }
+                            DB::table('batches')->where('id', $batchId)->where('product_id', $val['product_id'])
+                                ->increment('sale_qty', (float) $val['qty']);
                         }
 
                         $saleDetails->product_id = $val['product_id'];
@@ -973,10 +1020,8 @@ class SaleController extends Controller
                     }
                 }
 
-                // Delete removed products
-                if (isset($saleDetailsId)) {
-                    SaleDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $saleDetailsId)->delete();
-                }
+                // Delete removed products (all of them when no existing line was kept; their batch qty was released above)
+                SaleDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $saleDetailsId ?? [])->delete();
 
                 // Delete removed services
                 if (isset($serviceDetailsId)) {
@@ -1003,7 +1048,8 @@ class SaleController extends Controller
                         Helper::stockOut($requestProductIds[$key], $request->date, $request->qty[$key], $request->details, $saleInvoiceNo, $type);
 
                         if (!empty($batchIds[$key])) {
-                          Helper::updateBatch($requestProductIds[$key], $batchIds[$key], null, $request->qty[$key], $type);
+                            DB::table('batches')->where('id', $batchIds[$key])->where('product_id', $requestProductIds[$key])
+                                ->increment('sale_qty', (float) $request->qty[$key]);
                         }
                     }
                 }
@@ -1022,8 +1068,8 @@ class SaleController extends Controller
                 }
                 Helper::customerLedgerDebit($request, $saleInvoiceNo, $type);
 
-                if ($request->paid > 0) {
-                    Helper::customerLedgerCredit($request, $saleInvoiceNo, $type);
+                if ($netCashPaid > 0) {
+                    Helper::customerLedgerCredit($cashRequest, $saleInvoiceNo, $type);
                 }
 
                 // Update doctor ledger entry if doctor is referenced
@@ -1061,6 +1107,9 @@ class SaleController extends Controller
 
             DB::commit();
             return redirect()->back()->with('warning', 'Not Updated');
+        } catch (StockGuardException $ex) {
+            DB::rollback();
+            return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
             return redirect()->back()->with('warning', $ex->getMessage());
@@ -1465,8 +1514,6 @@ class SaleController extends Controller
      */
     public function destroy(string $id): RedirectResponse
     {
-        DB::beginTransaction();
-
         $saleMaster = $this->resolveSaleMaster($id);
 
         // Check if the user has access to this sale
@@ -1478,55 +1525,75 @@ class SaleController extends Controller
         $customerId = $saleMaster->customer_id;
         $realId = $saleMaster->id;
 
-        $details = SaleDetail::where('sale_master_id', $realId)->get();
-
-        foreach ($details as $val) {
-            if (!empty($val->batch_id)) {
-                $batch = Batch::where('id', $val->batch_id)->where('product_id', $val->product_id)->first();
-                $batch->sale_qty -= $val->qty;
-                $batch->update();
-            }
+        // A credit note already returned money or stock against this invoice; deleting the sale would orphan it
+        $creditNotes = DB::table('sale_returns')
+            ->where(fn ($q) => $q->where('sale_master_id', $realId)->orWhere('sale_invoice_no', $saleInvoiceNo))
+            ->whereNull('deleted_at')
+            ->pluck('credit_note_no');
+        if ($creditNotes->isNotEmpty()) {
+            return redirect()->back()->with('warning', 'Cannot delete: this sale has credit note(s) ' . $creditNotes->take(3)->implode(', ') . '. Delete or reverse the credit notes first.');
         }
 
-        // Delete reward ledgers associated with this sale
-        $rewardLedgers = RewardLedger::where('sale_master_id', $realId)->get();
-        foreach ($rewardLedgers as $ledger) {
-            $ledger->delete();
-        }
+        DB::beginTransaction();
+        try {
 
-        // Check if this was the customer's first sale and handle referral reversal
-        $saleCount = SaleMaster::where('customer_id', $customerId)->count();
+            $details = SaleDetail::where('sale_master_id', $realId)->get();
 
-        // If this was the only sale (first sale), reverse any referral reward
-        if ($saleCount === 1) {
-            $referral = Referral::where('referred_customer_id', $customerId)->first();
-            Log::info("Checking referral for customer ID {$customerId}: " . ($referral ? "Found referral with status {$referral->status->value}" : "No referral found"));
-
-            if ($referral && $referral->status->value === ReferralStatus::COMPLETED->value) {
-                // Find and delete the reward ledger entry for this referral
-                $referralRewardLedger = RewardLedger::where('sale_master_id', $realId)->first();
-                if ($referralRewardLedger) {
-                    $referralRewardLedger->delete();
+            foreach ($details as $val) {
+                if (!empty($val->batch_id)) {
+                    DB::table('batches')->where('id', $val->batch_id)->where('product_id', $val->product_id)
+                        ->decrement('sale_qty', (float) $val->qty);
                 }
-
-                // Reset referral status to pending
-                $referral->status = ReferralStatus::PENDING->value;
-                $referral->rewarded_at = null;
-                $referral->save();
             }
+
+            // Return any customer advance this sale used, so it can be applied again or refunded
+            app(\App\Services\CustomerAdvanceService::class)->releaseAdvanceFromSale($saleMaster);
+
+            // Delete reward ledgers associated with this sale
+            $rewardLedgers = RewardLedger::where('sale_master_id', $realId)->get();
+            foreach ($rewardLedgers as $ledger) {
+                $ledger->delete();
+            }
+
+            // Check if this was the customer's first sale and handle referral reversal
+            $saleCount = SaleMaster::where('customer_id', $customerId)->count();
+
+            // If this was the only sale (first sale), reverse any referral reward
+            if ($saleCount === 1) {
+                $referral = Referral::where('referred_customer_id', $customerId)->first();
+                Log::info("Checking referral for customer ID {$customerId}: " . ($referral ? "Found referral with status {$referral->status->value}" : "No referral found"));
+
+                if ($referral && $referral->status->value === ReferralStatus::COMPLETED->value) {
+                    // Find and delete the reward ledger entry for this referral
+                    $referralRewardLedger = RewardLedger::where('sale_master_id', $realId)->first();
+                    if ($referralRewardLedger) {
+                        $referralRewardLedger->delete();
+                    }
+
+                    // Reset referral status to pending
+                    $referral->status = ReferralStatus::PENDING->value;
+                    $referral->rewarded_at = null;
+                    $referral->save();
+                }
+            }
+
+            SaleMaster::where('sale_invoice_no', $saleInvoiceNo)->delete();
+            SaleDetail::where('sale_master_id', $realId)->delete();
+            ServiceDetail::where('sale_master_id', $realId)->delete();
+            CustomerLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
+            Stock::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
+            Ledger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
+            DoctorLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
+            // Delete membership upgrade history if customer's tier should be downgraded
+            $this->handleMembershipTierDowngrade($customerId);
+
+            DB::commit();
+        } catch (\Throwable $ex) {
+            DB::rollback();
+            Log::error("Sale delete failed for {$saleInvoiceNo}: " . $ex->getMessage());
+            return redirect()->back()->with('warning', 'The sale could not be deleted. Nothing was changed. Please try again or contact the administrator.');
         }
 
-        SaleMaster::where('sale_invoice_no', $saleInvoiceNo)->delete();
-        SaleDetail::where('sale_master_id', $realId)->delete();
-        ServiceDetail::where('sale_master_id', $realId)->delete();
-        CustomerLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
-        Stock::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
-        Ledger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
-        DoctorLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
-        // Delete membership upgrade history if customer's tier should be downgraded
-        $this->handleMembershipTierDowngrade($customerId);
-        
-        DB::commit();
         return redirect()->back()->with('success', 'Deleted Successfully');
     }
 

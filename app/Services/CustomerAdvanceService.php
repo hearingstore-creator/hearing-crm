@@ -170,6 +170,48 @@ class CustomerAdvanceService
     }
 
     /**
+     * Give back the advance a sale used (sale deleted): the amount returns to the advance balance.
+     * Must run inside the caller's transaction.
+     */
+    public function releaseAdvanceFromSale(SaleMaster $sale): void
+    {
+        $amount = round((float) ($sale->applied_advance_amount ?? 0), 2);
+        if (!$sale->applied_advance_id || $amount <= 0) {
+            return;
+        }
+
+        $lockedAdv = CustomerAdvance::where('id', $sale->applied_advance_id)->lockForUpdate()->first();
+        if (!$lockedAdv) {
+            return;
+        }
+
+        $lockedAdv->applied_amount = max(0, round($lockedAdv->applied_amount - $amount, 2));
+        $lockedAdv->balance = round($lockedAdv->balance + $amount, 2);
+        if (in_array($lockedAdv->status, [CustomerAdvance::STATUS_APPLIED, CustomerAdvance::STATUS_PARTIALLY_APPLIED], true)) {
+            $lockedAdv->status = $lockedAdv->applied_amount <= 0.009 ? CustomerAdvance::STATUS_ACTIVE : CustomerAdvance::STATUS_PARTIALLY_APPLIED;
+        }
+        if ((int) $lockedAdv->sale_master_id === (int) $sale->id) {
+            $lockedAdv->sale_master_id = null;
+        }
+        $lockedAdv->save();
+
+        ActivityLog::create([
+            'user_id'      => auth()->id(),
+            'subject_id'   => $lockedAdv->id,
+            'subject_type' => CustomerAdvance::class,
+            'action'       => 'advance_released_from_deleted_sale',
+            'new_values'   => [
+                'sale_id'         => $sale->id,
+                'sale_invoice_no' => $sale->sale_invoice_no,
+                'released_amount' => $amount,
+                'balance'         => $lockedAdv->balance,
+            ],
+            'ip_address'   => request()->ip() ?? '127.0.0.1',
+            'user_agent'   => mb_substr((string) request()->userAgent(), 0, 255),
+        ]);
+    }
+
+    /**
      * Process an advance refund or keep as credit.
      * Idempotent and thread-safe via DB transaction and row locking.
      */

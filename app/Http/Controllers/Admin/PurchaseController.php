@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Classes\Helper;
+use App\Exceptions\StockGuardException;
 use App\Http\Controllers\Controller;
 use App\Models\Batch;
 use App\Models\Ledger;
@@ -12,6 +13,7 @@ use App\Models\PurchaseDetail;
 use App\Models\PurchaseMaster;
 use App\Models\Setting;
 use App\Models\Stock;
+use App\Services\StockGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -128,6 +130,9 @@ class PurchaseController extends Controller
         $expenseInvoiceNo = date('ymdhis');
 
         try {
+            // Serial lines: no blanks or repeats, count = qty, and no serial already in stock in any branch
+            app(StockGuard::class)->assertPurchaseSerials($this->newSerialLines($request));
+
             $purchaseMaster = new PurchaseMaster;
             $purchaseMaster->supplier_id = $request->supplier_id;
             $purchaseMaster->payment_id = $request->payment_type_id;
@@ -167,10 +172,10 @@ class PurchaseController extends Controller
                           );
                           $qty = $request->qty[$key];
                         } else {
-                            $serial_no = array_map('trim', explode(",", $request->serial_no[$key]));
+                            $serial_no = StockGuard::serialList($request->serial_no[$key] ?? null);
                             $qty = $request->qty[$key];
                         }
-                        
+
                         $purchaseDetails = new PurchaseDetail;
                         $purchaseDetails->purchase_master_id = $purchaseMaster->id;
                         $purchaseDetails->product_id = $request->product_id[$key];
@@ -224,6 +229,9 @@ class PurchaseController extends Controller
                 DB::commit();
                 return redirect()->back()->with('warning', 'Not Saved');
             }
+        } catch (StockGuardException $ex) {
+            DB::rollback();
+            return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
             return redirect()->back()->with('warning', $ex->getMessage());
@@ -349,6 +357,27 @@ class PurchaseController extends Controller
                 abort(403, 'You do not have permission to update this purchase.');
             }
 
+            // Kept lines (by detail id) and every serial line of the edited purchase
+            $keptLines = [];
+            $serialLines = $this->newSerialLines($request);
+            foreach ($request->old ?? [] as $val) {
+                $isSerial = empty($val['batch_id']) && empty($val['batch_no']);
+                $keptLines[(int) ($val['id'] ?? 0)] = [
+                    'product_id' => $val['product_id'] ?? null,
+                    'qty'        => $val['qty'] ?? null,
+                    'serials'    => $isSerial ? ($val['serial_no'] ?? null) : null,
+                ];
+                if ($isSerial) {
+                    $serialLines[] = ['product_id' => $val['product_id'] ?? null, 'qty' => $val['qty'] ?? null, 'serials' => $val['serial_no'] ?? null];
+                }
+            }
+            $guard = app(StockGuard::class);
+            $guard->assertPurchaseSerials($serialLines, $purchaseMaster->id);
+            // Units already sold or returned cannot be removed, changed or reduced
+            if ($problems = $guard->purchaseEditProblems($purchaseMaster->id, $keptLines)) {
+                throw new StockGuardException($problems);
+            }
+
             $purchaseInvoiceNo = $purchaseMaster->purchase_invoice_no;
             $purchaseMaster->supplier_id = $request->supplier_id;
             $purchaseMaster->payment_id = $request->payment_type_id;
@@ -403,7 +432,7 @@ class PurchaseController extends Controller
 
                         $serial_no = null;
                         if (! empty($request->old[$key]['serial_no'])) {
-                            $serial_no = array_map('trim', explode(",", $request->old[$key]['serial_no']));
+                            $serial_no = StockGuard::serialList($request->old[$key]['serial_no']);
                             $qty = count($serial_no);
                         }
 
@@ -421,9 +450,9 @@ class PurchaseController extends Controller
                 }
 
                 PurchaseDetail::where('purchase_master_id', $id)
-                    ->whereNotIn('id', $purchaseDetailsId)->delete();
+                    ->whereNotIn('id', $purchaseDetailsId ?? [])->delete();
                 Batch::where('ref_invoice_no', $purchaseInvoiceNo)
-                    ->whereNotIn('id', $batchId)->delete();
+                    ->whereNotIn('id', $batchId ?? [])->delete();
 
                 if (isset($request->product_id)) {
                     foreach ($request->product_id as $key => $val) {
@@ -441,7 +470,7 @@ class PurchaseController extends Controller
                           );
                          $qty = $request->qty[$key];
                         } else {
-                            $serial_no = array_map('trim', explode(",", $request->serial_no[$key]));
+                            $serial_no = StockGuard::serialList($request->serial_no[$key] ?? null);
                             $qty = count($serial_no);
                         }
 
@@ -471,6 +500,9 @@ class PurchaseController extends Controller
                 DB::commit();
                 return redirect()->back()->with('warning', 'Not Updated');
             }
+        } catch (StockGuardException $ex) {
+            DB::rollback();
+            return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
             return redirect()->back()->with('warning', $ex->getMessage());
@@ -522,8 +554,6 @@ class PurchaseController extends Controller
      */
     public function destroy(int $id): RedirectResponse
     {
-        DB::beginTransaction();
-
         $purchaseMaster = PurchaseMaster::findOrFail($id);
 
         // Check if the user has access to this purchase
@@ -533,21 +563,48 @@ class PurchaseController extends Controller
 
         $purchaseInvoiceNo = $purchaseMaster->purchase_invoice_no;
 
-        $batches = Batch::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->get();
-        foreach ($batches as $val) {
-            if ($val->sale_qty > 0) {
-                return redirect()->back()->with('warning', 'Cannot delete, it is already used!');
-            }
+        // Serial units or batch stock already sold / returned, or linked purchase returns, keep the purchase
+        $problems = app(StockGuard::class)->purchaseDeleteProblems($purchaseMaster->id);
+        if ($problems) {
+            return redirect()->back()->with('warning', 'Cannot delete this purchase. ' . implode(' ', $problems));
         }
 
-        $purchaseMaster->delete();
-        PurchaseDetail::where('purchase_master_id', $id)->delete();
-        SupplierLedger::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
-        Stock::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
-        Ledger::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
-        Batch::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
+        DB::beginTransaction();
+        try {
+            $purchaseMaster->delete();
+            PurchaseDetail::where('purchase_master_id', $id)->delete();
+            SupplierLedger::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
+            Stock::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
+            Ledger::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
+            Batch::where('ref_invoice_no', $purchaseInvoiceNo)->where('type', Helper::$purchase)->delete();
 
-        DB::commit();
+            DB::commit();
+        } catch (\Throwable $ex) {
+            DB::rollback();
+            Log::error("Purchase delete failed for {$purchaseInvoiceNo}: " . $ex->getMessage());
+            return redirect()->back()->with('warning', 'The purchase could not be deleted. Nothing was changed. Please try again or contact the administrator.');
+        }
+
         return redirect()->back()->with('success', 'Deleted Successfully');
+    }
+
+    /**
+     * Serial lines among the new rows of the purchase form (rows with a batch number are batch lines).
+     */
+    protected function newSerialLines(Request $request): array
+    {
+        $lines = [];
+        foreach ($request->product_id ?? [] as $key => $productId) {
+            if (!empty($request->batch_no[$key] ?? null)) {
+                continue;
+            }
+            $lines[] = [
+                'product_id' => $productId,
+                'qty'        => $request->qty[$key] ?? null,
+                'serials'    => $request->serial_no[$key] ?? null,
+            ];
+        }
+
+        return $lines;
     }
 }

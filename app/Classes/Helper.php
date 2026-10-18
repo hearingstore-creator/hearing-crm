@@ -896,8 +896,14 @@ class Helper
             ->flatten()
             ->toArray();
 
-        // Active sold serials (exclude items returned by patients)
-        $activeSoldSerials = array_diff($soldSerials, $customerReturnedSerials);
+        // Active sold serials: sold more often than returned by patients (a returned unit can be sold again)
+        $soldCounts = array_count_values(array_map('strval', $soldSerials));
+        $returnedCounts = array_count_values(array_map('strval', $customerReturnedSerials));
+        $activeSoldSerials = array_map('strval', array_keys(array_filter(
+            $soldCounts,
+            fn ($count, $serial) => $count > ($returnedCounts[$serial] ?? 0),
+            ARRAY_FILTER_USE_BOTH
+        )));
 
         // Get returned serials to supplier (debit notes)
         $returnedSerials = \App\Models\PurchaseReturnDetail::where('product_id', $productId)
