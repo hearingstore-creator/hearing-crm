@@ -15,6 +15,8 @@ class SmsAutomationController extends Controller
 {
     public function __construct()
     {
+        // SMS Centre is used by head office and Super Admin only
+        $this->middleware(fn ($request, $next) => \App\Classes\Helper::headOfficeOnly($request, $next));
         $this->middleware('permission:sms_automation.index')->only(['index']);
         $this->middleware('permission:sms_automation.create')->only(['create', 'store']);
         $this->middleware('permission:sms_automation.edit')->only(['edit', 'update', 'toggle']);

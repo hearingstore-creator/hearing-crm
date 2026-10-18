@@ -272,6 +272,7 @@ class User extends Authenticatable
 
         $menus = Menu::with(['children.permissions', 'permissions'])
             ->whereNull('parent_id')
+            ->when($this->branchId(), fn ($q) => $q->whereNotIn('name', \App\Classes\Helper::HEAD_OFFICE_ONLY_MENUS))
             ->orderBy('order', 'asc')
             ->get();
 

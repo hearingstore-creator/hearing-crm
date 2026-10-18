@@ -18,6 +18,8 @@ class SmsController extends Controller
     public function __construct(SmsService $smsService)
     {
         $this->smsService = $smsService;
+        // SMS Centre is used by head office and Super Admin only
+        $this->middleware(fn ($request, $next) => \App\Classes\Helper::headOfficeOnly($request, $next));
         $this->middleware('permission:compose_&_send.index')->only(['index', 'logIndex', 'analytics']);
         $this->middleware('permission:compose_&_send.create')->only(['sendCampaign', 'getRecipients', 'optOutStore', 'optOutDestroy']);
         // Audience builder used on the compose screen
@@ -149,16 +151,7 @@ class SmsController extends Controller
         $parts = self::smsParts($request->message_body);
 
         // Quiet hours: a campaign started late in the evening or at night waits until morning
-        $now = now('Asia/Dhaka');
-        $from = (int) config('crm.sms_quiet_from_hour', 21);
-        $until = (int) config('crm.sms_quiet_until_hour', 9);
-        $sendAt = null;
-        if ($now->hour >= $from || $now->hour < $until) {
-            $sendAt = $now->copy()->setTime($until, 0);
-            if ($now->hour >= $from) {
-                $sendAt->addDay();
-            }
-        }
+        $sendAt = self::quietHoursSendAt();
 
         // Sent in the background (queue worker); results appear in Send Log / Analytics
         $job = \App\Jobs\SendSmsCampaign::dispatch($campaign->id, auth()->id());
@@ -170,6 +163,23 @@ class SmsController extends Controller
         $when = $sendAt ? 'It is quiet hours, so it will be sent at ' . $sendAt->format('g:i A, d M') . '.' : 'It is being sent in the background; check the Send Log in a minute.';
 
         return redirect('admin/sms')->with('success', "Campaign \"{$campaign->name}\": {$size}. {$when}");
+    }
+
+    /**
+     * When a campaign started now may go out: null during the day, else the end of quiet hours
+     * (config crm.sms_quiet_from_hour .. crm.sms_quiet_until_hour, Bangladesh time).
+     */
+    public static function quietHoursSendAt(): ?\Carbon\Carbon
+    {
+        $now = now('Asia/Dhaka');
+        $from = (int) config('crm.sms_quiet_from_hour', 21);
+        $until = (int) config('crm.sms_quiet_until_hour', 9);
+        if ($now->hour < $from && $now->hour >= $until) {
+            return null; // daytime: send now
+        }
+        $sendAt = $now->copy()->setTime($until, 0);
+
+        return $now->hour >= $from ? $sendAt->addDay() : $sendAt;
     }
 
     /**

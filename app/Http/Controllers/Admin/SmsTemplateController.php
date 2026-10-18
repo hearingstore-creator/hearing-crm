@@ -13,6 +13,8 @@ class SmsTemplateController extends Controller
 {
     public function __construct()
     {
+        // SMS Centre is used by head office and Super Admin only
+        $this->middleware(fn ($request, $next) => \App\Classes\Helper::headOfficeOnly($request, $next));
         $this->middleware('permission:templates.index')->only(['index']);
         $this->middleware('permission:templates.create')->only(['create', 'store']);
         $this->middleware('permission:templates.edit')->only(['edit', 'update']);

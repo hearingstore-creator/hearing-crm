@@ -311,6 +311,9 @@ class DealController extends Controller
     /** One queued SMS campaign to the people of the selected deals (opt-out list respected). */
     private function bulkSms(Request $request, $deals): JsonResponse
     {
+        $user = auth()->user();
+        abort_unless($user->hasAccess('compose_&_send.create') && ($user->isSuperAdmin() || !$user->branchId()), 403, 'SMS campaigns are sent by head office only.');
+
         $data = $request->validate([
             'message' => ['required', 'string', 'max:1000'],
             'sms_template_id' => ['nullable', 'exists:sms_templates,id'],
@@ -325,7 +328,15 @@ class DealController extends Controller
             'filter_criteria' => ['lead_ids' => $leadIds],
             'status'          => \App\Enums\SmsCampaignStatus::SENDING->value,
         ]);
-        \App\Jobs\SendSmsCampaign::dispatch($campaign->id, auth()->id());
+        $sendAt = SmsController::quietHoursSendAt();
+        $job = \App\Jobs\SendSmsCampaign::dispatch($campaign->id, auth()->id());
+        if ($sendAt) {
+            $job->delay($sendAt);
+            unset($job);
+
+            return response()->json(['message' => 'SMS to ' . count($leadIds) . ' people will be sent at ' . $sendAt->format('g:i A, d M') . ' (quiet hours).']);
+        }
+        unset($job);
 
         return response()->json(['message' => 'SMS to ' . count($leadIds) . ' people is being sent. Results appear in the SMS Send Log.']);
     }
@@ -905,7 +916,8 @@ class DealController extends Controller
                 'sale'     => $user->hasAccess('add_sale.create'),
                 'lead'     => $user->hasAccess('lead_list.view') || $user->hasAccess('lead_list.edit'),
                 'create'   => $user->hasAccess('add_lead.create'),
-                'sms'      => $user->hasAccess('compose_&_send.create'),
+                // SMS campaigns are head office / Super Admin only
+                'sms'      => $user->hasAccess('compose_&_send.create') && ($user->isSuperAdmin() || !$user->branchId()),
                 'appointment' => $user->hasAccess('add_appointment.create'),
             ];
         });

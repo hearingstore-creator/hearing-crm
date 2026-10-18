@@ -645,6 +645,21 @@ class Helper
         return $next($request);
     }
 
+    /** Menus only head office (and Super Admin) may use, whatever role a branch user is given. */
+    public const HEAD_OFFICE_ONLY_MENUS = ['SMS Centre'];
+
+    /**
+     * Middleware body for head-office-only screens (SMS Centre): branch logins and staff with a
+     * home branch are refused even if a role grants them the permission.
+     */
+    public static function headOfficeOnly($request, \Closure $next)
+    {
+        $user = auth()->user();
+        abort_if($user && !$user->isSuperAdmin() && $user->branchId(), 403, 'This screen is for head office only.');
+
+        return $next($request);
+    }
+
     /**
      * Message that is safe to show a user for an exception caught in a controller.
      *

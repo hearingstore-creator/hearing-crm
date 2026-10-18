@@ -81,6 +81,22 @@ class ReportsAndPolicyTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_sms_centre_is_head_office_only(): void
+    {
+        $smsPermissions = ['compose_&_send.index', 'compose_&_send.create', 'templates.index', 'sms_automation.index'];
+
+        $branchSender = $this->userWithPermissions($smsPermissions);
+        $branchSender->forceFill(['vendor_id' => $this->branch->id])->save();
+        foreach (['/admin/sms', '/admin/sms-templates', '/admin/sms-automations', '/admin/sms-log'] as $uri) {
+            $this->actingAs($branchSender)->get($uri)->assertForbidden();
+        }
+        $this->assertNotContains('SMS Centre', $branchSender->fresh()->accessibleMenus()->pluck('name')->all());
+
+        $hqSender = $this->userWithPermissions($smsPermissions);
+        $this->actingAs($hqSender)->get('/admin/sms-templates')->assertOk();
+        $this->assertContains('SMS Centre', $hqSender->fresh()->accessibleMenus()->pluck('name')->all());
+    }
+
     public function test_points_follow_sale_edits_and_removed_redemptions_come_back(): void
     {
         DB::table('membership_tiers')->insert(['name' => 'Silver', 'min_purchase' => 0, 'max_purchase' => 1000000, 'earn_percentage' => 1, 'referral_reward_points' => 0, 'created_at' => now()]);
