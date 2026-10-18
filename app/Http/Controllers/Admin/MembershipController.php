@@ -21,7 +21,8 @@ class MembershipController extends Controller
         $this->middleware('permission:membership_tiers.index')->only(['tiers']);
         $this->middleware('permission:reward_wallets.index')->only(['wallets', 'walletDetails']);
         $this->middleware('permission:reward_ledger.index')->only(['rewardLedger']);
-        $this->middleware('permission:referrals.index')->only(['referrals', 'deleteReferral']);
+        $this->middleware('permission:referrals.index')->only(['referrals']);
+        $this->middleware('permission:referrals.delete')->only(['deleteReferral']);
         $this->middleware('permission:tier_upgrades.index')->only(['upgrades']);
     }
 
@@ -255,6 +256,14 @@ class MembershipController extends Controller
     public function deleteReferral($id)
     {
         $referral = Referral::findOrFail($id);
+
+        // Once a referral paid reward points, deleting it would leave those points without a source
+        $rewarded = $referral->rewarded_at !== null
+            || \Illuminate\Support\Facades\DB::table('reward_ledgers')->where('referral_id', $referral->id)->whereNull('deleted_at')->exists();
+        if ($rewarded) {
+            return redirect()->back()->with('warning', 'This referral has already paid reward points, so it is kept for the points history.');
+        }
+
         $referral->delete();
 
         return redirect()->back()->with('success', 'Referral deleted successfully');

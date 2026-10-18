@@ -108,7 +108,12 @@ class TypeController extends Controller
      */
     public function destroy(int $id): RedirectResponse
     {
-        $type = Type::find($id);
+        $type = Type::findOrFail($id);
+
+        if ($blocked = \App\Services\UsageGuard::blockMessage("type \"{$type->type_name}\"", \App\Services\UsageGuard::TYPE, $type->id)) {
+            return redirect()->back()->with('warning', $blocked);
+        }
+
         $type->delete();
         return redirect('/admin/type')->with('success', 'Deleted Successfully');
     }

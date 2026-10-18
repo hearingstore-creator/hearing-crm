@@ -139,6 +139,16 @@
                                             </div>
                                         </div>
                                         <div class="form-group row">
+                                            <label for="status" class="col-sm-3 col-form-label">Status:</label>
+                                            <div class="col-sm-6">
+                                                <select class="form-control" id="status" name="status">
+                                                    <option value="1" @selected(old('status', $product->status ?? 1) == 1)>Active</option>
+                                                    <option value="0" @selected(old('status', $product->status ?? 1) == 0)>Inactive (retired model)</option>
+                                                </select>
+                                                <small class="form-text text-muted">Inactive models are hidden from purchases and proposals; remaining stock can still be sold.</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
                                             <label for="service_interval_months" class="col-sm-3 col-form-label">Service Interval (Months):</label>
                                             <div class="col-sm-6">
                                                 <input type="number" class="form-control" id="service_interval_months" placeholder="e.g. 6" name="service_interval_months" value="{{ old('service_interval_months', $product->service_interval_months) }}" min="1" max="60" autocomplete="off">

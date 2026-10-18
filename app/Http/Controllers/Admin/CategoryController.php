@@ -111,6 +111,11 @@ class CategoryController extends Controller
     public function destroy(int $id): RedirectResponse
     {
         $category = Category::findOrFail($id);
+
+        if ($blocked = \App\Services\UsageGuard::blockMessage("category \"{$category->category_name}\"", \App\Services\UsageGuard::CATEGORY, $category->id)) {
+            return redirect()->back()->with('warning', $blocked);
+        }
+
         $category->delete();
 
         return redirect('/admin/category')->with('success', 'Deleted Successfully');

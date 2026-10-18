@@ -58,9 +58,15 @@ class ExpenseController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $this->validate($request, [
-            'income_expense_head_id' => 'required',
+            'income_expense_head_id' => [
+                'required',
+                \Illuminate\Validation\Rule::exists('income_expense_heads', 'id')->where('head_type', Helper::$expense)->whereNull('deleted_at'),
+            ],
             'date' => 'required|date',
-            'paid' => 'required',
+            'paid' => 'required|numeric|gt:0|max:99999999',
+        ], [
+            'income_expense_head_id.exists' => 'Choose an expense head from the list.',
+            'paid.gt' => 'The amount must be more than 0.',
         ]);
 
         $expenseInvoiceNo = date('ymdhis');

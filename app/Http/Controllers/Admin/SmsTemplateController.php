@@ -87,6 +87,11 @@ class SmsTemplateController extends Controller
     public function destroy(int $id): RedirectResponse
     {
         $template = SmsTemplate::findOrFail($id);
+
+        if ($blocked = \App\Services\UsageGuard::blockMessage("template \"{$template->name}\"", \App\Services\UsageGuard::SMS_TEMPLATE, $template->id)) {
+            return redirect()->back()->with('warning', $blocked);
+        }
+
         $template->delete();
 
         return redirect('/admin/sms-templates')->with('success', 'Deleted Successfully');

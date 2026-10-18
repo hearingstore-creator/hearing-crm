@@ -108,7 +108,12 @@ class BrandController extends Controller
      */
     public function destroy(int $id): RedirectResponse
     {
-        $brand = Brand::find($id);
+        $brand = Brand::findOrFail($id);
+
+        if ($blocked = \App\Services\UsageGuard::blockMessage("brand \"{$brand->brand_name}\"", \App\Services\UsageGuard::BRAND, $brand->id)) {
+            return redirect()->back()->with('warning', $blocked);
+        }
+
         $brand->delete();
         return redirect('/admin/brand')->with('success', 'Deleted Successfully');
     }

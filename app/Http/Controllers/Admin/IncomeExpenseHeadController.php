@@ -117,6 +117,11 @@ class IncomeExpenseHeadController extends Controller
     public function destroy(int $id): RedirectResponse
     {
         $incomeExpenseHead = IncomeExpenseHead::findOrFail($id);
+
+        if ($blocked = \App\Services\UsageGuard::blockMessage("head \"{$incomeExpenseHead->head_name}\"", \App\Services\UsageGuard::INCOME_EXPENSE_HEAD, $incomeExpenseHead->id)) {
+            return redirect()->back()->with('warning', $blocked);
+        }
+
         $incomeExpenseHead->delete();
 
         return redirect('/admin/income-expense-head')->with('success', 'Deleted Successfully');

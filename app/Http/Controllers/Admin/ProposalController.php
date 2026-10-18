@@ -127,7 +127,7 @@ class ProposalController extends Controller
         $customers = Customer::with('lead:id,full_name,phone_number,email')->orderBy('id', 'desc')->get();
         $doctors = Doctor::where('status', 1)->orderBy('name')->get();
         $templates = Template::where('status', 1)->orderBy('id', 'desc')->get();
-        $products = Product::with(['category', 'brand'])->orderBy('model')->get();
+        $products = Product::active()->with(['category', 'brand'])->orderBy('model')->get();
         $serviceTypes = ServiceType::where('status', 1)->orderBy('service_type_name')->get();
         $branches = Helper::branchOptions();
 
@@ -180,7 +180,7 @@ class ProposalController extends Controller
     {
         $index = $request->input('index', time());
         $itemType = $request->input('type', 'product');
-        $products = Product::with(['category', 'brand'])->orderBy('model')->get();
+        $products = Product::active()->with(['category', 'brand'])->orderBy('model')->get();
         $serviceTypes = ServiceType::where('status', 1)->orderBy('service_type_name')->get();
 
         return view('admin.proposal.add_row_item', compact('index', 'itemType', 'products', 'serviceTypes'));

@@ -15,6 +15,7 @@ class Product extends Model
         'type_id',
         'brand_id',
         'model',
+        'status',
         'battery_size',
         'usage_months',
         'warranty_inventory_months',
@@ -34,6 +35,12 @@ class Product extends Model
         'warranty_inventory_alert_date' => 'date',
         'warranty_sales_expiry_date' => 'date',
     ];
+
+    /** Products that can still be bought and quoted (retired models are Inactive). */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 1);
+    }
 
     public function category()
     {

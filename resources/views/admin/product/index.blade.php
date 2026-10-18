@@ -70,6 +70,9 @@
                             </td>
                             <td>
                                 <span style="font-weight: 600; color: var(--accent-500);">{{ $product->model }}</span>
+                                @if(isset($product->status) && !$product->status)
+                                    <span class="badge badge-secondary" title="Retired: hidden from purchases and proposals">Inactive</span>
+                                @endif
                             </td>
                             <td style="font-size: 12px; color: var(--page-text-secondary);">{{ $product->battery_size ?? 'N/A' }}</td>
                             <td style="font-size: 12px; color: var(--page-text-secondary);">{{ $product->usage_months ? $product->usage_months . 'mo' : 'N/A' }}</td>

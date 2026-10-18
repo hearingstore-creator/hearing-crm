@@ -147,7 +147,7 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @if($referral->status->value == \App\Enums\ReferralStatus::PENDING->value)
+                                        @if($referral->status->value == \App\Enums\ReferralStatus::PENDING->value && auth()->user()->hasAccess('referrals.delete'))
                                         <form action="{{ route('membership.referrals.delete', $referral->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this referral?');">
                                             @csrf
                                             @method('DELETE')

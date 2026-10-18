@@ -11,6 +11,7 @@ use App\Models\PurchaseMaster;
 use App\Models\Type;
 use App\Models\Brand;
 use App\Models\Stock;
+use App\Services\UsageGuard;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -139,6 +140,7 @@ class ProductController extends Controller
             'warranty_sales_months' => 'nullable|integer|min:1',
             'reorder_level' => 'nullable|integer|min:0|max:100000',
             'service_interval_months' => 'nullable|integer|min:1|max:60',
+            'status' => 'nullable|in:0,1',
         ]);
 
         $product = Product::findOrFail($id);
@@ -168,6 +170,12 @@ class ProductController extends Controller
     public function destroy(int $id): RedirectResponse
     {
         $product = Product::findOrFail($id);
+
+        // A product with stock or history stays, so reports and old invoices keep its name
+        if ($blocked = UsageGuard::blockMessage("{$product->model}", UsageGuard::PRODUCT, $product->id)) {
+            return redirect()->back()->with('warning', $blocked);
+        }
+
         $product->delete();
 
         return redirect('/admin/product')->with('success', 'Product Deleted Successfully');
@@ -186,6 +194,11 @@ class ProductController extends Controller
     public function productSearch(Request $request)
     {
         $query = Product::query();
+
+        // Retired (Inactive) models cannot be bought again; their remaining stock can still be sold
+        if ($request->type === 'purchase') {
+            $query->active();
+        }
 
         $query->when($request->category_id, function ($q) use ($request) {
             return $q->where('category_id', $request->input('category_id'));
