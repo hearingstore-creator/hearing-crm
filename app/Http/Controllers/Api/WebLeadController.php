@@ -77,23 +77,7 @@ class WebLeadController extends Controller
     /** Form key + fresh timestamp + valid HMAC signature over the raw body. */
     private function authenticate(Request $request): LeadCaptureForm|JsonResponse
     {
-        $deny = fn () => response()->json(['ok' => false, 'message' => 'Unauthorized.'], 401);
-
-        $key = (string) $request->header('X-Form-Key');
-        $ts = (string) $request->header('X-Timestamp');
-        $sig = (string) $request->header('X-Signature');
-        if ($key === '' || !ctype_digit($ts) || $sig === '') {
-            return $deny();
-        }
-        if (abs(time() - (int) $ts) > config('weblead.timestamp_tolerance')) {
-            return $deny();
-        }
-
-        $form = LeadCaptureForm::where('key', $key)->where('is_active', true)->first();
-        if (!$form || !hash_equals($form->sign($ts, $request->getContent()), strtolower($sig))) {
-            return $deny();
-        }
-
-        return $form;
+        return $this->intake->signedForm($request)
+            ?? response()->json(['ok' => false, 'message' => 'Unauthorized.'], 401);
     }
 }

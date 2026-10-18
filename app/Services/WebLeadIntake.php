@@ -17,6 +17,49 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 class WebLeadIntake
 {
+    /**
+     * Server-to-server request check shared by the website APIs (leads, appointment booking):
+     * X-Form-Key of an active capture form + fresh X-Timestamp + X-Signature =
+     * hex HMAC-SHA256("{timestamp}.{raw body}", form secret). Returns the form, or null to reject.
+     */
+    public function signedForm(\Illuminate\Http\Request $request): ?LeadCaptureForm
+    {
+        $key = (string) $request->header('X-Form-Key');
+        $ts = (string) $request->header('X-Timestamp');
+        $sig = (string) $request->header('X-Signature');
+        if ($key === '' || !ctype_digit($ts) || $sig === '') {
+            return null;
+        }
+        if (abs(time() - (int) $ts) > config('weblead.timestamp_tolerance')) {
+            return null;
+        }
+
+        $form = LeadCaptureForm::where('key', $key)->where('is_active', true)->first();
+        if (!$form || !hash_equals($form->sign($ts, $request->getContent()), strtolower($sig))) {
+            return null;
+        }
+
+        return $form;
+    }
+
+    /**
+     * Counts one attempt against each [key, max, decaySeconds] limit.
+     * Returns seconds to wait if any limit is already reached (nothing is counted then), otherwise null.
+     */
+    public function hitLimits(array $limits): ?int
+    {
+        foreach ($limits as [$k, $max]) {
+            if (RateLimiter::tooManyAttempts($k, $max)) {
+                return RateLimiter::availableIn($k);
+            }
+        }
+        foreach ($limits as [$k, , $decay]) {
+            RateLimiter::hit($k, $decay);
+        }
+
+        return null;
+    }
+
     /** Bangladesh mobile only: 01[3-9]XXXXXXXX (any of 017…, +88017…, 88017…). Returns 8801… or null. */
     public function phone(string $raw): ?string
     {
@@ -28,21 +71,11 @@ class WebLeadIntake
     /** Seconds to wait if a limit is hit, otherwise null (and the attempt is counted). */
     public function rateLimited(LeadCaptureForm $form, string $ip, string $phone): ?int
     {
-        $limits = [
+        return $this->hitLimits([
             ['wl:ip:' . $ip, config('weblead.per_ip_per_minute'), 60],
             ['wl:phone:' . $phone, config('weblead.per_phone_per_day'), 86400],
             ['wl:form:' . $form->id, config('weblead.per_form_per_hour'), 3600],
-        ];
-        foreach ($limits as [$k, $max]) {
-            if (RateLimiter::tooManyAttempts($k, $max)) {
-                return RateLimiter::availableIn($k);
-            }
-        }
-        foreach ($limits as [$k, , $decay]) {
-            RateLimiter::hit($k, $decay);
-        }
-
-        return null;
+        ]);
     }
 
     public function turnstileOk(?string $token, string $ip): bool

@@ -23,6 +23,17 @@ return [
     // Site key for the hosted popup form (/f/{key}); needed only when the secret is set
     'turnstile_site_key' => env('TURNSTILE_SITE_KEY'),
 
+    // Website appointment booking (POST /api/v1/appointments/hold and /book), signed like the lead API.
+    // Limits are per visitor (client_ip sent by the website server) and per phone.
+    'booking' => [
+        'holds_per_ip_per_10min'  => (int) env('BOOKING_HOLDS_PER_IP_PER_10MIN', 6),
+        'active_holds_per_ip'     => (int) env('BOOKING_ACTIVE_HOLDS_PER_IP', 2),
+        'hold_minutes'            => (int) env('BOOKING_HOLD_MINUTES', 10),
+        'bookings_per_ip_per_hour' => (int) env('BOOKING_PER_IP_PER_HOUR', 4),
+        'bookings_per_phone_per_day' => (int) env('BOOKING_PER_PHONE_PER_DAY', 2),
+        'per_form_per_hour'       => (int) env('BOOKING_PER_FORM_PER_HOUR', 200),
+    ],
+
     // OTP verification of the phone before a lead is created. Off at launch (reserved switch).
     'otp_required' => (bool) env('WEBLEAD_OTP_REQUIRED', false),
 ];

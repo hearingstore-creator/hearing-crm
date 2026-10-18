@@ -13,6 +13,7 @@ use App\Models\Lead;
 use App\Models\Resource;
 use App\Models\User;
 use App\Services\AppointmentAvailabilityEngine;
+use App\Services\WebLeadIntake;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,8 +21,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
+/**
+ * Website appointment booking. branches / services / availability are public read-only lookups.
+ * hold and book are called by the website's SERVER, signed exactly like POST /api/v1/leads
+ * (X-Form-Key, X-Timestamp, X-Signature) and carry the visitor's client_ip for per-visitor limits.
+ */
 class PublicAppointmentController extends Controller
 {
+    public function __construct(private WebLeadIntake $intake)
+    {
+    }
+
     /**
      * GET /api/v1/appointments/branches
      * Public list of clinic branches available for booking.
@@ -107,15 +117,37 @@ class PublicAppointmentController extends Controller
      */
     public function hold(Request $request): JsonResponse
     {
+        // Called by the website server only, signed like the lead API
+        $form = $this->intake->signedForm($request);
+        if (!$form) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+        }
+
         $v = Validator::make($request->all(), [
             'branch_id'  => 'required|integer|exists:users,id',
             'service_id' => 'required|integer|exists:appointment_services,id',
             'date'       => 'required|date|after_or_equal:today',
             'start_time' => 'required|string',
+            'client_ip'  => 'required|ip',
         ]);
 
         if ($v->fails()) {
             return response()->json(['success' => false, 'errors' => $v->errors()], 422);
+        }
+
+        // One visitor cannot block the calendar: few active holds, few holds per 10 minutes
+        $clientIp = $request->input('client_ip');
+        $limits = config('weblead.booking');
+        $activeHolds = AppointmentHold::where('ip_address', $clientIp)->where('expires_at', '>', Carbon::now('Asia/Dhaka'))->count();
+        if ($activeHolds >= $limits['active_holds_per_ip']) {
+            return response()->json(['success' => false, 'message' => 'You already have a time slot on hold. Please finish that booking first.'], 429);
+        }
+        $wait = $this->intake->hitLimits([
+            ['bk:hold:ip:' . $clientIp, $limits['holds_per_ip_per_10min'], 600],
+            ['bk:form:' . $form->id, $limits['per_form_per_hour'], 3600],
+        ]);
+        if ($wait) {
+            return response()->json(['success' => false, 'message' => 'Too many requests. Please try again later.'], 429)->header('Retry-After', $wait);
         }
 
         $branchId = $request->integer('branch_id');
@@ -140,7 +172,8 @@ class PublicAppointmentController extends Controller
 
         $tz = 'Asia/Dhaka';
         $token = Str::random(40);
-        $expiresAt = Carbon::now($tz)->addMinutes(10);
+        $holdMinutes = (int) config('weblead.booking.hold_minutes', 10);
+        $expiresAt = Carbon::now($tz)->addMinutes($holdMinutes);
 
         $hold = AppointmentHold::create([
             'token'       => $token,
@@ -152,14 +185,14 @@ class PublicAppointmentController extends Controller
             'start_time'  => $targetSlot['time_full'] ?? ($startTime . ':00'),
             'end_time'    => $endTime,
             'expires_at'  => $expiresAt,
-            'ip_address'  => $request->ip(),
+            'ip_address'  => $clientIp,
         ]);
 
         return response()->json([
             'success'    => true,
             'hold_token' => $token,
             'expires_at' => $expiresAt->toIso8601String(),
-            'message'    => 'Slot held for 10 minutes.',
+            'message'    => "Slot held for {$holdMinutes} minutes.",
         ]);
     }
 
@@ -169,30 +202,57 @@ class PublicAppointmentController extends Controller
      */
     public function book(Request $request): JsonResponse
     {
-        // 1. Anti-spam honeypot check
-        if ($request->filled('website') || $request->filled('hp_email')) {
-            // Silently accept bot submissions
-            return response()->json(['success' => true, 'message' => 'Appointment request received.']);
+        // Called by the website server only, signed like the lead API
+        $form = $this->intake->signedForm($request);
+        if (!$form) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
         }
 
-        // 2. Elapsed time check (> 3 seconds)
-        $elapsed = (float) $request->input('elapsed_seconds', 0);
-        if ($elapsed > 0 && $elapsed < 3.0) {
-            return response()->json(['success' => true, 'message' => 'Appointment request received.']);
+        $received = fn () => response()->json(['success' => true, 'message' => 'Appointment request received.']);
+
+        // 1. Anti-spam honeypot: bots get a normal answer and learn nothing
+        if ($request->filled('website') || $request->filled('hp_email')) {
+            return $received();
         }
 
         $v = Validator::make($request->all(), [
-            'name'        => 'required|string|min:2|max:191',
-            'phone'       => ['required', 'string', 'regex:/^(?:\+8801|8801|01)[3-9]\d{8}$/'],
-            'email'       => 'nullable|email|max:191',
-            'notes'       => 'nullable|string|max:1000',
-            'hold_token'  => 'required|string|size:40',
+            'name'            => 'required|string|min:2|max:191',
+            'phone'           => ['required', 'string', 'regex:/^(?:\+8801|8801|01)[3-9]\d{8}$/'],
+            'email'           => 'nullable|email|max:191',
+            'notes'           => 'nullable|string|max:1000',
+            'hold_token'      => 'required|string|size:40',
+            'client_ip'       => 'required|ip',
+            'elapsed_seconds' => 'required|numeric|min:0',
+            'turnstile_token' => 'nullable|string|max:2048',
         ], [
             'phone.regex' => 'Please provide a valid Bangladeshi mobile number (e.g. 017XXXXXXXX).',
         ]);
 
         if ($v->fails()) {
             return response()->json(['success' => false, 'errors' => $v->errors()], 422);
+        }
+
+        // 2. Timing: a person needs a few seconds to fill the form (the field is required, so it cannot be skipped)
+        if ((float) $request->input('elapsed_seconds') < config('weblead.min_fill_seconds')) {
+            return $received();
+        }
+
+        // 3. Limits per visitor, per phone and per website form
+        $clientIp = $request->input('client_ip');
+        $limits = config('weblead.booking');
+        $phoneKey = $this->intake->phone($request->input('phone')) ?? $request->input('phone');
+        $wait = $this->intake->hitLimits([
+            ['bk:book:ip:' . $clientIp, $limits['bookings_per_ip_per_hour'], 3600],
+            ['bk:book:phone:' . $phoneKey, $limits['bookings_per_phone_per_day'], 86400],
+            ['bk:form:' . $form->id, $limits['per_form_per_hour'], 3600],
+        ]);
+        if ($wait) {
+            return response()->json(['success' => false, 'message' => 'Too many booking requests. Please call the clinic or try again later.'], 429)->header('Retry-After', $wait);
+        }
+
+        // 4. Cloudflare Turnstile (when TURNSTILE_SECRET is set)
+        if (!$this->intake->turnstileOk($request->input('turnstile_token'), $clientIp)) {
+            return response()->json(['success' => false, 'message' => 'Verification failed. Please try again.'], 422);
         }
 
         $token = $request->input('hold_token');
@@ -265,10 +325,17 @@ class PublicAppointmentController extends Controller
                 'date'           => date('d M Y', strtotime($appointment->appointment_date)),
                 'time'           => date('g:i A', strtotime($appointment->start_time)),
             ]);
-        } catch (\Throwable $e) {
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Slot taken meanwhile and similar booking rules: these messages are meant for the visitor
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => collect($e->errors())->flatten()->first() ?? 'That time is no longer available. Please choose another slot.',
+            ], 409);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Website booking failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Sorry, the booking could not be completed. Please choose another time or call the clinic.',
             ], 409);
         }
     }

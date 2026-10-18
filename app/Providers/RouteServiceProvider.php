@@ -51,8 +51,10 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting()
     {
+        // Website APIs are called server-to-server, so every visitor shares the website server's IP.
+        // This is only the overall ceiling; per-visitor and per-phone limits live in the controllers.
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
+            return Limit::perMinute(300)->by(optional($request->user())->id ?: $request->ip());
         });
     }
 }

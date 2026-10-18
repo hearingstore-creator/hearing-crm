@@ -83,19 +83,7 @@ class ProfessionalController extends Controller
             $user->appointmentServices()->sync($request->services);
 
             // Save day-wise time slots
-            ProfessionalTimeSlot::where('user_id', $user->id)->delete();
-            if (!empty($request->time_slots)) {
-                foreach ($request->time_slots as $dayId => $slotIds) {
-                    if (!in_array($dayId, $days) || empty($slotIds)) continue;
-                    foreach ($slotIds as $slotId) {
-                        ProfessionalTimeSlot::create([
-                            'user_id'     => $user->id,
-                            'time_slot_id' => $slotId,
-                            'day_id'      => $dayId,
-                        ]);
-                    }
-                }
-            }
+            $this->syncTimeSlots($user->id, $request->time_slots ?? [], $days);
 
             // Upsert working days
             foreach ($days as $dayId) {
@@ -159,20 +147,8 @@ class ProfessionalController extends Controller
             // Sync services
             $professional->appointmentServices()->sync($request->services);
 
-            // Save day-wise time slots
-            ProfessionalTimeSlot::where('user_id', $professional->id)->delete();
-            if (!empty($request->time_slots)) {
-                foreach ($request->time_slots as $dayId => $slotIds) {
-                    if (!in_array($dayId, $days) || empty($slotIds)) continue;
-                    foreach ($slotIds as $slotId) {
-                        ProfessionalTimeSlot::create([
-                            'user_id'     => $professional->id,
-                            'time_slot_id' => $slotId,
-                            'day_id'      => $dayId,
-                        ]);
-                    }
-                }
-            }
+            // Save day-wise time slots (kept rows keep their id, so older appointments keep their time)
+            $this->syncTimeSlots($professional->id, $request->time_slots ?? [], $days);
 
             // Upsert working days
             foreach ($days as $dayId) {
@@ -192,5 +168,50 @@ class ProfessionalController extends Controller
         User::where('type', 'professional')->findOrFail($id)->delete();
 
         return redirect('admin/professionals')->with('success', 'Deleted Successfully');
+    }
+
+    /**
+     * Match the professional's slot rows to the form instead of delete + re-create.
+     * Unchanged (day, slot) rows keep their id. Before a removed row is deleted, appointments
+     * linked to it get the slot's start/end time copied in (the FK is set to NULL on delete).
+     */
+    protected function syncTimeSlots(int $userId, array $timeSlots, array $days): void
+    {
+        $wanted = [];
+        foreach ($timeSlots as $dayId => $slotIds) {
+            if (!in_array($dayId, $days) || empty($slotIds)) {
+                continue;
+            }
+            foreach ((array) $slotIds as $slotId) {
+                $wanted[$dayId . ':' . (int) $slotId] = [(int) $dayId, (int) $slotId];
+            }
+        }
+
+        foreach (ProfessionalTimeSlot::with('timeSlot')->where('user_id', $userId)->get() as $row) {
+            $key = $row->day_id . ':' . $row->time_slot_id;
+            if (isset($wanted[$key])) {
+                unset($wanted[$key]);
+                continue;
+            }
+
+            if ($row->timeSlot) {
+                DB::table('appointments')
+                    ->where('professional_time_slot_id', $row->id)
+                    ->whereNull('start_time')
+                    ->update([
+                        'start_time' => $row->timeSlot->start_time->format('H:i:s'),
+                        'end_time'   => $row->timeSlot->end_time->format('H:i:s'),
+                    ]);
+            }
+            $row->delete();
+        }
+
+        foreach ($wanted as [$dayId, $slotId]) {
+            ProfessionalTimeSlot::create([
+                'user_id'      => $userId,
+                'time_slot_id' => $slotId,
+                'day_id'       => $dayId,
+            ]);
+        }
     }
 }
