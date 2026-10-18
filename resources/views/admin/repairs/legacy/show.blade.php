@@ -412,7 +412,7 @@
                                     <th class="text-center">Qty</th>
                                     <th class="text-right">Price (৳)</th>
                                     <th class="text-right">Total (৳)</th>
-                                    @if(auth()->user()->canViewAllBranches() || auth()->user()->hasRole('Admin') || auth()->user()->hasRole('Super Admin'))
+                                    @if(auth()->user()->canViewAllBranches() || auth()->user()->roleNames()->contains('Admin') || auth()->user()->roleNames()->contains('Super Admin'))
                                         <th class="text-right text-muted">Cost (৳)</th>
                                     @endif
                                     <th class="text-center" style="width: 50px;">Action</th>
@@ -435,7 +435,7 @@
                                         <td class="text-center">{{ number_format($item->qty, 2) }}</td>
                                         <td class="text-right">৳{{ number_format($item->customer_unit_price, 2) }}</td>
                                         <td class="text-right font-weight-bold">৳{{ number_format($item->customer_total, 2) }}</td>
-                                        @if(auth()->user()->canViewAllBranches() || auth()->user()->hasRole('Admin') || auth()->user()->hasRole('Super Admin'))
+                                        @if(auth()->user()->canViewAllBranches() || auth()->user()->roleNames()->contains('Admin') || auth()->user()->roleNames()->contains('Super Admin'))
                                             <td class="text-right text-muted">৳{{ number_format($item->supplier_total, 2) }}</td>
                                         @endif
                                         <td class="text-center">

@@ -137,12 +137,16 @@ return [
 
         // Repair Module
         'repair_jobs_board.index',
+        'repair_jobs_board.view',
+        'repair_jobs_board.edit',
+        'repair_jobs_board.payment',
         'new_repair_intake.index',
         'new_repair_intake.create',
         'quick_walk-in_service.index',
         'quick_walk-in_service.create',
         'warranty_&_serial_check.index',
         'supplier_rma_&_replacements.index',
+        'supplier_rma_&_replacements.edit',
         'supplier_reconciliation.index',
         'repair_history.index',
         'repair_history.view',

@@ -338,7 +338,7 @@ input:checked + .toggle-slider:before {
                                                             value="{{ $permission->id }}"
                                                             class="custom-cb permission-checkbox menu-{{ $menu->id }} child-{{ $child->id }}"
                                                             {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
-                                                        {{ config('acl.action_labels.' . $permission->name, ucfirst(str_replace('_', ' ', $permission->action))) }}
+                                                        {{ (config('acl.action_labels', [])[$permission->name] ?? ucfirst(str_replace('_', ' ', $permission->action))) }}
                                                     </label>
                                                 </div>
                                             @endforeach
@@ -393,7 +393,7 @@ input:checked + .toggle-slider:before {
                                         <div class="permissions-grid">
                                             @foreach ($gPerms as $permission)
                                                 @php
-                                                    $lbl = config('acl.action_labels.' . $permission->name, ucfirst(str_replace('_', ' ', $permission->action)));
+                                                    $lbl = (config('acl.action_labels', [])[$permission->name] ?? ucfirst(str_replace('_', ' ', $permission->action)));
                                                     $lbl = preg_replace('/^(Analytics|KPI|Lookout):\s*/', '', $lbl);
                                                 @endphp
                                                 <div class="permission-item {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}">
@@ -419,7 +419,7 @@ input:checked + .toggle-slider:before {
                                                     value="{{ $permission->id }}"
                                                     class="custom-cb permission-checkbox menu-{{ $menu->id }}"
                                                     {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
-                                                {{ config('acl.action_labels.' . $permission->name, ucfirst(str_replace('_', ' ', $permission->action))) }}
+                                                {{ (config('acl.action_labels', [])[$permission->name] ?? ucfirst(str_replace('_', ' ', $permission->action))) }}
                                             </label>
                                         </div>
                                     @endforeach

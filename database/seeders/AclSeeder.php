@@ -70,12 +70,14 @@ class AclSeeder extends Seeder
 
                 // Child menu permissions — use actions from config
                 $childActions = $child['actions'] ?? ['index'];
-                
+                // Optional 'permission' key keeps a prefix that differs from the menu name (e.g. sale_fulfillment)
+                $childPrefix = $child['permission'] ?? strtolower(str_replace(' ', '_', $child['name']));
+
                 if ($childActions) {
                     foreach ($childActions as $action) {
                         Permission::firstOrCreate([
                             'menu_id' => $childMenu->id,
-                            'name'    => strtolower(str_replace(' ', '_', $child['name'])) . '.' . $action,
+                            'name'    => $childPrefix . '.' . $action,
                             'action'  => $action
                         ]);
                     }

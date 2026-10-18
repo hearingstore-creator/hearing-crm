@@ -111,6 +111,13 @@ return [
                     'actions' => ['index', 'edit', 'delete']
                 ],
                 [
+                    // Hotline: read-only customer 360 (invoices, devices, warranty, tickets) across branches
+                    'name' => 'Customer Lookup',
+                    'label' => 'Customer Lookup',
+                    'route' => 'admin/customer-lookup',
+                    'actions' => ['index']
+                ],
+                [
                     'name' => 'Customer Ledger',
                     'label' => 'Customer Ledger',
                     'route' => 'admin/customer-ledger/create',
@@ -153,6 +160,14 @@ return [
                     'name' => 'Doctor & Referral',
                     'label' => 'Referral Report',
                     'route' => 'admin/report/doctor-referral',
+                    'actions' => ['index']
+                ],
+                [
+                    'name' => 'Doctor & Referral Statement',
+                    'label' => 'Doctor Statement',
+                    'route' => 'admin/report/doctor-statement',
+                    'icon' => 'fa-file-invoice',
+                    'permission' => 'doctor_statement',
                     'actions' => ['index']
                 ],
             ]
@@ -241,6 +256,21 @@ return [
                     'actions' => ['index', 'create']
                 ],
                 [
+                    'name' => 'Report & Delivery Hub',
+                    'label' => 'Report & Delivery Hub',
+                    'route' => 'admin/sales/fulfillment',
+                    'icon' => 'fa-clipboard-check',
+                    'permission' => 'sale_fulfillment',
+                    'actions' => ['index', 'view', 'edit']
+                ],
+                [
+                    'name' => 'Pending Services',
+                    'label' => 'Pending Services',
+                    'route' => 'admin/sales/pending-services',
+                    'icon' => 'fa-clock',
+                    'actions' => ['index', 'view', 'edit']
+                ],
+                [
                     'name' => 'Service Type',
                     'label' => 'Service Types',
                     'route' => 'admin/service-type',
@@ -308,7 +338,7 @@ return [
         [
             'name' => 'Inventory',
             'icon' => 'fa-warehouse',
-            'order' => 10,
+            'order' => 12,
             'category' => 'OPERATIONS',
             'children' => [
                 [
@@ -341,7 +371,7 @@ return [
             'name' => 'Appointment',
             'label' => 'Appointments',
             'icon' => 'fa-calendar',
-            'order' => 11,
+            'order' => 10,
             'category' => 'OPERATIONS',
             'children' => [
                 [
@@ -349,6 +379,14 @@ return [
                     'label' => 'New Appointment',
                     'route' => 'admin/appointments/create',
                     'actions' => ['create']
+                ],
+                [
+                    'name' => "Today's Queue",
+                    'label' => "Today's Queue",
+                    'route' => 'admin/appointments/today',
+                    'icon' => 'fa-tasks',
+                    'permission' => 'appointment_today',
+                    'actions' => ['index', 'view', 'edit']
                 ],
                 [
                     'name' => 'Appointment List',
@@ -360,6 +398,14 @@ return [
                     'name' => 'Calendar View',
                     'route' => 'admin/appointments/calendar',
                     'actions' => ['index']
+                ],
+                [
+                    'name' => 'Staff Rosters & Leave',
+                    'label' => 'Rosters & Leave',
+                    'route' => 'admin/roster',
+                    'icon' => 'fa-user-clock',
+                    'permission' => 'roster',
+                    'actions' => ['index', 'view', 'create', 'edit']
                 ],
                 [
                     'name' => 'Professional List',
@@ -384,16 +430,9 @@ return [
         [
             'name' => 'Support',
             'icon' => 'fa-headset',
-            'order' => 12,
+            'order' => 13,
             'category' => 'OPERATIONS',
             'children' => [
-                [
-                    // Hotline: read-only customer 360 (invoices, devices, warranty, tickets) across branches
-                    'name' => 'Customer Lookup',
-                    'label' => 'Customer Lookup',
-                    'route' => 'admin/customer-lookup',
-                    'actions' => ['index']
-                ],
                 [
                     'name' => 'Add Ticket',
                     'label' => 'New Ticket',
@@ -424,7 +463,7 @@ return [
             'name' => 'repair',
             'label' => 'Repair & Service',
             'icon' => 'fa-tools',
-            'order' => 13,
+            'order' => 11,
             'category' => 'OPERATIONS',
             'children' => [
                 [
@@ -433,7 +472,7 @@ return [
                     'route' => 'admin/repairs',
                     'icon' => 'fa-columns',
                     'order' => 1,
-                    'actions' => ['index']
+                    'actions' => ['index', 'view', 'edit', 'payment', 'void_warranty', 'replacement']
                 ],
                 [
                     'name' => 'New Repair Intake',
@@ -475,6 +514,14 @@ return [
                     'order' => 6,
                     'actions' => ['index']
                 ],
+                [
+                    'name' => 'Repair History',
+                    'label' => 'Repair History',
+                    'route' => 'admin/repairs/history',
+                    'icon' => 'fa-history',
+                    'order' => 7,
+                    'actions' => ['index', 'view']
+                ],
             ]
         ],
 
@@ -484,7 +531,7 @@ return [
         [
             'name' => 'Accounts',
             'icon' => 'fa-money-check-alt',
-            'order' => 13,
+            'order' => 14,
             'category' => 'FINANCE',
             'children' => [
                 [
@@ -510,7 +557,7 @@ return [
             'name' => 'Membership',
             'label' => 'Membership & Rewards',
             'icon' => 'fa-crown',
-            'order' => 14,
+            'order' => 15,
             'category' => 'FINANCE',
             'children' => [
                 [
@@ -547,7 +594,7 @@ return [
         [
             'name' => 'SMS Centre',
             'icon' => 'fa-comment-dots',
-            'order' => 15,
+            'order' => 16,
             'category' => 'COMMUNICATION',
             'children' => [
                 [
@@ -580,7 +627,7 @@ return [
             'name' => 'Report',
             'label' => 'Reports',
             'icon' => 'fa-chart-pie',
-            'order' => 16,
+            'order' => 17,
             'category' => 'REPORTS & ADMINISTRATION',
             'children' => [
                 [
@@ -637,13 +684,28 @@ return [
                     'route' => 'admin/report/lead-funnel',
                     'actions' => ['index']
                 ],
+                [
+                    'name' => 'Advances Report',
+                    'label' => 'Advances Report',
+                    'route' => 'admin/report/advances',
+                    'icon' => 'fa-hand-holding-usd',
+                    'actions' => ['index', 'view']
+                ],
+                [
+                    'name' => 'Services Status',
+                    'label' => 'Services Status',
+                    'route' => 'admin/report/services-status',
+                    'icon' => 'fa-stethoscope',
+                    'permission' => 'services_status_report',
+                    'actions' => ['index', 'view']
+                ],
             ]
         ],
         [
             'name' => 'Utilities',
             'label' => 'Administration',
             'icon' => 'fa-cog',
-            'order' => 17,
+            'order' => 18,
             'category' => 'REPORTS & ADMINISTRATION',
             'children' => [
                 [
@@ -740,6 +802,14 @@ return [
         'dashboard.lead_response_time'      => 'Analytics: Lead Response Time',
         'dashboard.lost_reasons'            => 'Analytics: Lost Lead Reasons',
         'dashboard.commission_due'          => 'Analytics: Referral Commission Due',
+
+        // Repair & Service
+        'repair_jobs_board.view'            => 'Open Job Card & Prints',
+        'repair_jobs_board.edit'            => 'Update Job (status, items, estimate, lab, files)',
+        'repair_jobs_board.payment'         => 'Collect Payment & Sync Lab Bill',
+        'repair_jobs_board.void_warranty'   => 'Void Warranty',
+        'repair_jobs_board.replacement'     => 'Authorise Replacement',
+        'supplier_rma_&_replacements.delete' => 'Delete / Clear Settled RMA',
     ],
 
     /**

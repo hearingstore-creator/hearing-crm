@@ -36,9 +36,67 @@ class RepairController extends Controller
 {
     protected WarrantyVerificationService $warrantyService;
 
+    /**
+     * Permissions per action; the user needs any one of the listed permissions.
+     * Actions not listed here are denied (403), so new actions must be added.
+     */
+    protected const ACTION_PERMISSIONS = [
+        'index'                       => ['repair_jobs_board.index'],
+        'show'                        => ['repair_jobs_board.view', 'repair_history.view'],
+        'printJobCard'                => ['repair_jobs_board.view', 'repair_history.view'],
+        'printSticker'                => ['repair_jobs_board.view', 'repair_history.view'],
+        'printDeliveryNote'           => ['repair_jobs_board.view', 'repair_history.view'],
+        'printInvoice'                => ['repair_jobs_board.view', 'repair_history.view'],
+        'printReplacementCertificate' => ['repair_jobs_board.view', 'repair_history.view'],
+        'printDispatchNote'           => ['repair_jobs_board.view', 'repair_history.view'],
+        'printEstimate'               => ['repair_jobs_board.view', 'repair_history.view'],
+        'printAdvanceReceipt'         => ['repair_jobs_board.view', 'repair_history.view'],
+        'create'                      => ['new_repair_intake.index', 'warranty_&_serial_check.index'],
+        'quickService'                => ['quick_walk-in_service.index'],
+        'store'                       => ['new_repair_intake.create', 'quick_walk-in_service.create'],
+        'verifyWarranty'              => ['new_repair_intake.index', 'quick_walk-in_service.index', 'warranty_&_serial_check.index'],
+        'searchPurchases'             => ['new_repair_intake.index', 'quick_walk-in_service.index', 'warranty_&_serial_check.index'],
+        'updateStatus'                => ['repair_jobs_board.edit'],
+        'addItem'                     => ['repair_jobs_board.edit'],
+        'deleteItem'                  => ['repair_jobs_board.edit'],
+        'updateEstimate'              => ['repair_jobs_board.edit'],
+        'patientDecision'             => ['repair_jobs_board.edit'],
+        'dispatchToLab'               => ['repair_jobs_board.edit'],
+        'logLabReport'                => ['repair_jobs_board.edit'],
+        'addAttachment'               => ['repair_jobs_board.edit'],
+        'deleteAttachment'            => ['repair_jobs_board.edit'],
+        'completeTask'                => ['repair_jobs_board.edit'],
+        'collectPayment'              => ['repair_jobs_board.payment'],
+        'syncLabBill'                 => ['repair_jobs_board.payment'],
+        'voidWarranty'                => ['repair_jobs_board.void_warranty'],
+        'authorizeReplacement'        => ['repair_jobs_board.replacement'],
+        'rmaIndex'                    => ['supplier_rma_&_replacements.index'],
+        'updateRmaStatus'             => ['supplier_rma_&_replacements.edit'],
+        'deleteRma'                   => ['supplier_rma_&_replacements.delete'],
+        'clearSettledRma'             => ['supplier_rma_&_replacements.delete'],
+        'supplierReconciliation'      => ['supplier_reconciliation.index'],
+        'history'                     => ['repair_history.index'],
+        'exportHistory'               => ['repair_history.view'],
+    ];
+
     public function __construct(WarrantyVerificationService $warrantyService)
     {
         $this->warrantyService = $warrantyService;
+
+        $this->middleware(function ($request, $next) {
+            $user = $request->user();
+            if (!$user) {
+                return redirect()->route('login');
+            }
+
+            $action = $request->route()?->getActionMethod();
+            $allowed = collect(self::ACTION_PERMISSIONS[$action] ?? [])
+                ->contains(fn ($permission) => $user->hasAccess($permission));
+
+            abort_unless($allowed, 403, 'Unauthorized');
+
+            return $next($request);
+        });
     }
 
     /**
@@ -516,7 +574,7 @@ class RepairController extends Controller
      */
     public function show(int $id): View
     {
-        $job = RepairJob::with([
+        $job = RepairJob::branchScope()->with([
             'customer.lead',
             'product',
             'vendor',
@@ -541,7 +599,7 @@ class RepairController extends Controller
      */
     public function updateStatus(Request $request, int $id)
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
         $user = Auth::user();
         $oldStatus = $job->current_status;
         $newStatus = $request->input('to_status');
@@ -704,7 +762,7 @@ class RepairController extends Controller
      */
     public function printJobCard(int $id): View
     {
-        $job = RepairJob::with(['customer.lead', 'product', 'vendor', 'supplier', 'receivedBy'])->findOrFail($id);
+        $job = RepairJob::branchScope()->with(['customer.lead', 'product', 'vendor', 'supplier', 'receivedBy'])->findOrFail($id);
         return view('admin.repairs.print_job_card', compact('job'));
     }
 
@@ -713,7 +771,7 @@ class RepairController extends Controller
      */
     public function printSticker(int $id): View
     {
-        $job = RepairJob::with(['customer.lead', 'product'])->findOrFail($id);
+        $job = RepairJob::branchScope()->with(['customer.lead', 'product'])->findOrFail($id);
         return view('admin.repairs.print_sticker', compact('job'));
     }
 
@@ -722,7 +780,7 @@ class RepairController extends Controller
      */
     public function printDeliveryNote(int $id): View
     {
-        $job = RepairJob::with(['customer.lead', 'product', 'vendor', 'deliveredBy'])->findOrFail($id);
+        $job = RepairJob::branchScope()->with(['customer.lead', 'product', 'vendor', 'deliveredBy'])->findOrFail($id);
         return view('admin.repairs.print_delivery_note', compact('job'));
     }
 
@@ -731,7 +789,7 @@ class RepairController extends Controller
      */
     public function printInvoice(int $id): View
     {
-        $job = RepairJob::with([
+        $job = RepairJob::branchScope()->with([
             'customer.lead',
             'product',
             'vendor',
@@ -748,7 +806,7 @@ class RepairController extends Controller
      */
     public function addItem(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
 
         $request->validate([
             'item_type'           => 'required|string',
@@ -797,7 +855,7 @@ class RepairController extends Controller
      */
     public function deleteItem(int $id, int $itemId): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
         $item = RepairItem::where('repair_job_id', $job->id)->findOrFail($itemId);
 
         DB::beginTransaction();
@@ -818,7 +876,7 @@ class RepairController extends Controller
      */
     public function collectPayment(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
 
         $request->validate([
             'amount'         => 'required|numeric|min:0.01',
@@ -949,7 +1007,7 @@ class RepairController extends Controller
      */
     public function syncLabBill(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
 
         $request->validate([
             'supplier_id'   => 'required|exists:suppliers,id',
@@ -1085,7 +1143,7 @@ class RepairController extends Controller
      */
     public function authorizeReplacement(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::with(['customer.lead', 'product', 'saleDetail', 'saleMaster'])->findOrFail($id);
+        $job = RepairJob::branchScope()->with(['customer.lead', 'product', 'saleDetail', 'saleMaster'])->findOrFail($id);
 
         $request->validate([
             'replacement_serial_no'  => 'required|string|max:100',
@@ -1261,7 +1319,7 @@ class RepairController extends Controller
      */
     public function printReplacementCertificate(int $id): View
     {
-        $job = RepairJob::with([
+        $job = RepairJob::branchScope()->with([
             'customer.lead',
             'product.brand',
             'vendor',
@@ -1380,7 +1438,7 @@ class RepairController extends Controller
      */
     public function addAttachment(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
 
         $request->validate([
             'file'            => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:10240',
@@ -1417,7 +1475,7 @@ class RepairController extends Controller
      */
     public function deleteAttachment(int $id, int $attachmentId): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
         $attachment = RepairAttachment::where('repair_job_id', $job->id)->findOrFail($attachmentId);
 
         if (file_exists(public_path($attachment->file_path))) {
@@ -1433,7 +1491,7 @@ class RepairController extends Controller
      */
     public function voidWarranty(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
 
         $request->validate([
             'void_reason'         => 'required|string|max:255',
@@ -1529,7 +1587,7 @@ class RepairController extends Controller
      */
     public function updateEstimate(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
 
         $request->validate([
             'estimate_amount' => 'required|numeric|min:0',
@@ -1591,7 +1649,7 @@ class RepairController extends Controller
      */
     public function patientDecision(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
 
         $request->validate([
             'decision'       => 'required|in:approved,declined',
@@ -1657,7 +1715,7 @@ class RepairController extends Controller
      */
     public function dispatchToLab(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
 
         $request->validate([
             'supplier_id'         => 'required|exists:suppliers,id',
@@ -1739,7 +1797,7 @@ class RepairController extends Controller
      */
     public function logLabReport(Request $request, int $id): RedirectResponse
     {
-        $job = RepairJob::findOrFail($id);
+        $job = RepairJob::branchScope()->findOrFail($id);
 
         $request->validate([
             'lab_outcome'         => 'required|in:repaired_warranty,replaced_warranty,declared_void,paid_estimate',
@@ -2048,7 +2106,7 @@ class RepairController extends Controller
      */
     public function completeTask(Request $request, int $id): JsonResponse|RedirectResponse
     {
-        $task = RepairTask::findOrFail($id);
+        $task = RepairTask::whereHas('repairJob', fn ($q) => $q->branchScope())->findOrFail($id);
         $user = Auth::user();
 
         $task->update([
@@ -2072,7 +2130,7 @@ class RepairController extends Controller
      */
     public function printDispatchNote(int $id): View
     {
-        $job = RepairJob::with(['customer.lead', 'product', 'supplier', 'receivedBy', 'vendor'])->findOrFail($id);
+        $job = RepairJob::branchScope()->with(['customer.lead', 'product', 'supplier', 'receivedBy', 'vendor'])->findOrFail($id);
         return view('admin.repairs.print_dispatch_note', compact('job'));
     }
 
@@ -2081,7 +2139,7 @@ class RepairController extends Controller
      */
     public function printEstimate(int $id): View
     {
-        $job = RepairJob::with(['customer.lead', 'product', 'items.product', 'receivedBy', 'vendor'])->findOrFail($id);
+        $job = RepairJob::branchScope()->with(['customer.lead', 'product', 'items.product', 'receivedBy', 'vendor'])->findOrFail($id);
         return view('admin.repairs.print_estimate', compact('job'));
     }
 
@@ -2090,7 +2148,7 @@ class RepairController extends Controller
      */
     public function printAdvanceReceipt(int $id): View
     {
-        $job = RepairJob::with(['customer.lead', 'product', 'receivedBy', 'vendor'])->findOrFail($id);
+        $job = RepairJob::branchScope()->with(['customer.lead', 'product', 'receivedBy', 'vendor'])->findOrFail($id);
         return view('admin.repairs.print_advance_receipt', compact('job'));
     }
 
