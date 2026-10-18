@@ -26,6 +26,13 @@ class RosterController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
+        $this->middleware('permission:roster.index|roster.view')->only(['index']);
+        $this->middleware('permission:roster.edit')->only([
+            'saveShift', 'deleteShift', 'saveBranchSchedule', 'saveBreak', 'deleteBreak', 'saveStaffHoliday',
+            'approveLeave', 'rejectLeave', 'deleteLeave',
+        ]);
+        // Staff (professionals have roster.view) can ask for leave; approval still needs roster.edit
+        $this->middleware('permission:roster.create|roster.edit|roster.view')->only(['requestLeave']);
     }
 
     /**

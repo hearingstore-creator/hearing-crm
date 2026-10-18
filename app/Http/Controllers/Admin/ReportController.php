@@ -55,7 +55,12 @@ class ReportController extends Controller
         $this->middleware('permission:doctor_&_referral.index')->only(['doctorReferralReport']);
         $this->middleware('permission:sales_performance.index')->only(['salesPerformanceReport']);
         $this->middleware('permission:membership_&_loyalty.index')->only(['membershipLoyaltyReport']);
-        $this->middleware('permission:lead_funnel.index')->only(['leadFunnelReport']);
+        $this->middleware('permission:lead_funnel.index')->only(['leadFunnelReport', 'exportLeadFunnelReport']);
+        $this->middleware('permission:sales_performance.index')->only(['exportSalesPerformanceReport']);
+        $this->middleware('permission:membership_&_loyalty.index')->only(['exportMembershipLoyaltyReport']);
+        $this->middleware('permission:purchase_&_stock.index')->only(['exportPurchaseStockReport']);
+        $this->middleware('permission:advances_report.index')->only(['advancesReport']);
+        $this->middleware('permission:services_status_report.index')->only(['servicesStatusReport']);
     }
 
     /**

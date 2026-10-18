@@ -34,6 +34,7 @@ class ProposalController extends Controller
         $this->middleware('permission:proposals.edit')->only(['edit', 'update', 'updateStatus']);
         $this->middleware('permission:proposals.delete')->only(['destroy']);
         $this->middleware('permission:proposals.view')->only(['show', 'downloadPdf', 'convertToSale']);
+        $this->middleware('permission:proposals.edit')->only(['sendEmail']);
     }
 
     /**

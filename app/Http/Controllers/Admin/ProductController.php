@@ -33,6 +33,9 @@ class ProductController extends Controller
         $this->middleware('permission:product.create')->only(['create', 'store']);
         $this->middleware('permission:product.edit')->only(['edit', 'update']);
         $this->middleware('permission:product.delete')->only(['destroy']);
+        // Product lookups used by the sale, purchase, proposal and stock screens
+        $this->middleware('permission:product.index|add_sale.create|sale_list.edit|sale_list.index|add_purchase.create|purchase_list.edit|proposals.create|stock.index')
+            ->only(['productSearch', 'productInfo']);
     }
 
     /**

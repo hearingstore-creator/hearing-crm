@@ -15,7 +15,7 @@ class AppointmentServiceController extends Controller
     public function __construct()
     {
         $this->middleware('permission:service_list.index')->only(['index']);
-        $this->middleware('permission:add_service.create')->only(['create', 'store']);
+        $this->middleware('permission:service_list.create')->only(['create', 'store']);
         $this->middleware('permission:service_list.edit')->only(['edit', 'update']);
         $this->middleware('permission:service_list.delete')->only(['destroy']);
     }

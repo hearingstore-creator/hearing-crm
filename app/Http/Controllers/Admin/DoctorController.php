@@ -28,6 +28,7 @@ class DoctorController extends Controller
         $this->middleware('permission:add_doctor.create')->only(['create', 'store']);
         $this->middleware('permission:doctor_list.edit')->only(['edit', 'update']);
         $this->middleware('permission:doctor_list.delete')->only(['destroy']);
+        $this->middleware('permission:doctor_list.index|add_sale.create|sale_list.edit|proposals.create')->only(['commissionRules']);
     }
 
     /**

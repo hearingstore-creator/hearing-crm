@@ -41,8 +41,12 @@ class CustomerController extends Controller
         $this->middleware('permission:add_customer.create')->only(['create', 'store']);
         $this->middleware('permission:customer_list.index')->only(['index', 'customerList', 'createCustomerLedger', 'customerLedger']);
         $this->middleware('permission:customer_list.edit')->only(['edit', 'update', 'payment', 'paymentStore', 'openDeal']);
-        $this->middleware('permission:customer_list.show')->only(['show']);
+        $this->middleware('permission:customer_list.index')->only(['show']);
         $this->middleware('permission:customer_list.import')->only(['importCustomers']);
+        // Patient search feeds the sale, payment, appointment, proposal and return forms
+        $this->middleware('permission:customer_list.index|add_sale.create|sale_list.index|customer_payment.create|add_appointment.create|appointment_list.index|proposals.create|sale_return.create|customer_lookup.index')
+            ->only(['customerSearch']);
+        $this->middleware('permission:customer_list.edit|customer_list.index|dashboard.index')->only(['recordAfterSalesAction']);
 
         // Delete: Super Admin only (data protection)
         $this->middleware(function ($request, $next) {

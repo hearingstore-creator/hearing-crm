@@ -31,7 +31,7 @@ class MedicineController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('permission:medicine.index')->only(['index', 'medicineList']);
+        $this->middleware('permission:medicine.index')->only(['index', 'medicineList', 'medicineInfo', 'batchWiseMedicineInfo']);
         $this->middleware('permission:medicine.create')->only(['create', 'store']);
         $this->middleware('permission:medicine.edit')->only(['edit', 'update']);
         $this->middleware('permission:medicine.delete')->only(['destroy']);

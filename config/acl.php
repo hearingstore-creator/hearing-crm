@@ -108,7 +108,7 @@ return [
                     'name' => 'Customer List',
                     'label' => 'All Customers',
                     'route' => 'admin/customers',
-                    'actions' => ['index', 'edit', 'delete']
+                    'actions' => ['index', 'edit', 'delete', 'import']
                 ],
                 [
                     // Hotline: read-only customer 360 (invoices, devices, warranty, tickets) across branches
@@ -616,6 +616,13 @@ return [
                     'name' => 'Analytics',
                     'route' => 'admin/sms-analytics',
                     'actions' => ['index']
+                ],
+                [
+                    'name' => 'SMS Automations',
+                    'label' => 'Automations',
+                    'route' => 'admin/sms-automations',
+                    'permission' => 'sms_automation',
+                    'actions' => ['index', 'create', 'edit', 'delete']
                 ],
             ]
         ],

@@ -28,6 +28,7 @@ class BusinessReportController extends Controller
         $this->middleware('permission:supplier_statement.index')->only(['supplierStatement']);
         $this->middleware('permission:purchase_report.index')->only(['purchaseReport']);
         $this->middleware('permission:vendor_monthly_report.index')->only(['vendorMonthly']);
+        $this->middleware('permission:doctor_statement.index|doctor_&_referral.index')->only(['doctorStatement']);
     }
 
     /* ------------------------------------------------------------------ */

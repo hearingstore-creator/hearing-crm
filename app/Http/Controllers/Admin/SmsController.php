@@ -20,6 +20,10 @@ class SmsController extends Controller
         $this->smsService = $smsService;
         $this->middleware('permission:compose_&_send.index')->only(['index', 'logIndex', 'analytics']);
         $this->middleware('permission:compose_&_send.create')->only(['sendCampaign', 'getRecipients', 'optOutStore', 'optOutDestroy']);
+        // Audience builder used on the compose screen
+        $this->middleware('permission:compose_&_send.index|compose_&_send.create')
+            ->only(['audienceFilterConfig', 'audienceQuickCounts', 'audienceFilter', 'getFilterGroups']);
+        $this->middleware('permission:compose_&_send.create')->only(['saveFilterGroup', 'deleteFilterGroup']);
     }
 
     /**

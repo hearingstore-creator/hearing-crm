@@ -20,6 +20,10 @@ class CustomerAdvanceController extends Controller
     public function __construct(CustomerAdvanceService $advanceService)
     {
         $this->advanceService = $advanceService;
+        $this->middleware('permission:add_appointment.create|appointment_list.edit|appointment_today.edit')->only(['recordAppointmentAdvance']);
+        $this->middleware('permission:add_sale.create|sale_list.edit')->only(['getActiveAdvance']);
+        $this->middleware('permission:appointment_list.index|appointment_today.index|customer_list.index|advances_report.index|repair_jobs_board.view')
+            ->only(['advanceReceipt', 'refundReceipt']);
     }
 
     /**

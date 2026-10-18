@@ -22,7 +22,7 @@ class ProfessionalController extends Controller
     public function __construct()
     {
         $this->middleware('permission:professional_list.index')->only(['index']);
-        $this->middleware('permission:add_professional.create')->only(['create', 'store']);
+        $this->middleware('permission:professional_list.create')->only(['create', 'store']);
         $this->middleware('permission:professional_list.edit')->only(['edit', 'update']);
         $this->middleware('permission:professional_list.delete')->only(['destroy']);
     }

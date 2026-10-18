@@ -29,6 +29,7 @@ class PurchaseController extends Controller
      */
     public function __construct()
     {
+        $this->middleware('permission:add_purchase.create|purchase_list.edit')->only(['addRowItem']);
         $this->middleware('permission:purchase_list.index')->only(['index', 'purchaseList']);
         $this->middleware('permission:add_purchase.create')->only(['create', 'store']);
         $this->middleware('permission:purchase_list.edit')->only(['edit', 'update']);

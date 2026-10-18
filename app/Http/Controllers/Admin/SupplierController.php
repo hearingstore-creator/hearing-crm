@@ -27,11 +27,13 @@ class SupplierController extends Controller
         $this->middleware('permission:supplier_list.index')->only(['index', 'supplierList']);
         $this->middleware('permission:supplier_list.edit')->only(['edit', 'update']);
         $this->middleware('permission:supplier_list.delete')->only(['destroy']);
-        $this->middleware('permission:supplier_ledger.view')->only(['createSupplierLedger', 'supplierLedger']);
+        // Old ledger URLs only redirect to the Supplier Statement report
+        $this->middleware('permission:supplier_statement.index')->only(['createSupplierLedger', 'supplierLedger']);
         $this->middleware('permission:supplier_payment.index')->only(['supplierPaymentIndex', 'supplierPaymentSlip', 'supplierUnpaidPurchases']);
         $this->middleware('permission:supplier_payment.create')->only(['supplierPaymentCreate', 'supplierPaymentStore']);
         $this->middleware('permission:supplier_payment.edit')->only(['supplierPaymentEdit', 'supplierPaymentUpdate']);
         $this->middleware('permission:supplier_payment.delete')->only(['supplierPaymentDestroy']);
+        $this->middleware('permission:supplier_payment.index|supplier_payment.create|add_purchase.create')->only(['getSupplierDue']);
     }
 
     /**

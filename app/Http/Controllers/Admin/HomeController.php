@@ -26,6 +26,9 @@ class HomeController extends Controller
     {
         $this->dashboardService = $dashboardService;
         $this->middleware('permission:dashboard.index')->only(['dashboard']);
+        // Legacy medicine / employee screens have no menu; their permissions are Super Admin only
+        $this->middleware('permission:medicine.index')->only(['medicineSearch']);
+        $this->middleware('permission:employee.index')->only(['employeeSearch']);
     }
 
     /**

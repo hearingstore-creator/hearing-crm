@@ -57,8 +57,16 @@ class SaleController extends Controller
         $this->middleware('permission:doctor_payment.create')->only(['doctorPaymentCreate', 'doctorPaymentStore']);
         $this->middleware('permission:doctor_payment.edit')->only(['doctorPaymentEdit', 'doctorPaymentUpdate']);
         $this->middleware('permission:doctor_payment.delete')->only(['doctorPaymentDestroy']);
-        $this->middleware('permission:sale_fulfillment.index|sale_list.index')->only(['fulfillmentHub', 'pendingServices']);
-        $this->middleware('permission:sale_fulfillment.edit|sale_list.edit')->only(['updateDeliveryStatus', 'markServiceDoneNow', 'markServiceBookLater']);
+        $this->middleware('permission:sale_fulfillment.index|sale_list.index')->only(['fulfillmentHub']);
+        $this->middleware('permission:pending_services.index|sale_fulfillment.index|sale_list.index')->only(['pendingServices']);
+        $this->middleware('permission:sale_fulfillment.edit|sale_list.edit')->only(['updateDeliveryStatus']);
+        $this->middleware('permission:pending_services.edit|sale_fulfillment.edit|sale_list.edit')->only(['markServiceDoneNow', 'markServiceBookLater']);
+        $this->middleware('permission:add_sale.create|sale_list.edit')
+            ->only(['addRowItem', 'addServiceRowItem', 'getProductSerialNumbers', 'getCustomerRedeemPoints']);
+        $this->middleware('permission:sale_fulfillment.index|add_sale.create|sale_list.index')->only(['scanLookup']);
+        $this->middleware('permission:patient_due_list.index|patient_due_list.create|customer_payment.create')->only(['unpaidInvoices']);
+        $this->middleware('permission:patient_due_list.create|customer_payment.create')->only(['collectDue']);
+        $this->middleware('permission:sale_list.index|sales_performance.index')->only(['saleReportCreate', 'saleReport']);
     }
 
     /**

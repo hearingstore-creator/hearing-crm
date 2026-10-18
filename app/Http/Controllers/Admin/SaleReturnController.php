@@ -29,7 +29,7 @@ class SaleReturnController extends Controller
     public function __construct()
     {
         $this->middleware('permission:sale_return.index')->only(['index']);
-        $this->middleware('permission:sale_return.create')->only(['create', 'store', 'getSaleItems']);
+        $this->middleware('permission:sale_return.create')->only(['create', 'store', 'getSaleItems', 'getCustomerInvoices']);
         $this->middleware('permission:sale_return.view')->only(['show']);
         $this->middleware('permission:sale_return.delete')->only(['destroy']);
     }
