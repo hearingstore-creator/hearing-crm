@@ -312,6 +312,10 @@
                         <div style="margin-bottom:16px;">
                             <i class="fas fa-exclamation-triangle text-warning" style="font-size:24px;"></i>
                             <p style="font-size:13px;color:var(--page-text-muted);margin-top:8px;">This action will send SMS messages to all valid recipients. This cannot be undone.</p>
+                            <p style="font-size:12px;color:var(--page-text-muted);margin-top:4px;">
+                                More than {{ config('crm.sms_campaign_admin_threshold', 500) }} recipients needs a Super Admin.
+                                Campaigns started between {{ config('crm.sms_quiet_from_hour', 21) }}:00 and {{ config('crm.sms_quiet_until_hour', 9) }}:00 are sent at {{ config('crm.sms_quiet_until_hour', 9) }}:00.
+                            </p>
                         </div>
 
                         <form id="abSendForm" method="POST" action="{{ url('admin/sms/send') }}">

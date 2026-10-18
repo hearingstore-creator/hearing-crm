@@ -24,7 +24,8 @@ class MembershipService
      * @param string $invoiceNo
      * @return void
      */
-    public function processSaleRewards(int $customerId, int $saleMasterId, float $totalAmount, string $invoiceNo): void
+    /** @return bool false when the points could not be posted (the sale itself is kept) */
+    public function processSaleRewards(int $customerId, int $saleMasterId, float $totalAmount, string $invoiceNo): bool
     {
         try {
             DB::beginTransaction();
@@ -34,7 +35,7 @@ class MembershipService
             if (!$customer) {
                 Log::warning("Customer not found for reward processing: {$customerId}");
                 DB::rollBack();
-                return;
+                return false;
             }
 
             // 1. Award points based on membership tier
@@ -47,9 +48,11 @@ class MembershipService
             $this->processReferralReward($customer, $saleMasterId, $invoiceNo);
 
             DB::commit();
+            return true;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Error processing sale rewards: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -69,11 +72,6 @@ class MembershipService
             ->where('type', RewardLedgerType::EARN->value)
             ->first();
 
-        if ($existingEarnEntry) {
-            Log::info("Earn points already exist for sale {$saleMasterId}, skipping.");
-            return;
-        }
-
         // Get membership tier or assign default (Bronze)
         $tier = $customer->membershipTier;
         if (!$tier) {
@@ -90,6 +88,18 @@ class MembershipService
 
         // Calculate points: 1 point per currency unit * earn percentage
         $pointsEarned = (int) ($totalAmount * ($tier->earn_percentage / 100));
+
+        // Sale edited: keep one earn entry per sale and bring it in line with the new total
+        if ($existingEarnEntry) {
+            if ($pointsEarned <= 0) {
+                $existingEarnEntry->delete();
+            } elseif ((int) $existingEarnEntry->points !== $pointsEarned) {
+                Log::info("Earn points for sale {$saleMasterId} changed from {$existingEarnEntry->points} to {$pointsEarned}");
+                $existingEarnEntry->points = $pointsEarned;
+                $existingEarnEntry->save();
+            }
+            return;
+        }
 
         if ($pointsEarned > 0) {
             // Create reward ledger entry
@@ -212,6 +222,9 @@ class MembershipService
      */
     public function redeemPoints(Customer $customer, int $saleMasterId, float $pointsToRedeem, string $invoiceNo): array
     {
+        // Lock the patient while reading the balance, so two sales at once cannot spend the same points
+        Customer::whereKey($customer->id)->lockForUpdate()->first();
+
         // Get available (non-expired) points using the customer model method
         $availablePoints = $customer->getAvailableRedeemPoints();
 

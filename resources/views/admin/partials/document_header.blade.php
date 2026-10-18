@@ -9,7 +9,8 @@
        - $statusClass: string (optional, e.g. 'paid', 'partial', 'unpaid', 'completed')
 --}}
 @php
-    $setting = $setting ?? \App\Models\Setting::first();
+    // No settings row yet (fresh install): print with the defaults below instead of failing
+    $setting = $setting ?? \App\Models\Setting::first() ?? new \App\Models\Setting();
     $branch = $vendor ?? ($branch ?? null);
     $isBranch = !empty($branch) && ($branch->type === 'vendor');
 

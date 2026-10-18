@@ -43,7 +43,12 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="password">Password</label>
-                            <input type="password" class="form-control" name="password" id="password" placeholder="Leave blank if unchanged">
+                            <input type="password" class="form-control" name="password" id="password" placeholder="Leave blank if unchanged" minlength="8" autocomplete="new-password">
+                            <small class="form-text text-muted">At least 8 characters.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="password_confirmation">Confirm New Password</label>
+                            <input type="password" class="form-control" name="password_confirmation" id="password_confirmation" minlength="8" autocomplete="new-password">
                         </div>
                     </div>
                     <div class="col-md-6">

@@ -42,7 +42,12 @@
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="password">Password <span style="color: var(--danger-500);">*</span></label>
-                            <input type="password" class="form-control" name="password" id="password" required>
+                            <input type="password" class="form-control" name="password" id="password" minlength="8" autocomplete="new-password" required>
+                            <small class="form-text text-muted">At least 8 characters.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="password_confirmation">Confirm Password <span style="color: var(--danger-500);">*</span></label>
+                            <input type="password" class="form-control" name="password_confirmation" id="password_confirmation" minlength="8" autocomplete="new-password" required>
                         </div>
                     </div>
                     <div class="col-md-6">

@@ -520,12 +520,15 @@ class SaleController extends Controller
 
                     // Process membership rewards and referral
                     $membershipService = new MembershipService();
-                    $membershipService->processSaleRewards(
+                    $pointsPosted = $membershipService->processSaleRewards(
                         $saleMaster->customer_id,
                         $saleMaster->id,
                         $saleMaster->total_amount,
                         $saleInvoiceNo
                     );
+                    if (!$pointsPosted) {
+                        session()->flash('warning', 'The sale was saved, but the reward points could not be posted. Please tell the administrator (details are in the log).');
+                    }
 
                     // Link converted proposal if present
                     if ($request->filled('from_proposal_id')) {
@@ -1087,28 +1090,34 @@ class SaleController extends Controller
                     Helper::doctorLedgerCredit($saleMaster, $saleInvoiceNo, $type);
                 }
 
-                // Process redeem points (create or update)
-                if (!empty($request->redeem_points) && $request->redeem_points > 0) {
+                // Process redeem points (create, update, or give back when set to 0 on the edit form)
+                $redeemPoints = (float) ($request->redeem_points ?? 0);
+                $hadRedemption = RewardLedger::where('sale_master_id', $saleMaster->id)
+                    ->where('type', RewardLedgerType::REDEEM->value)->exists();
+                if ($redeemPoints > 0 || ($hadRedemption && $request->has('redeem_points'))) {
                     $customer = Customer::find($saleMaster->customer_id);
                     if ($customer) {
                         $membershipService = new MembershipService();
                         $membershipService->redeemPoints(
                             $customer,
                             $saleMaster->id,
-                            (float) $request->redeem_points,
+                            $redeemPoints,
                             $saleInvoiceNo
                         );
                     }
                 }
 
-                // Process membership rewards and referral (for updates)
+                // Process membership rewards and referral (for updates; earned points follow the new total)
                 $membershipService = new MembershipService();
-                $membershipService->processSaleRewards(
+                $pointsPosted = $membershipService->processSaleRewards(
                     $saleMaster->customer_id,
                     $saleMaster->id,
                     $saleMaster->total_amount,
                     $saleInvoiceNo
                 );
+                if (!$pointsPosted) {
+                    session()->flash('warning', 'The sale was updated, but the reward points could not be posted. Please tell the administrator (details are in the log).');
+                }
 
                 DB::commit();
                 return redirect('admin/sale')->with('success', 'Updated Successfully');

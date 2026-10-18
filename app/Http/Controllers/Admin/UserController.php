@@ -63,7 +63,7 @@ class UserController extends Controller
         $request->validate([
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users',
-            'password' => 'required|min:6',
+            'password' => 'required|string|min:8|confirmed',
             'roles'    => 'required|array',
         ]);
 
@@ -119,7 +119,7 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
-            'password' => 'nullable|string|min:6',
+            'password' => 'nullable|string|min:8|confirmed',
             'roles'    => ! $user->isVendor() ? 'required|array' : 'nullable',
             'status' => 'required|in:0,1',
        ]);

@@ -38,7 +38,7 @@ class AdminAccessTest extends TestCase
     protected function newUser(array $roleIds)
     {
         return $this->actingAs($this->manager)->from('/admin/user/create')->post('/admin/user', [
-            'name' => 'New Person', 'email' => uniqid('n') . '@test.test', 'password' => 'secret-123', 'roles' => $roleIds,
+            'name' => 'New Person', 'email' => uniqid('n') . '@test.test', 'password' => 'secret-123', 'password_confirmation' => 'secret-123', 'roles' => $roleIds,
         ]);
     }
 

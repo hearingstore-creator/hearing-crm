@@ -619,6 +619,33 @@ class Helper
     }
 
     /**
+     * The branch a user is held to in reports: a branch login, or staff with a home branch,
+     * unless they may view all branches. Null = head office user who may pick any branch.
+     */
+    public static function reportBranchId(): ?int
+    {
+        $user = auth()->user();
+        if (!$user || $user->canViewAllBranches()) {
+            return null;
+        }
+
+        return $user->branchId();
+    }
+
+    /**
+     * Middleware body for report controllers: a branch-bound user always gets their own branch
+     * in the report filters, whatever the page sent (vendor_id and branch are the filter names used).
+     */
+    public static function forceReportBranch($request, \Closure $next)
+    {
+        if ($branchId = self::reportBranchId()) {
+            $request->merge(['vendor_id' => (string) $branchId, 'branch' => (string) $branchId]);
+        }
+
+        return $next($request);
+    }
+
+    /**
      * Message that is safe to show a user for an exception caught in a controller.
      *
      * Messages our own code writes for people (validation, StockGuard, intentional \Exception /

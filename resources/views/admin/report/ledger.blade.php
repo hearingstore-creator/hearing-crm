@@ -51,6 +51,20 @@
                                                     required="">
                                             </div>
                                         </div>
+                                        @if(!empty($branches))
+                                        <div class="col-md-2">
+                                            <div class="form-group">
+                                                <label for="branch">Branch</label>
+                                                <select name="branch" id="branch" class="form-control">
+                                                    <option value="all">All branches</option>
+                                                    <option value="hq" @selected(($branch ?? '') === 'hq')>Head Office</option>
+                                                    @foreach ($branches as $branchId => $branchName)
+                                                        <option value="{{ $branchId }}" @selected((string) ($branch ?? '') === (string) $branchId)>{{ $branchName }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+                                        @endif
                                         <div class="col-md-2 submit">
                                             <div class="form-group">
                                                 <input type="submit" class="btn btn-success btn-sm" value="Submit">

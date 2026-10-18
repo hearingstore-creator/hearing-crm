@@ -3,11 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Response;
 use ZipArchive;
 
+/**
+ * Full database download for Super Admin (occasional copies; the daily off-server backup is
+ * deploy/backup-offsite.sh). The dump is written to a temp file row by row, so large databases do
+ * not have to fit in memory, includes the `migrations` table so a restored copy is up to date,
+ * and every download is recorded in the activity log.
+ */
 class DatabaseBackupController extends Controller
 {
     public function download(Request $request)
@@ -16,116 +22,94 @@ class DatabaseBackupController extends Controller
             abort(403, 'Unauthorized. Only Super Admin can download database backup.');
         }
 
+        @set_time_limit(600);
         $sqlFile = tempnam(sys_get_temp_dir(), 'backup_') . '.sql';
         $zipFile = tempnam(sys_get_temp_dir(), 'backup_') . '.zip';
         $downloadName = 'database_backup_' . date('Y-m-d_His') . '.zip';
 
         try {
-            $this->generateSqlDump($sqlFile);
+            $tables = $this->generateSqlDump($sqlFile);
 
             $zip = new ZipArchive;
             if ($zip->open($zipFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                abort(500, 'Failed to create zip file: ' . $zip->getStatusString());
+                abort(500, 'Failed to create zip file.');
             }
             $zip->addFile($sqlFile, 'database_backup.sql');
-            if ($zip->close() === false) {
-                abort(500, 'Failed to write zip file: ' . $zip->getStatusString());
+            if ($zip->close() === false || ! file_exists($zipFile)) {
+                abort(500, 'Failed to write zip file.');
             }
-
-            if (! file_exists($zipFile)) {
-                abort(500, 'Zip file was not created.');
-            }
-
-            $zipContent = file_get_contents($zipFile);
-
-            return Response::streamDownload(function () use ($zipContent) {
-                echo $zipContent;
-            }, $downloadName, [
-                'Content-Type' => 'application/zip',
-                'Content-Length' => strlen($zipContent),
-            ]);
         } finally {
             if (file_exists($sqlFile)) {
                 @unlink($sqlFile);
             }
-            if (file_exists($zipFile)) {
-                @unlink($zipFile);
-            }
         }
+
+        // A full copy of every patient record left the system: record who took it
+        ActivityLog::create([
+            'user_id'      => $request->user()->id,
+            'subject_type' => 'database',
+            'subject_id'   => 0,
+            'action'       => 'database_backup_downloaded',
+            'new_values'   => ['file' => $downloadName, 'tables' => $tables, 'bytes' => filesize($zipFile)],
+            'ip_address'   => $request->ip(),
+            'user_agent'   => mb_substr((string) $request->userAgent(), 0, 255),
+        ]);
+
+        // Streamed from disk and removed afterwards
+        return response()->download($zipFile, $downloadName, ['Content-Type' => 'application/zip'])->deleteFileAfterSend(true);
     }
 
-    private function generateSqlDump(string $sqlFile): void
+    /** Write the dump to $sqlFile and return the number of tables. */
+    private function generateSqlDump(string $sqlFile): int
     {
         $database = DB::connection()->getDatabaseName();
         $pdo = DB::connection()->getPdo();
+        $out = fopen($sqlFile, 'w');
+        $write = fn (string $line) => fwrite($out, $line . "\n");
 
-        $sql = [];
-        $sql[] = "-- Database Backup";
-        $sql[] = "-- Generated: " . date('Y-m-d H:i:s');
-        $sql[] = "-- Database: {$database}";
-        $sql[] = "";
-        $sql[] = "SET FOREIGN_KEY_CHECKS=0;";
-        $sql[] = "";
+        $write("-- Database Backup");
+        $write("-- Generated: " . date('Y-m-d H:i:s'));
+        $write("-- Database: {$database}");
+        $write("");
+        $write("SET FOREIGN_KEY_CHECKS=0;");
+        $write("");
 
         $tables = $pdo->query("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN);
 
         foreach ($tables as $table) {
-            // Skip migration table
-            if ($table === 'migrations') {
-                continue;
-            }
+            $write("-- --------------------------------------------------");
+            $write("-- Table structure for `{$table}`");
+            $write("-- --------------------------------------------------");
+            $write("");
 
-            $sql[] = "-- --------------------------------------------------";
-            $sql[] = "-- Table structure for `{$table}`";
-            $sql[] = "-- --------------------------------------------------";
-            $sql[] = "";
-
-            // CREATE TABLE statement
             $createStatement = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(\PDO::FETCH_ASSOC);
-            $sql[] = "DROP TABLE IF EXISTS `{$table}`;";
-            $sql[] = $createStatement['Create Table'] . ";";
-            $sql[] = "";
+            $write("DROP TABLE IF EXISTS `{$table}`;");
+            $write($createStatement['Create Table'] . ";");
+            $write("");
 
-            // Data rows
-            $sql[] = "-- --------------------------------------------------";
-            $sql[] = "-- Data dump for `{$table}`";
-            $sql[] = "-- --------------------------------------------------";
-            $sql[] = "";
+            $write("-- --------------------------------------------------");
+            $write("-- Data dump for `{$table}`");
+            $write("-- --------------------------------------------------");
+            $write("");
 
-            $columns = $pdo->query("SHOW COLUMNS FROM `{$table}`")->fetchAll(\PDO::FETCH_ASSOC);
-            $columnNames = array_column($columns, 'Field');
-            $columnCount = count($columnNames);
-            $placeholders = implode(', ', array_fill(0, $columnCount, '?'));
+            $columnNames = array_column($pdo->query("SHOW COLUMNS FROM `{$table}`")->fetchAll(\PDO::FETCH_ASSOC), 'Field');
+            $columnList = '`' . implode('`, `', $columnNames) . '`';
+            $rowCount = (int) $pdo->query("SELECT COUNT(*) FROM `{$table}`")->fetchColumn();
 
-            $rowCount = $pdo->query("SELECT COUNT(*) FROM `{$table}`")->fetchColumn();
-
-            if ($rowCount > 0) {
-                $chunkSize = 1000;
-                $offset = 0;
-
-                while ($offset < $rowCount) {
-                    $rows = $pdo->query("SELECT * FROM `{$table}` LIMIT {$offset}, {$chunkSize}")->fetchAll(\PDO::FETCH_ASSOC);
-
-                    foreach ($rows as $row) {
-                        $values = [];
-                        foreach ($row as $value) {
-                            $values[] = $value === null ? 'NULL' : $pdo->quote($value);
-                        }
-                        $valueList = implode(', ', $values);
-                        $columnList = '`' . implode('`, `', $columnNames) . '`';
-                        $sql[] = "INSERT INTO `{$table}` ({$columnList}) VALUES ({$valueList});";
-                    }
-
-                    $offset += $chunkSize;
+            for ($offset = 0; $offset < $rowCount; $offset += 1000) {
+                $rows = $pdo->query("SELECT * FROM `{$table}` LIMIT {$offset}, 1000")->fetchAll(\PDO::FETCH_ASSOC);
+                foreach ($rows as $row) {
+                    $values = array_map(fn ($value) => $value === null ? 'NULL' : $pdo->quote($value), $row);
+                    $write("INSERT INTO `{$table}` ({$columnList}) VALUES (" . implode(', ', $values) . ");");
                 }
             }
 
-            $sql[] = "";
+            $write("");
         }
 
-        $sql[] = "SET FOREIGN_KEY_CHECKS=1;";
-        $sql[] = "";
+        $write("SET FOREIGN_KEY_CHECKS=1;");
+        fclose($out);
 
-        file_put_contents($sqlFile, implode("\n", $sql));
+        return count($tables);
     }
 }

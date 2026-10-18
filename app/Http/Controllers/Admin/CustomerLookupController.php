@@ -144,7 +144,7 @@ class CustomerLookupController extends Controller
             'firstExpiry'    => $expiringPoints->first_expiry ?? null,
             'sales'          => $sales,
             'devices'        => $devices,
-            'tickets'        => Ticket::where('customer_id', $customer->id)->latest()->limit(10)->get(),
+            'tickets'        => Ticket::withoutGlobalScope('branch_owned')->where('customer_id', $customer->id)->latest()->limit(10)->get(),
             'appointments'   => Appointment::with(['service', 'user:id,name'])
                 ->where(fn ($w) => $w->where('customer_id', $customer->id)->orWhere('lead_id', $customer->lead_id))
                 ->orderByDesc('appointment_date')

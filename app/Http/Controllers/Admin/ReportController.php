@@ -61,6 +61,8 @@ class ReportController extends Controller
         $this->middleware('permission:purchase_&_stock.index')->only(['exportPurchaseStockReport']);
         $this->middleware('permission:advances_report.index')->only(['advancesReport']);
         $this->middleware('permission:services_status_report.index')->only(['servicesStatusReport']);
+        // Branch logins and staff with a home branch only ever see their own branch (reports and exports)
+        $this->middleware(fn ($request, $next) => Helper::forceReportBranch($request, $next));
     }
 
     /**
@@ -71,6 +73,9 @@ class ReportController extends Controller
     public function ledgerCreate(): View
     {
         $data['ledgerFilterTypes'] = Helper::ledgerFilterTypes();
+        $data['startDate'] = now()->startOfMonth()->toDateString();
+        $data['endDate'] = now()->toDateString();
+        $data['branches'] = auth()->user()->canViewAllBranches() ? Helper::branchOptions() : [];
         return view('admin.report.ledger', $data);
     }
 
@@ -82,36 +87,35 @@ class ReportController extends Controller
      */
     public function ledgerReport(Request $request): View
     {
-        $startDate = $request->start_date;
-        $endDate = $request->end_date;
+        $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
+        ]);
+        // Default: this month so far
+        $startDate = $request->start_date ?: now()->startOfMonth()->toDateString();
+        $endDate = $request->end_date ?: now()->toDateString();
         $type = $request->type;
+        $branch = $request->input('branch');
         $ledgerFilterTypes = Helper::ledgerFilterTypes();
+        $branches = auth()->user()->canViewAllBranches() ? Helper::branchOptions() : [];
 
+        // Head office sees every branch (narrowed by the branch filter); branch users keep their own branch
+        $rows = fn (string $amountType) => Helper::readAllBranches(fn () => Helper::applyBranchFilter(
+            Ledger::where('amount_type', $amountType)->whereBetween('date', [$startDate, $endDate]),
+            $branch
+        )->orderBy('id', 'desc')->get());
+
+        $data = compact('startDate', 'endDate', 'type', 'ledgerFilterTypes', 'branch', 'branches');
         if (Helper::$expense == $type) {
-            $expenses = Ledger::where('amount_type', Helper::$expense)
-                ->whereBetween('date', [$startDate, $endDate])
-                ->orderBy('id', 'desc')
-                ->get();
-            return view('admin.report.ledger', compact('expenses', 'startDate', 'endDate', 'type', 'ledgerFilterTypes'));
+            $data['expenses'] = $rows(Helper::$expense);
         } elseif (Helper::$income == $type) {
-            $incomes = Ledger::where('amount_type', Helper::$income)
-                ->whereBetween('date', [$startDate, $endDate])
-                ->orderBy('id', 'desc')
-                ->get();
-            return view('admin.report.ledger', compact('incomes', 'startDate', 'endDate', 'type', 'ledgerFilterTypes'));
+            $data['incomes'] = $rows(Helper::$income);
         } else {
-            $expenses = Ledger::where('amount_type', Helper::$expense)
-                ->whereBetween('date', [$startDate, $endDate])
-                ->orderBy('id', 'desc')
-                ->get();
-
-            $incomes = Ledger::where('amount_type', Helper::$income)
-                ->whereBetween('date', [$startDate, $endDate])
-                ->orderBy('id', 'desc')
-                ->get();
-
-            return view('admin.report.ledger', compact('expenses', 'incomes', 'startDate', 'endDate', 'type', 'ledgerFilterTypes'));
+            $data['expenses'] = $rows(Helper::$expense);
+            $data['incomes'] = $rows(Helper::$income);
         }
+
+        return view('admin.report.ledger', $data);
     }
 
     /**

@@ -10,11 +10,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Ticket extends Model
 {
-    use HasFactory, HelperTrait;
+    use HasFactory, HelperTrait, \App\Traits\BranchOwned;
 
     protected $fillable = [
         'subject',
         'description',
+        'vendor_id',
         'customer_id',
         'assigned_to',
         'status',

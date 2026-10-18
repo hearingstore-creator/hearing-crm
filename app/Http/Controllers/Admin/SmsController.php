@@ -135,10 +135,54 @@ class SmsController extends Controller
             'status' => \App\Enums\SmsCampaignStatus::SENDING->value,
         ]);
 
-        // Sent in the background (queue worker); results appear in Send Log / Analytics
-        \App\Jobs\SendSmsCampaign::dispatch($campaign->id, auth()->id());
+        // Cost guard: how many people, how many SMS parts each, and who may send that many
+        $recipientCount = $this->smsService->campaignRecipients($campaign)->count();
+        $threshold = (int) config('crm.sms_campaign_admin_threshold', 500);
+        if ($recipientCount === 0) {
+            $campaign->delete();
+            return redirect('admin/sms')->with('warning', 'No recipients match this audience, so nothing was sent.');
+        }
+        if ($recipientCount > $threshold && !auth()->user()->isSuperAdmin()) {
+            $campaign->delete();
+            return redirect('admin/sms')->with('warning', "This campaign would reach {$recipientCount} people. Campaigns above {$threshold} recipients must be sent by a Super Admin.");
+        }
+        $parts = self::smsParts($request->message_body);
 
-        return redirect('admin/sms')->with('success', "Campaign \"{$campaign->name}\" is being sent in the background. Check the Send Log in a minute for results.");
+        // Quiet hours: a campaign started late in the evening or at night waits until morning
+        $now = now('Asia/Dhaka');
+        $from = (int) config('crm.sms_quiet_from_hour', 21);
+        $until = (int) config('crm.sms_quiet_until_hour', 9);
+        $sendAt = null;
+        if ($now->hour >= $from || $now->hour < $until) {
+            $sendAt = $now->copy()->setTime($until, 0);
+            if ($now->hour >= $from) {
+                $sendAt->addDay();
+            }
+        }
+
+        // Sent in the background (queue worker); results appear in Send Log / Analytics
+        $job = \App\Jobs\SendSmsCampaign::dispatch($campaign->id, auth()->id());
+        if ($sendAt) {
+            $job->delay($sendAt);
+        }
+
+        $size = "{$recipientCount} recipients × {$parts} SMS part" . ($parts > 1 ? 's' : '') . ' (about ' . ($recipientCount * $parts) . ' SMS before opt-outs and duplicates are removed)';
+        $when = $sendAt ? 'It is quiet hours, so it will be sent at ' . $sendAt->format('g:i A, d M') . '.' : 'It is being sent in the background; check the Send Log in a minute.';
+
+        return redirect('admin/sms')->with('success', "Campaign \"{$campaign->name}\": {$size}. {$when}");
+    }
+
+    /**
+     * SMS parts one message uses: Bangla / Unicode text fits 70 characters (67 per part when split),
+     * plain English text 160 (153 per part when split).
+     */
+    public static function smsParts(string $message): int
+    {
+        $length = mb_strlen($message);
+        $unicode = (bool) preg_match('/[^\x00-\x7F]/', $message);
+        [$single, $multi] = $unicode ? [70, 67] : [160, 153];
+
+        return $length <= $single ? 1 : (int) ceil($length / $multi);
     }
 
     /**

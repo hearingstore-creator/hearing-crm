@@ -29,6 +29,8 @@ class BusinessReportController extends Controller
         $this->middleware('permission:purchase_report.index')->only(['purchaseReport']);
         $this->middleware('permission:vendor_monthly_report.index')->only(['vendorMonthly']);
         $this->middleware('permission:doctor_statement.index|doctor_&_referral.index')->only(['doctorStatement']);
+        // Branch logins and staff with a home branch only ever see their own branch
+        $this->middleware(fn ($request, $next) => \App\Classes\Helper::forceReportBranch($request, $next));
     }
 
     /* ------------------------------------------------------------------ */
@@ -79,16 +81,23 @@ class BusinessReportController extends Controller
         return [$start, $end, $period];
     }
 
+    /** True for anyone held to one branch: a branch login, or staff with a home branch. */
     private function isVendor(): bool
     {
-        return auth()->user()->isVendor();
+        return \App\Classes\Helper::reportBranchId() !== null;
+    }
+
+    /** The branch a branch-bound user sees (the branch login itself, or the staff user's home branch). */
+    private function ownBranchId(): ?int
+    {
+        return \App\Classes\Helper::reportBranchId();
     }
 
     /** Restrict a query on `$column` (vendor_id) to what the current user may see. */
     private function scopeVendor(Builder $q, string $column, $vendorFilter = null): Builder
     {
         if ($this->isVendor()) {
-            return $q->where($column, auth()->id());
+            return $q->where($column, $this->ownBranchId());
         }
         if ($vendorFilter === 'hq') {
             return $q->whereNull($column);
@@ -127,7 +136,8 @@ class BusinessReportController extends Controller
     private function vendorOptions(): Collection
     {
         if ($this->isVendor()) {
-            return collect([(object) ['id' => auth()->id(), 'name' => auth()->user()->name]]);
+            $branch = \App\Models\User::find($this->ownBranchId());
+            return collect([(object) ['id' => $this->ownBranchId(), 'name' => $branch?->name ?? auth()->user()->name]]);
         }
 
         return DB::table('users')->where('type', 'vendor')->whereNull('deleted_at')->orderBy('name')->get(['id', 'name']);
@@ -994,7 +1004,7 @@ class BusinessReportController extends Controller
         $month = preg_match('/^\d{4}-\d{2}$/', (string) $request->input('month')) ? $request->input('month') : now()->format('Y-m');
         $mStart = Carbon::createFromFormat('Y-m-d', $month . '-01')->startOfMonth();
         $mEnd = $mStart->copy()->endOfMonth();
-        $vendorFilter = $this->isVendor() ? (string) auth()->id() : $request->input('vendor_id', 'all');
+        $vendorFilter = $this->isVendor() ? (string) $this->ownBranchId() : $request->input('vendor_id', 'all');
 
         // Which branches to show
         $branches = collect();
