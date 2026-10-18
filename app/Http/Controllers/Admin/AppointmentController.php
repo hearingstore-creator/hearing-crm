@@ -342,7 +342,7 @@ class AppointmentController extends Controller
         try {
             $appointment = $engine->bookWithLock($validated);
         } catch (\Throwable $e) {
-            return redirect()->back()->with('warning', $e->getMessage())->withInput();
+            return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($e))->withInput();
         }
 
         // Process optional advance payment

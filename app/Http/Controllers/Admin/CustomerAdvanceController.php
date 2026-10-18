@@ -99,7 +99,7 @@ class CustomerAdvanceController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Could not record advance payment. Please try again.'], 500);
             }
-            return redirect()->back()->with('warning', 'Could not record advance payment: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('warning', 'Could not record advance payment: ' . \App\Classes\Helper::userMessage($e))->withInput();
         }
     }
 
@@ -158,7 +158,7 @@ class CustomerAdvanceController extends Controller
             \Illuminate\Support\Facades\Log::error('Advance Refund Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Error processing refund: ' . $e->getMessage(),
+                'message' => 'Error processing refund: ' . \App\Classes\Helper::userMessage($e),
             ], 500);
         }
     }

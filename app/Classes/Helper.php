@@ -619,6 +619,41 @@ class Helper
     }
 
     /**
+     * Message that is safe to show a user for an exception caught in a controller.
+     *
+     * Messages our own code writes for people (validation, StockGuard, intentional \Exception /
+     * \RuntimeException / \InvalidArgumentException / \DomainException, abort(403/404, '...')) are shown.
+     * Everything else (database, framework, mail, file errors) can expose table names or SQL, so it is
+     * logged in full and the user gets a generic message.
+     */
+    public static function userMessage(\Throwable $e): string
+    {
+        $generic = 'A system error occurred and has been logged. Please try again or contact the administrator.';
+
+        if ($e instanceof \Illuminate\Validation\ValidationException) {
+            return collect($e->errors())->flatten()->first() ?: $generic;
+        }
+        if ($e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
+            return 'The record was not found. It may have been deleted.';
+        }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface && $e->getMessage() !== '') {
+            return $e->getMessage();
+        }
+        $intentional = [\Exception::class, \RuntimeException::class, \InvalidArgumentException::class, \DomainException::class];
+        if ((in_array(get_class($e), $intentional, true) || str_starts_with(get_class($e), 'App\\Exceptions\\')) && $e->getMessage() !== '') {
+            return $e->getMessage();
+        }
+
+        \Illuminate\Support\Facades\Log::error(get_class($e) . ': ' . $e->getMessage(), [
+            'url'  => request()?->fullUrl(),
+            'user' => auth()->id(),
+            'at'   => $e->getFile() . ':' . $e->getLine(),
+        ]);
+
+        return $generic;
+    }
+
+    /**
      * Company ledger invoice numbers are time based (ymdhis) and unique; two entries in the same
      * second would collide. Add -2, -3 ... until the number is free (soft-deleted rows count too).
      */

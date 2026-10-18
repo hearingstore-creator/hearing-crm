@@ -232,7 +232,7 @@ class ManufacturerReturnController extends Controller
             return redirect()->back()->with('warning', 'Not Saved');
         } catch (\Exception $ex) {
             DB::rollback();
-            return redirect()->back()->with('warning', $ex->getMessage());
+            return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
 

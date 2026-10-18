@@ -417,7 +417,7 @@ class SupplierController extends Controller
                 ->with('success', 'Supplier Payment saved successfully. Payment Voucher / Slip generated below.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('warning', 'An error occurred: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('warning', 'An error occurred: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -600,7 +600,7 @@ class SupplierController extends Controller
                 ->with('success', 'Payment Updated Successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('warning', 'An error occurred: ' . $e->getMessage());
+            return redirect()->back()->with('warning', 'An error occurred: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 

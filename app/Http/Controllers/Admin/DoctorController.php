@@ -255,7 +255,7 @@ class DoctorController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return redirect()->back()->with('warning', 'Error saving doctor: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('warning', 'Error saving doctor: ' . \App\Classes\Helper::userMessage($e))->withInput();
         }
     }
 
@@ -417,7 +417,7 @@ class DoctorController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return redirect()->back()->with('warning', 'Error updating doctor: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('warning', 'Error updating doctor: ' . \App\Classes\Helper::userMessage($e))->withInput();
         }
     }
 

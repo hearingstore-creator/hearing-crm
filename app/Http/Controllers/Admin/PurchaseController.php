@@ -236,7 +236,7 @@ class PurchaseController extends Controller
             return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
-            return redirect()->back()->with('warning', $ex->getMessage());
+            return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
 
@@ -507,7 +507,7 @@ class PurchaseController extends Controller
             return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
-            return redirect()->back()->with('warning', $ex->getMessage());
+            return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
 

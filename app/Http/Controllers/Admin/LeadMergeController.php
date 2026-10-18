@@ -67,7 +67,7 @@ class LeadMergeController extends Controller
         try {
             $this->merger->merge($keep, $merge);
         } catch (\DomainException $e) {
-            return back()->with('warning', $e->getMessage());
+            return back()->with('warning', \App\Classes\Helper::userMessage($e));
         }
 
         return redirect()->route('leads.merge')->with('success', "{$merge->full_name} was merged into {$keep->full_name}.");

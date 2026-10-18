@@ -352,7 +352,7 @@ class ProposalController extends Controller
             return redirect()->route('proposal.show', $proposal->id)->with('success', "Proposal {$proposal->proposal_no} generated successfully!");
         } catch (\Throwable $ex) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('warning', 'Failed to save proposal: ' . $ex->getMessage());
+            return redirect()->back()->withInput()->with('warning', 'Failed to save proposal: ' . \App\Classes\Helper::userMessage($ex));
         }
     }
 
@@ -563,7 +563,7 @@ class ProposalController extends Controller
             return redirect()->route('proposal.show', $proposal->id)->with('success', "Proposal {$proposal->proposal_no} updated successfully!");
         } catch (\Throwable $ex) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('warning', 'Failed to update proposal: ' . $ex->getMessage());
+            return redirect()->back()->withInput()->with('warning', 'Failed to update proposal: ' . \App\Classes\Helper::userMessage($ex));
         }
     }
 

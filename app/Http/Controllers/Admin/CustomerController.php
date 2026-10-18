@@ -683,7 +683,7 @@ class CustomerController extends Controller
             return redirect('admin/customers')->with('success', 'Customer Updated Successfully');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('warning', 'Not Updated: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('warning', 'Not Updated: ' . \App\Classes\Helper::userMessage($e))->withInput();
         }
     }
 
@@ -823,7 +823,7 @@ class CustomerController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return redirect()->back()->with('warning', 'An error occurred: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('warning', 'An error occurred: ' . \App\Classes\Helper::userMessage($e))->withInput();
         }
     }
 
@@ -1043,7 +1043,7 @@ class CustomerController extends Controller
             return back()->with('success', "File imported successfully. Total Customers Imported: {$importedCount}");
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['file' => 'Error importing customers: ' . $e->getMessage()])->withInput();
+            return back()->withErrors(['file' => 'Error importing customers: ' . \App\Classes\Helper::userMessage($e)])->withInput();
         }
     }
 

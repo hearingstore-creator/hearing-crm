@@ -671,7 +671,7 @@ class SaleReturnController extends Controller
             DB::rollBack();
             return redirect()->back()
                 ->withInput()
-                ->with('warning', 'Failed to process sales return: ' . $ex->getMessage());
+                ->with('warning', 'Failed to process sales return: ' . \App\Classes\Helper::userMessage($ex));
         }
     }
 
@@ -776,7 +776,7 @@ class SaleReturnController extends Controller
                 ->with('success', "Credit Note #{$creditNoteNo} voided and stock/ledger reversed successfully.");
         } catch (\Exception $ex) {
             DB::rollBack();
-            return redirect()->back()->with('warning', 'Failed to void credit note: ' . $ex->getMessage());
+            return redirect()->back()->with('warning', 'Failed to void credit note: ' . \App\Classes\Helper::userMessage($ex));
         }
     }
 }

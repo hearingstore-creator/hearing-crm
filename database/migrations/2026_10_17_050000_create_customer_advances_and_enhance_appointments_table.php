@@ -75,6 +75,9 @@ return new class extends Migration
 
         // 4. Create advance.refund permission
         $apptMenu = \App\Models\Menu::where('name', 'Appointment')->first();
+        if (!$apptMenu && !\App\Models\Menu::whereKey(11)->exists()) {
+            return; // fresh database (menus come from AclSeeder later)
+        }
         $perm = Permission::firstOrCreate(
             ['name' => 'advance.refund'],
             ['action' => 'refund', 'name' => 'advance.refund', 'menu_id' => $apptMenu?->id ?? 11]

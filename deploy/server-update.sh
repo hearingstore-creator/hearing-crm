@@ -16,6 +16,8 @@ trap 'php artisan up >/dev/null 2>&1 || true' EXIT
 
 tar -xzf "$BUNDLE" -C "$APP" --no-overwrite-dir --touch --no-same-owner --no-same-permissions
 rm -f "$BUNDLE"
+# Scripts run by cron must have Unix line endings (the bundle is built on Windows)
+sed -i 's/\r$//' "$APP"/deploy/*.sh
 
 composer install --no-dev --optimize-autoloader --no-interaction --no-progress --ignore-platform-req=php+ 2>&1 | tail -n 2
 php artisan migrate --force
@@ -31,4 +33,14 @@ sudo systemctl reload php8.5-fpm
 php artisan queue:restart >/dev/null
 
 php artisan up
+
+# Safety checks (warnings only): debug pages must be off, and the scheduler must run every minute
+if grep -qiE '^APP_DEBUG=(true|1)\s*$' "$APP/.env" || ! grep -qiE '^APP_ENV=production\s*$' "$APP/.env"; then
+    echo "WARNING: .env should have APP_ENV=production and APP_DEBUG=false (error pages would show code and settings to visitors)."
+fi
+if ! (crontab -l 2>/dev/null; sudo crontab -l -u www-data 2>/dev/null) | grep -q 'schedule:run'; then
+    echo "WARNING: no cron entry for 'php artisan schedule:run' – SLA alerts, digest, reminders and backups will not run."
+    echo "         Add: * * * * * cd $APP && php artisan schedule:run >> /dev/null 2>&1"
+fi
+
 echo "DEPLOY-OK $(date '+%F %T')"

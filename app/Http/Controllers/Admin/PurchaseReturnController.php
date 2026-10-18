@@ -480,7 +480,7 @@ class PurchaseReturnController extends Controller
                 ->with('success', "Purchase Return #{$returnNo} created in Pending status. Stock has been deducted. Please confirm with the supplier document when received.");
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('warning', 'Error saving return: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('warning', 'Error saving return: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -649,7 +649,7 @@ class PurchaseReturnController extends Controller
             return redirect()->route('purchase-returns.show', $return->id)->with('success', $msg);
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('warning', 'Error confirming return: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('warning', 'Error confirming return: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -722,7 +722,7 @@ class PurchaseReturnController extends Controller
                 ->with('success', "Purchase Return #{$return->return_no} unconfirmed successfully. Accounting entries reversed and status returned to Pending.");
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('warning', 'Could not unconfirm return: ' . $e->getMessage());
+            return redirect()->back()->with('warning', 'Could not unconfirm return: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -907,7 +907,7 @@ class PurchaseReturnController extends Controller
                 ->with('success', "Purchase Return #{$return->return_no} updated successfully! Stock movements adjusted.");
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('warning', 'Error updating return: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('warning', 'Error updating return: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -991,7 +991,7 @@ class PurchaseReturnController extends Controller
                 ->with('success', "Purchase Return #{$return->return_no} voided and reversed successfully. Inventory restored.");
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('warning', 'Could not void return: ' . $e->getMessage());
+            return redirect()->back()->with('warning', 'Could not void return: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 }

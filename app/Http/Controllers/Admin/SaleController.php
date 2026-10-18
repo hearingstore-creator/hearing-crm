@@ -556,7 +556,7 @@ class SaleController extends Controller
             return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
-            return redirect()->back()->with('warning', $ex->getMessage());
+            return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
 
@@ -1121,7 +1121,7 @@ class SaleController extends Controller
             return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
-            return redirect()->back()->with('warning', $ex->getMessage());
+            return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
 
@@ -1456,9 +1456,9 @@ class SaleController extends Controller
             Log::error('Due collection failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Due collection failed: ' . $e->getMessage()], 500);
+                return response()->json(['success' => false, 'message' => 'Due collection failed: ' . \App\Classes\Helper::userMessage($e)], 500);
             }
-            return redirect()->back()->with('warning', 'Due collection failed: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('warning', 'Due collection failed: ' . \App\Classes\Helper::userMessage($e))->withInput();
         }
     }
 
@@ -1737,7 +1737,7 @@ class SaleController extends Controller
             return redirect('admin/doctors-payment')->with('success', 'Payment Saved Successfully');
         } catch (\Exception $ex) {
             DB::rollback();
-            return redirect()->back()->with('warning', $ex->getMessage());
+            return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
 
@@ -1813,7 +1813,7 @@ class SaleController extends Controller
             return redirect('admin/doctors-payment')->with('success', 'Payment Updated Successfully');
         } catch (\Exception $ex) {
             DB::rollback();
-            return redirect()->back()->with('warning', $ex->getMessage());
+            return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
 
@@ -1834,7 +1834,7 @@ class SaleController extends Controller
 
             return redirect()->back()->with('success', 'Payment Deleted Successfully');
         } catch (\Exception $ex) {
-            return redirect()->back()->with('warning', $ex->getMessage());
+            return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
 
@@ -2143,9 +2143,9 @@ class SaleController extends Controller
             Log::error('Fulfillment status update failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Status update failed: ' . $e->getMessage()], 500);
+                return response()->json(['success' => false, 'message' => 'Status update failed: ' . \App\Classes\Helper::userMessage($e)], 500);
             }
-            return redirect()->back()->with('warning', 'Status update failed: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('warning', 'Status update failed: ' . \App\Classes\Helper::userMessage($e))->withInput();
         }
     }
 

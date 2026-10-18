@@ -565,7 +565,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('RepairJob store error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return redirect()->back()->withInput()->with('error', 'Error creating repair job: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Error creating repair job: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -722,10 +722,10 @@ class RepairController extends Controller
             Log::error('Repair status update error: ' . $e->getMessage());
 
             if ($request->ajax()) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+                return response()->json(['success' => false, 'message' => \App\Classes\Helper::userMessage($e)], 422);
             }
 
-            return redirect()->back()->with('error', 'Status update failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Status update failed: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -846,7 +846,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to add repair item: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to add item: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to add item: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -867,7 +867,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to remove repair item: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to remove item: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to remove item: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -941,7 +941,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Payment collection error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Payment recording failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Payment recording failed: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -1034,7 +1034,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Lab bill sync error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Lab bill sync failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Lab bill sync failed: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -1310,7 +1310,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Replacement authorization error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return redirect()->back()->with('error', 'Failed to authorize replacement: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to authorize replacement: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -1578,7 +1578,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Void warranty error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to void warranty: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to void warranty: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -1640,7 +1640,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Update estimate error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to update estimate: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update estimate: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -1706,7 +1706,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Patient decision error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to record decision: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to record decision: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -1783,7 +1783,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Dispatch error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to dispatch: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to dispatch: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
@@ -2024,7 +2024,7 @@ class RepairController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Lab report error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to log lab report: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to log lab report: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 

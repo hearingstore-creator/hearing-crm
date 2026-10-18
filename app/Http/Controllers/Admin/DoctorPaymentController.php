@@ -314,7 +314,7 @@ class DoctorPaymentController extends Controller
                 ->with('success', "Doctor payment of ৳" . number_format($request->debit, 2) . " saved successfully and posted to company accounts!");
         } catch (\Throwable $e) {
             DB::rollback();
-            return redirect()->back()->withInput()->with('warning', 'Error saving payment: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('warning', 'Error saving payment: ' . \App\Classes\Helper::userMessage($e));
         }
     }
 
