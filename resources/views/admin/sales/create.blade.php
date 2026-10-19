@@ -56,7 +56,10 @@
         data-sale-add-row="{{ route('sale.add-row') }}"
         data-sale-add-service-row="{{ route('sale.add-service-row') }}"
         data-product-numbers-numbers="{{ url('admin/product-serial-numbers') }}"
-        data-customer-redeem-points="{{ url('/admin/customer-redeem-points') }}">
+        data-customer-redeem-points="{{ url('/admin/customer-redeem-points') }}"
+        data-point-value="{{ \App\Models\LoyaltySetting::current()->point_value }}"
+        data-min-redeem-points="{{ \App\Models\LoyaltySetting::current()->min_redeem_points }}"
+        data-max-redeem-percent="{{ \App\Models\LoyaltySetting::current()->max_redeem_percent }}">
         @csrf
         @if(isset($fromProposal))
             <input type="hidden" name="from_proposal_id" value="{{ $fromProposal->id }}">
@@ -157,7 +160,8 @@
                             </div>
                             <div class="loyalty-redeem">
                                 <label for="redeem-points-input">Redeem now</label>
-                                <input type="number" class="form-control" name="redeem_points" id="redeem-points-input" value="0" min="0" step="0.01">
+                                <input type="number" class="form-control" name="redeem_points" id="redeem-points-input" value="0" min="0" step="1">
+                                <small id="redeem-hint" class="text-muted" style="display:block; font-size: 11px; margin-top: 3px;"></small>
                             </div>
                         </div>
                     </div>

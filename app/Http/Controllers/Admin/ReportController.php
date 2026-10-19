@@ -1046,7 +1046,7 @@ class ReportController extends Controller
                 ])
                 ->join('customers', 'reward_ledgers.customer_id', '=', 'customers.id')
                 ->whereIn('customers.membership_tier_id', $tierIds)
-                ->whereIn('reward_ledgers.type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+                ->whereIn('reward_ledgers.type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
                 ->when($request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
                     $q->whereBetween('reward_ledgers.created_at', [$request->start_date, $request->end_date]);
                 })

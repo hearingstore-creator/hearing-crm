@@ -23,6 +23,7 @@
                                         <option value="earn" {{ request('type') == 'earn' ? 'selected' : '' }}>Earn</option>
                                         <option value="redeem" {{ request('type') == 'redeem' ? 'selected' : '' }}>Redeem</option>
                                         <option value="referral" {{ request('type') == 'referral' ? 'selected' : '' }}>Referral</option>
+                                        <option value="milestone" {{ request('type') == 'milestone' ? 'selected' : '' }}>Milestone</option>
                                     </select>
                                 </div>
 
@@ -115,13 +116,14 @@
                                     </td>
                                     <td>
                                         <span class="badge
-                                            @if($ledger->type == 'earn') badge-success
-                                            @elseif($ledger->type == 'redeem') badge-warning
-                                            @elseif($ledger->type == 'expire') badge-danger
-                                            @elseif($ledger->type == 'referral') badge-info
+                                            @if($ledger->type == 'earn' || (is_object($ledger->type) && $ledger->type->value == 'earn')) badge-success
+                                            @elseif($ledger->type == 'redeem' || (is_object($ledger->type) && $ledger->type->value == 'redeem')) badge-warning
+                                            @elseif($ledger->type == 'expire' || (is_object($ledger->type) && $ledger->type->value == 'expire')) badge-danger
+                                            @elseif($ledger->type == 'referral' || (is_object($ledger->type) && $ledger->type->value == 'referral')) badge-info
+                                            @elseif($ledger->type == 'milestone' || (is_object($ledger->type) && $ledger->type->value == 'milestone')) badge-primary
                                             @else badge-secondary
                                             @endif">
-                                            {{ ucfirst($ledger->type->value) }}
+                                            {{ is_object($ledger->type) ? $ledger->type->label() : ucfirst($ledger->type) }}
                                         </span>
                                     </td>
                                     <td class="@if($ledger->points > 0) text-success @else text-danger @endif">

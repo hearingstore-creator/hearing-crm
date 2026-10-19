@@ -10,8 +10,12 @@ use App\Models\Referral;
 use App\Models\RewardLedger;
 use App\Models\SaleMaster;
 use App\Enums\RewardLedgerType;
+use App\Models\LoyaltySetting;
+use App\Models\MembershipMilestone;
+use App\Models\MembershipMilestoneAward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MembershipController extends Controller
@@ -19,6 +23,18 @@ class MembershipController extends Controller
     public function __construct()
     {
         $this->middleware('permission:membership_tiers.index')->only(['tiers']);
+        $this->middleware('permission:membership_tiers.edit')->only(['updateTiers']);
+        $this->middleware('permission:milestones.index')->only(['milestones']);
+        $this->middleware('permission:milestones.create')->only(['storeMilestone']);
+        $this->middleware('permission:milestones.edit')->only(['updateMilestone', 'toggleMilestone']);
+        $this->middleware('permission:milestones.delete')->only(['destroyMilestone']);
+        $this->middleware('permission:loyalty_settings.index')->only(['loyaltySettings']);
+        $this->middleware('permission:loyalty_settings.edit')->only(['updateLoyaltySettings']);
+        $this->middleware(fn ($request, $next) => \App\Classes\Helper::headOfficeOnly($request, $next))->only([
+            'updateTiers',
+            'milestones', 'storeMilestone', 'updateMilestone', 'toggleMilestone', 'destroyMilestone',
+            'loyaltySettings', 'updateLoyaltySettings',
+        ]);
         $this->middleware('permission:reward_wallets.index')->only(['wallets', 'walletDetails']);
         $this->middleware('permission:reward_ledger.index')->only(['rewardLedger']);
         $this->middleware('permission:referrals.index')->only(['referrals']);
@@ -39,7 +55,7 @@ class MembershipController extends Controller
         $data['tiers']->each(function ($tier) {
             $tier->total_points_issued = RewardLedger::whereHas('customer', function ($q) use ($tier) {
                 $q->where('membership_tier_id', $tier->id);
-            })->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+            })->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
             ->where('points', '>', 0)
             ->sum('points');
 
@@ -55,11 +71,13 @@ class MembershipController extends Controller
                     $query->select(DB::raw(1))
                         ->from('reward_ledgers')
                         ->whereColumn('reward_ledgers.customer_id', 'customers.id')
-                        ->whereIn('reward_ledgers.type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+                        ->whereIn('reward_ledgers.type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
                         ->where('reward_ledgers.points', '>', 0);
                 })
                 ->count();
         });
+
+        $data['loyaltySetting'] = LoyaltySetting::current();
 
         return view('admin.membership.tiers', $data);
     }
@@ -87,7 +105,7 @@ class MembershipController extends Controller
         $customers->getCollection()->transform(function ($customer) {
             // Total earned points
             $customer->total_earned = RewardLedger::where('customer_id', $customer->id)
-                ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+                ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
                 ->where('points', '>', 0)
                 ->sum('points');
 
@@ -99,7 +117,7 @@ class MembershipController extends Controller
 
             // Total expired points (points past their expiry_date)
             $customer->total_expired = RewardLedger::where('customer_id', $customer->id)
-                ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+                ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
                 ->where('points', '>', 0)
                 ->where('expiry_date', '<', now())
                 ->sum('points');
@@ -113,7 +131,7 @@ class MembershipController extends Controller
 
             // Expiring soon (within 7 days)
             $customer->expiring_soon = RewardLedger::where('customer_id', $customer->id)
-                ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+                ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
                 ->where('points', '>', 0)
                 ->whereBetween('expiry_date', [now(), now()->addDays(7)])
                 ->sum('points');
@@ -137,7 +155,7 @@ class MembershipController extends Controller
 
         // Calculate all wallet statistics from reward ledger
         $customer->total_earned = RewardLedger::where('customer_id', $customer->id)
-            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
             ->where('points', '>', 0)
             ->sum('points');
 
@@ -147,7 +165,7 @@ class MembershipController extends Controller
             ->sum('points'));
 
         $customer->total_expired = RewardLedger::where('customer_id', $customer->id)
-            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
             ->where('points', '>', 0)
             ->where('expiry_date', '<', now())
             ->sum('points');
@@ -158,7 +176,7 @@ class MembershipController extends Controller
         $customer->real_available_balance = Customer::find($customer->id)->getAvailableRedeemPoints();
 
         $customer->expiring_soon = RewardLedger::where('customer_id', $customer->id)
-            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
             ->where('points', '>', 0)
             ->whereBetween('expiry_date', [now(), now()->addDays(7)])
             ->sum('points');
@@ -310,5 +328,215 @@ class MembershipController extends Controller
         $data['customers'] = Customer::with('lead')->select('id', 'lead_id')->get();
 
         return view('admin.membership.upgrades', $data);
+    }
+
+    /**
+     * Update existing membership tiers configuration
+     */
+    public function updateTiers(Request $request)
+    {
+        $request->validate([
+            'tiers'                           => ['required', 'array'],
+            'tiers.*.id'                      => ['required', 'exists:membership_tiers,id'],
+            'tiers.*.name'                    => ['required', 'string', 'max:255'],
+            'tiers.*.min_purchase'            => ['required', 'numeric', 'min:0'],
+            'tiers.*.max_purchase'            => ['nullable', 'numeric'],
+            'tiers.*.earn_percentage'         => ['required', 'numeric', 'min:0', 'max:100'],
+            'tiers.*.referral_reward_points'  => ['required', 'integer', 'min:0'],
+        ], [
+            'tiers.*.earn_percentage.max'     => 'The earn percentage may not be greater than 100%.',
+            'tiers.*.earn_percentage.min'     => 'The earn percentage must be at least 0%.',
+            'tiers.*.referral_reward_points.min' => 'Referral points must be 0 or more.',
+            'tiers.*.min_purchase.min'        => 'Minimum purchase must be 0 or more.',
+        ]);
+
+        $submitted = array_values($request->tiers);
+
+        // Check unique names
+        $names = array_map(fn ($t) => trim(strtolower($t['name'])), $submitted);
+        if (count($names) !== count(array_unique($names))) {
+            throw ValidationException::withMessages([
+                'tiers' => 'Each tier must have a unique name.',
+            ]);
+        }
+
+        // Sort by min_purchase ascending
+        usort($submitted, fn ($a, $b) => ((float) $a['min_purchase']) <=> ((float) $b['min_purchase']));
+
+        $count = count($submitted);
+        $existingCount = MembershipTier::count();
+        if ($count !== $existingCount) {
+            throw ValidationException::withMessages([
+                'tiers' => "Exactly {$existingCount} tiers must be configured (no creating or deleting tiers).",
+            ]);
+        }
+
+        // 1. First tier starts at 0
+        if (round((float) $submitted[0]['min_purchase'], 2) !== 0.0) {
+            throw ValidationException::withMessages([
+                'tiers' => 'The first tier must start with a minimum purchase of 0.',
+            ]);
+        }
+
+        // 2. Last tier has max_purchase empty (null or empty string)
+        $lastMax = $submitted[$count - 1]['max_purchase'] ?? null;
+        if ($lastMax !== null && $lastMax !== '') {
+            throw ValidationException::withMessages([
+                'tiers' => 'The highest tier must have an empty maximum purchase (no upper limit).',
+            ]);
+        }
+
+        // 3. Middle tiers and first tier must have max_purchase > min_purchase, and no gaps or overlaps
+        for ($i = 0; $i < $count - 1; $i++) {
+            $current = $submitted[$i];
+            $next = $submitted[$i + 1];
+
+            $currMax = $current['max_purchase'] ?? null;
+            if ($currMax === null || $currMax === '') {
+                throw ValidationException::withMessages([
+                    'tiers' => "Tier '{$current['name']}' must have a maximum purchase amount.",
+                ]);
+            }
+
+            $currMin = (float) $current['min_purchase'];
+            $currMaxVal = (float) $currMax;
+            $nextMin = (float) $next['min_purchase'];
+
+            if ($currMaxVal <= $currMin) {
+                throw ValidationException::withMessages([
+                    'tiers' => "Maximum purchase for '{$current['name']}' must be greater than its minimum purchase.",
+                ]);
+            }
+
+            $expectedNextMin = round($currMaxVal + 0.01, 2);
+            $actualNextMin = round($nextMin, 2);
+
+            if ($actualNextMin < $expectedNextMin) {
+                throw ValidationException::withMessages([
+                    'tiers' => "Purchase ranges overlap between '{$current['name']}' (max: {$currMaxVal}) and '{$next['name']}' (min: {$nextMin}).",
+                ]);
+            }
+
+            if ($actualNextMin > $expectedNextMin) {
+                throw ValidationException::withMessages([
+                    'tiers' => "There is a gap in purchase ranges between '{$current['name']}' (max: {$currMaxVal}) and '{$next['name']}' (min: {$nextMin}). '{$next['name']}' must start at {$expectedNextMin}.",
+                ]);
+            }
+        }
+
+        DB::transaction(function () use ($submitted) {
+            foreach ($submitted as $item) {
+                $tier = MembershipTier::findOrFail($item['id']);
+                $tier->update([
+                    'name'                   => $item['name'],
+                    'min_purchase'           => $item['min_purchase'],
+                    'max_purchase'           => ($item['max_purchase'] !== null && $item['max_purchase'] !== '') ? $item['max_purchase'] : null,
+                    'earn_percentage'        => $item['earn_percentage'],
+                    'referral_reward_points' => $item['referral_reward_points'],
+                ]);
+            }
+        });
+
+        return redirect()->back()->with('success', 'Membership tiers updated successfully.');
+    }
+
+    /**
+     * Display milestone bonus points list
+     */
+    public function milestones(Request $request): View
+    {
+        $milestones = MembershipMilestone::withCount('awards')->orderBy('threshold')->get();
+        return view('admin.membership.milestones', compact('milestones'));
+    }
+
+    /**
+     * Store a new milestone rule
+     */
+    public function storeMilestone(Request $request)
+    {
+        $validated = $request->validate([
+            'name'         => ['required', 'string', 'max:255'],
+            'type'         => ['required', 'in:lifetime_spend,purchase_count'],
+            'threshold'    => ['required', 'numeric', 'gt:0'],
+            'bonus_points' => ['required', 'integer', 'between:1,1000000'],
+            'is_active'    => ['nullable', 'boolean'],
+        ]);
+
+        $validated['is_active'] = $request->boolean('is_active', true);
+
+        MembershipMilestone::create($validated);
+
+        return redirect()->route('membership.milestones')->with('success', 'Milestone created successfully.');
+    }
+
+    /**
+     * Update an existing milestone rule
+     */
+    public function updateMilestone(Request $request, $id)
+    {
+        $milestone = MembershipMilestone::findOrFail($id);
+
+        $validated = $request->validate([
+            'name'         => ['required', 'string', 'max:255'],
+            'type'         => ['required', 'in:lifetime_spend,purchase_count'],
+            'threshold'    => ['required', 'numeric', 'gt:0'],
+            'bonus_points' => ['required', 'integer', 'between:1,1000000'],
+            'is_active'    => ['nullable', 'boolean'],
+        ]);
+
+        $validated['is_active'] = $request->boolean('is_active', true);
+
+        $milestone->update($validated);
+
+        return redirect()->route('membership.milestones')->with('success', 'Milestone updated successfully.');
+    }
+
+    /**
+     * Toggle milestone active status
+     */
+    public function toggleMilestone(Request $request, $id)
+    {
+        $milestone = MembershipMilestone::findOrFail($id);
+        $milestone->update(['is_active' => !$milestone->is_active]);
+
+        return redirect()->route('membership.milestones')->with('success', "Milestone '{$milestone->name}' status updated.");
+    }
+
+    /**
+     * Delete (soft delete) a milestone rule
+     */
+    public function destroyMilestone($id)
+    {
+        $milestone = MembershipMilestone::findOrFail($id);
+        $milestone->delete();
+
+        return redirect()->route('membership.milestones')->with('success', 'Milestone deleted successfully.');
+    }
+
+    /**
+     * Display loyalty settings screen
+     */
+    public function loyaltySettings(Request $request): View
+    {
+        $setting = LoyaltySetting::current();
+        return view('admin.membership.loyalty-settings', compact('setting'));
+    }
+
+    /**
+     * Update loyalty settings
+     */
+    public function updateLoyaltySettings(Request $request)
+    {
+        $validated = $request->validate([
+            'point_value'        => ['required', 'numeric', 'between:0.01,1000'],
+            'expiry_months'      => ['required', 'integer', 'between:1,60'],
+            'min_redeem_points'  => ['required', 'integer', 'min:0'],
+            'max_redeem_percent' => ['required', 'numeric', 'between:1,100'],
+        ]);
+
+        $setting = LoyaltySetting::current();
+        $setting->update($validated);
+
+        return redirect()->back()->with('success', 'Loyalty settings updated successfully.');
     }
 }

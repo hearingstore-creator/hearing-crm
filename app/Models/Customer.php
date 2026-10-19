@@ -142,9 +142,9 @@ class Customer extends Model
      */
     public function getAvailableRedeemPoints(): float
     {
-        // Get total earned and referral points (non-expired, positive)
+        // Get total earned, referral, and milestone points (non-expired, positive)
         $earnedPoints = RewardLedger::where('customer_id', $this->id)
-            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
             ->where('points', '>', 0)
             ->where(function ($query) {
                 $query->whereNull('expiry_date')

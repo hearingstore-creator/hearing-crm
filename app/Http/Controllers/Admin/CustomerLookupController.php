@@ -131,7 +131,7 @@ class CustomerLookupController extends Controller
             });
 
         $expiringPoints = RewardLedger::where('customer_id', $customer->id)
-            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value])
+            ->whereIn('type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
             ->where('points', '>', 0)
             ->whereBetween('expiry_date', [now(), now()->addDays(30)])
             ->selectRaw('SUM(points) as points, MIN(expiry_date) as first_expiry')

@@ -89,6 +89,8 @@
 
         // Membership & Rewards
         'admin/membership/tiers'                => 'fa-crown',
+        'admin/membership/milestones'           => 'fa-flag-checkered',
+        'admin/membership/settings'             => 'fa-sliders-h',
         'admin/membership/wallets'              => 'fa-wallet',
         'admin/membership/reward-ledger'        => 'fa-book',
         'admin/membership/referrals'            => 'fa-user-friends',

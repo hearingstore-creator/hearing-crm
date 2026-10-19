@@ -14,6 +14,12 @@ $(function () {
         customerRedeemPoints: $form.data('customer-redeem-points')
     };
 
+    var loyaltyConfig = {
+        pointValue: parseFloat($form.data('point-value')) || 1.0,
+        minRedeemPoints: parseInt($form.data('min-redeem-points')) || 0,
+        maxRedeemPercent: parseFloat($form.data('max-redeem-percent')) || 100
+    };
+
     // Sale Type Radio Button Handler
     $('input[name="sale_type"]').on('change', function() {
         var saleType = $(this).val();
@@ -156,6 +162,45 @@ $(function () {
         }
     });
 
+    // Function to calculate and update redeem limit and hint
+    function updateRedeemLimitAndHint(invoiceGross) {
+        var availablePoints = parseFloat($('#available-redeem-points').val()) || 0;
+        var existingRedeemed = parseFloat($('#redeem-points-input').attr('data-existing-redeemed')) || 0;
+        var totalAvailable = availablePoints + existingRedeemed;
+
+        var pointValue = loyaltyConfig.pointValue > 0 ? loyaltyConfig.pointValue : 1.0;
+        var maxPercent = loyaltyConfig.maxRedeemPercent > 0 ? loyaltyConfig.maxRedeemPercent : 100;
+        var minPoints = loyaltyConfig.minRedeemPoints || 0;
+
+        var maxAllowed = 0;
+        var hint = '';
+
+        if (totalAvailable < minPoints) {
+            maxAllowed = 0;
+            hint = 'Min ' + minPoints + ' pts needed (have ' + Math.floor(totalAvailable) + ')';
+        } else if (invoiceGross <= 0) {
+            maxAllowed = 0;
+            hint = 'Add items to the invoice first';
+        } else {
+            var maxByInvoice = Math.floor((invoiceGross * (maxPercent / 100)) / pointValue);
+            maxAllowed = Math.max(0, Math.min(Math.floor(totalAvailable), maxByInvoice));
+            hint = 'Max ' + maxAllowed + ' points (' + maxPercent + '% of invoice)';
+        }
+
+        $('#redeem-points-input').attr('max', maxAllowed);
+        var currentInput = parseFloat($('#redeem-points-input').val()) || 0;
+        if (currentInput > maxAllowed) {
+            $('#redeem-points-input').val(maxAllowed);
+        }
+
+        var $hint = $('#redeem-hint');
+        if ($hint.length) {
+            $hint.text(hint);
+        }
+
+        return maxAllowed;
+    }
+
     // Fetch customer redeem points when customer is selected
     $('.customer').on('select2:select', function (e) {
         var customerId = e.params.data.id;
@@ -166,45 +211,39 @@ $(function () {
                 type: 'GET',
                 success: function(response) {
                     if (response.success) {
-                        $('#available-redeem-points').val(response.available_points.toFixed(2));
+                        if (response.point_value !== undefined) loyaltyConfig.pointValue = parseFloat(response.point_value) || 1.0;
+                        if (response.min_redeem_points !== undefined) loyaltyConfig.minRedeemPoints = parseInt(response.min_redeem_points) || 0;
+                        if (response.max_redeem_percent !== undefined) loyaltyConfig.maxRedeemPercent = parseFloat(response.max_redeem_percent) || 100;
+
+                        $('#available-redeem-points').val(Math.floor(response.available_points));
 
                         // Reset redeem points input
                         $('#redeem-points-input').val(0);
-                        $('#redeem-points-input').attr('max', response.available_points);
 
                         // Trigger recalculation
                         totalCalculation();
                     }
                 },
                 error: function() {
-                    $('#available-redeem-points').val('0.00');
+                    $('#available-redeem-points').val('0');
                     $('#redeem-points-input').val(0);
+                    updateRedeemLimitAndHint(0);
                 }
             });
         } else {
-            $('#available-redeem-points').val('0.00');
+            $('#available-redeem-points').val('0');
             $('#redeem-points-input').val(0);
+            updateRedeemLimitAndHint(0);
         }
     });
 
     // Handle redeem points input change
     $('#redeem-points-input').on('input', function() {
-        var availablePoints = parseFloat($('#available-redeem-points').val()) || 0;
-        var currentInputValue = $(this).val(); // Get current input value
-        var existingRedeemedPoints = parseFloat($(this).attr('data-existing-redeemed')) || 0;
-
-        // Calculate max allowed: available points + existing redeemed points
-        // This allows reducing the redeemed amount
-        var maxValue = availablePoints + existingRedeemedPoints;
-
-        var inputValue = parseFloat(currentInputValue) || 0;
-
-        // Ensure redeem points don't exceed max allowed
-        if (inputValue > maxValue) {
-            $(this).val(maxValue);
+        var currentVal = parseFloat($(this).val()) || 0;
+        var maxVal = parseFloat($(this).attr('max'));
+        if (!isNaN(maxVal) && currentVal > maxVal) {
+            $(this).val(maxVal);
         }
-
-        // Trigger recalculation
         totalCalculation();
     });
 
@@ -246,17 +285,31 @@ $(function () {
 
         var vat = parseFloat($('.vat').val());
         var invDiscount = parseFloat($('.invoice-discount').val());
-        var redeemPoints = parseFloat($('#redeem-points-input').val()) || 0;
 
         if (isNaN(invDiscount)) invDiscount = 0;
         if (isNaN(vat)) vat = 0;
-        if (isNaN(redeemPoints)) redeemPoints = 0;
+
+        var invoiceGross = totalPrice + vat - invDiscount;
+        if (invoiceGross < 0) invoiceGross = 0;
+
+        var allowedMaxPoints = updateRedeemLimitAndHint(invoiceGross);
+
+        var redeemPoints = parseFloat($('#redeem-points-input').val()) || 0;
+        if (isNaN(redeemPoints) || redeemPoints < 0) redeemPoints = 0;
+        if (redeemPoints > allowedMaxPoints) {
+            redeemPoints = allowedMaxPoints;
+            $('#redeem-points-input').val(redeemPoints);
+        }
 
         totalDiscount = totalDiscount + invDiscount;
         $('.total-discount').val(totalDiscount.toFixed(2));
 
-        // Calculate grand total: subtotal + vat - invoice discount - redeem points
-        var grandTotal = totalPrice + vat - invDiscount - redeemPoints;
+        var pointValue = loyaltyConfig.pointValue > 0 ? loyaltyConfig.pointValue : 1.0;
+        var redeemTaka = redeemPoints * pointValue;
+
+        // Calculate grand total: invoice gross minus (redeem points * point_value)
+        var grandTotal = invoiceGross - redeemTaka;
+        if (grandTotal < 0) grandTotal = 0;
         $('.grand-total').val(grandTotal.toFixed(2));
         var paid = parseFloat($('.paid-amount').val());
         if (isNaN(paid)) paid = 0;

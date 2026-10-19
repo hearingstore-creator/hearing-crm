@@ -36,6 +36,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Proposal;
+use App\Models\LoyaltySetting;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use Log;
 use Yajra\DataTables\Facades\DataTables;
@@ -273,10 +275,14 @@ class SaleController extends Controller
         }
 
         $availablePoints = $customer->getAvailableRedeemPoints();
+        $setting = LoyaltySetting::current();
 
         return response()->json([
-            'success' => true,
-            'available_points' => $availablePoints
+            'success'            => true,
+            'available_points'   => $availablePoints,
+            'point_value'        => (float) $setting->point_value,
+            'min_redeem_points'  => (int) $setting->min_redeem_points,
+            'max_redeem_percent' => (float) $setting->max_redeem_percent,
         ]);
     }
 
@@ -329,6 +335,25 @@ class SaleController extends Controller
                 'product_id.required' => 'At least one product must be selected.',
             ]
         );
+
+        if ($request->filled('redeem_points') && (float) $request->redeem_points > 0) {
+            $customer = Customer::find($request->customer_id);
+            if ($customer) {
+                $setting = LoyaltySetting::current();
+                $pointValue = (float) $setting->point_value > 0 ? (float) $setting->point_value : 1.0;
+                $redeemPoints = (float) $request->redeem_points;
+                $invoiceGross = (float) $request->total_amount + ($redeemPoints * $pointValue);
+                $maxPoints = MembershipService::maxRedeemablePoints($customer, $invoiceGross);
+                if ($redeemPoints > $maxPoints) {
+                    $msg = ($maxPoints === 0 && $customer->getAvailableRedeemPoints() < (float) $setting->min_redeem_points)
+                        ? "Customer balance is below the minimum {$setting->min_redeem_points} points required to redeem."
+                        : "Redeem points cannot exceed {$maxPoints} points for this invoice.";
+                    throw ValidationException::withMessages([
+                        'redeem_points' => $msg,
+                    ]);
+                }
+            }
+        }
 
         $batchIds = json_decode($request->batch_id_formatted, true) ?? [];
         $serialNos = json_decode($request->serial_no_formatted, true) ?? [];
@@ -843,6 +868,25 @@ class SaleController extends Controller
                     return redirect()->back()
                         ->withInput()
                         ->withErrors(['service_validation' => 'Please fill all required fields for services.']);
+                }
+            }
+        }
+
+        if ($request->filled('redeem_points') && (float) $request->redeem_points > 0) {
+            $customer = Customer::find($request->customer_id);
+            if ($customer) {
+                $setting = LoyaltySetting::current();
+                $pointValue = (float) $setting->point_value > 0 ? (float) $setting->point_value : 1.0;
+                $redeemPoints = (float) $request->redeem_points;
+                $invoiceGross = (float) $request->total_amount + ($redeemPoints * $pointValue);
+                $maxPoints = MembershipService::maxRedeemablePoints($customer, $invoiceGross, (int) $id);
+                if ($redeemPoints > $maxPoints) {
+                    $msg = ($maxPoints === 0 && $customer->getAvailableRedeemPoints() < (float) $setting->min_redeem_points)
+                        ? "Customer balance is below the minimum {$setting->min_redeem_points} points required to redeem."
+                        : "Redeem points cannot exceed {$maxPoints} points for this invoice.";
+                    throw ValidationException::withMessages([
+                        'redeem_points' => $msg,
+                    ]);
                 }
             }
         }

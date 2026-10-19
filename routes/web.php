@@ -187,6 +187,18 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     // Membership & Reward System Routes
     Route::prefix('membership')->group(function() {
         Route::get('tiers', [MembershipController::class, 'tiers'])->name('membership.tiers');
+        Route::post('tiers', [MembershipController::class, 'updateTiers'])->name('membership.tiers.update');
+        Route::put('tiers', [MembershipController::class, 'updateTiers']);
+
+        Route::get('milestones', [MembershipController::class, 'milestones'])->name('membership.milestones');
+        Route::post('milestones', [MembershipController::class, 'storeMilestone'])->name('membership.milestones.store');
+        Route::put('milestones/{id}', [MembershipController::class, 'updateMilestone'])->name('membership.milestones.update');
+        Route::post('milestones/{id}/toggle', [MembershipController::class, 'toggleMilestone'])->name('membership.milestones.toggle');
+        Route::delete('milestones/{id}', [MembershipController::class, 'destroyMilestone'])->name('membership.milestones.destroy');
+
+        Route::get('settings', [MembershipController::class, 'loyaltySettings'])->name('membership.settings');
+        Route::post('settings', [MembershipController::class, 'updateLoyaltySettings'])->name('membership.settings.update');
+        Route::put('settings', [MembershipController::class, 'updateLoyaltySettings']);
         Route::get('wallets', [MembershipController::class, 'wallets'])->name('membership.wallets');
         Route::get('wallets/{id}', [MembershipController::class, 'walletDetails'])->name('membership.wallet-details');
         Route::get('reward-ledger', [MembershipController::class, 'rewardLedger'])->name('membership.reward-ledger');

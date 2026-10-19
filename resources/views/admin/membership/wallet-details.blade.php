@@ -145,13 +145,14 @@
                                                 <td>{{ $transaction->created_at->format('Y-m-d H:i') }}</td>
                                                 <td>
                                                     <span class="badge
-                                                        @if($transaction->type == 'earn') badge-success
-                                                        @elseif($transaction->type == 'redeem') badge-warning
-                                                        @elseif($transaction->type == 'expire') badge-danger
-                                                        @elseif($transaction->type == 'referral') badge-info
+                                                        @if($transaction->type == 'earn' || (is_object($transaction->type) && $transaction->type->value == 'earn')) badge-success
+                                                        @elseif($transaction->type == 'redeem' || (is_object($transaction->type) && $transaction->type->value == 'redeem')) badge-warning
+                                                        @elseif($transaction->type == 'expire' || (is_object($transaction->type) && $transaction->type->value == 'expire')) badge-danger
+                                                        @elseif($transaction->type == 'referral' || (is_object($transaction->type) && $transaction->type->value == 'referral')) badge-info
+                                                        @elseif($transaction->type == 'milestone' || (is_object($transaction->type) && $transaction->type->value == 'milestone')) badge-primary
                                                         @else badge-secondary
                                                         @endif">
-                                                        {{ ucfirst($transaction->type->value) }}
+                                                        {{ is_object($transaction->type) ? $transaction->type->label() : ucfirst($transaction->type) }}
                                                     </span>
                                                 </td>
                                                 <td class="@if($transaction->points > 0) text-success @else text-danger @endif">

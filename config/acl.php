@@ -563,7 +563,17 @@ return [
                 [
                     'name' => 'Membership Tiers',
                     'route' => 'admin/membership/tiers',
-                    'actions' => ['index']
+                    'actions' => ['index', 'edit']
+                ],
+                [
+                    'name' => 'Milestones',
+                    'route' => 'admin/membership/milestones',
+                    'actions' => ['index', 'create', 'edit', 'delete']
+                ],
+                [
+                    'name' => 'Loyalty Settings',
+                    'route' => 'admin/membership/settings',
+                    'actions' => ['index', 'edit']
                 ],
                 [
                     'name' => 'Reward Wallets',
