@@ -247,7 +247,24 @@ class ProfitStatement
 
     private function baseType(): string
     {
-        return "REPLACE(REPLACE(COALESCE(lg.type,''),' (Reversed)',''),' Reversal','')";
+        return self::typeBase('lg.type');
+    }
+
+    /** A ledger type with the "(Reversed)" / "Reversal" marks removed, so a reversal and its original are the same kind. */
+    public static function typeBase(string $column): string
+    {
+        return "REPLACE(REPLACE(COALESCE($column,''),' (Reversed)',''),' Reversal','')";
+    }
+
+    /**
+     * Keep only ledger rows that are operating expenses (manual expenses, salaries, purchase-return loss).
+     * Dashboard widgets use this so they agree with the statement and do not count supplier or doctor payments again.
+     */
+    public static function onlyOperatingExpenses(Builder $query, string $typeColumn = 'lg.type'): Builder
+    {
+        $bases = implode(',', array_map(fn ($b) => DB::getPdo()->quote($b), self::EXPENSE_BASES));
+
+        return $query->whereRaw(self::typeBase($typeColumn) . " IN ($bases)");
     }
 
     // ------------------------------------------------------------------ audit trail

@@ -40,7 +40,7 @@
     <div class="crm-page-header crm-animate-in">
         <div class="page-title-group">
             <h1><i class="fas fa-store-alt" style="color: var(--accent-500); margin-right: 8px;"></i>Branch Monthly Report</h1>
-            <p>Branch-wise leads, sales, collection, purchases, expenses and profit for the month</p>
+            <p>Branch-wise leads, appointments, sales, collection and purchases for the month. Profit is on the Profit Statement.</p>
         </div>
         <div class="header-actions">
             <a href="{{ url('admin/report/vendor-monthly') . '?' . http_build_query(request()->except('export') + ['month' => $month, 'export' => 'csv']) }}" class="btn btn-secondary btn-sm" id="btn-export-csv">
@@ -83,7 +83,9 @@
         @include('admin.partials.kpi-card', ['color' => 'green', 'icon' => 'fas fa-chart-line', 'label' => 'Sales', 'value' => $money($totals['sales_amount']), 'sub' => $change($totals['sales_amount'], $prevTotals['sales_amount'])])
         @include('admin.partials.kpi-card', ['color' => 'teal', 'icon' => 'fas fa-hand-holding-usd', 'label' => 'Collected', 'value' => $money($totals['sales_paid']), 'sub' => 'Due <b>' . $money($totals['sales_due']) . '</b>'])
         @include('admin.partials.kpi-card', ['color' => 'orange', 'icon' => 'fas fa-shopping-basket', 'label' => 'Purchases', 'value' => $money($totals['purchase_amount']), 'sub' => $change($totals['purchase_amount'], $prevTotals['purchase_amount'])])
-        @include('admin.partials.kpi-card', ['color' => $totals['net'] >= 0 ? 'violet' : 'rose', 'icon' => 'fas fa-coins', 'label' => 'Est. Net (GP − Exp.)', 'value' => $money($totals['net']), 'sub' => 'Gross profit <b>' . $money($totals['gross_profit']) . '</b> · Exp. <b>' . $money($totals['expenses']) . '</b>'])
+        @if ($canSeeProfit)
+            @include('admin.partials.kpi-card', ['color' => 'violet', 'icon' => 'fas fa-coins', 'label' => 'Profit', 'value' => 'Open statement', 'sub' => '<a href="' . url('admin/report/profit-statement') . '?period=custom&start_date=' . $mStart->toDateString() . '&end_date=' . $mStart->copy()->endOfMonth()->toDateString() . ($vendorFilter !== 'all' ? '&vendor_id=' . $vendorFilter : '') . '" id="link-profit">Income, cost and expenses for ' . $mStart->format('M Y') . '</a>'])
+        @endif
         @include('admin.partials.kpi-card', ['color' => 'indigo', 'icon' => 'fas fa-user-plus', 'label' => 'New Leads', 'value' => number_format($totals['leads']), 'sub' => '<b>' . number_format($totals['customers']) . '</b> new customers · ' . $change($totals['leads'], $prevTotals['leads'])])
     </div>
 
@@ -101,13 +103,11 @@
                         <th colspan="3" class="grp sep">CRM</th>
                         <th colspan="4" class="grp grp-sales sep">Sales</th>
                         <th colspan="2" class="grp grp-cost sep">Purchases</th>
-                        <th colspan="4" class="grp grp-res sep">Profitability</th>
                     </tr>
                     <tr>
                         <th class="num sep">Leads</th><th class="num">Customers</th><th class="num">Appts</th>
                         <th class="num sep">Invoices</th><th class="num">Sales</th><th class="num">Collected</th><th class="num">Due</th>
                         <th class="num sep">Amount</th><th class="num">Paid</th>
-                        <th class="num sep">Est. COGS</th><th class="num">Gross Profit</th><th class="num">Expenses</th><th class="num">Net</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -129,13 +129,9 @@
                             <td class="num {{ $r->sales_due > 0.5 ? 'cr' : 'muted' }}">{{ $money($r->sales_due) }}</td>
                             <td class="num sep">{{ $money($r->purchase_amount) }}</td>
                             <td class="num muted">{{ $money($r->purchase_paid) }}</td>
-                            <td class="num sep muted">{{ $money($r->cogs) }}</td>
-                            <td class="num {{ $r->gross_profit < 0 ? 'neg' : '' }}">{{ $money($r->gross_profit) }}</td>
-                            <td class="num muted">{{ $money($r->expenses) }}</td>
-                            <td class="num {{ $r->net < 0 ? 'neg' : 'dr' }}"><b>{{ $money($r->net) }}</b></td>
                         </tr>
                     @empty
-                        <tr><td colspan="14" class="stmt-empty"><i class="far fa-folder-open"></i>No branches to show.</td></tr>
+                        <tr><td colspan="10" class="stmt-empty"><i class="far fa-folder-open"></i>No branches to show.</td></tr>
                     @endforelse
                 </tbody>
                 @if ($rows->count() > 1)
@@ -151,10 +147,6 @@
                             <td class="num">{{ $money($totals['sales_due']) }}</td>
                             <td class="num sep">{{ $money($totals['purchase_amount']) }}</td>
                             <td class="num">{{ $money($totals['purchase_paid']) }}</td>
-                            <td class="num sep">{{ $money($totals['cogs']) }}</td>
-                            <td class="num">{{ $money($totals['gross_profit']) }}</td>
-                            <td class="num">{{ $money($totals['expenses']) }}</td>
-                            <td class="num">{{ $money($totals['net']) }}</td>
                         </tr>
                     </tfoot>
                 @endif
@@ -175,7 +167,6 @@
                         <th>Month</th>
                         <th class="num">Leads</th><th class="num">Customers</th><th class="num">Invoices</th>
                         <th class="num">Sales</th><th class="num">Collected</th><th class="num">Purchases</th>
-                        <th class="num">Expenses</th><th class="num">Gross Profit</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -188,8 +179,6 @@
                             <td class="num"><b>{{ $money($t['sales_amount']) }}</b></td>
                             <td class="num dr">{{ $money($t['sales_paid']) }}</td>
                             <td class="num">{{ $money($t['purchase_amount']) }}</td>
-                            <td class="num muted">{{ $money($t['expenses']) }}</td>
-                            <td class="num {{ $t['gross_profit'] < 0 ? 'neg' : '' }}">{{ $money($t['gross_profit']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -202,15 +191,13 @@
                         <td class="num">{{ $money(array_sum(array_column($trend, 'sales_amount'))) }}</td>
                         <td class="num">{{ $money(array_sum(array_column($trend, 'sales_paid'))) }}</td>
                         <td class="num">{{ $money(array_sum(array_column($trend, 'purchase_amount'))) }}</td>
-                        <td class="num">{{ $money(array_sum(array_column($trend, 'expenses'))) }}</td>
-                        <td class="num">{{ $money(array_sum(array_column($trend, 'gross_profit'))) }}</td>
                     </tr>
                 </tfoot>
             </table>
         </div>
 
         <div class="stmt-foot">
-            <span>Sales by invoice date · Est. COGS = qty × purchase price on sold items · Expenses exclude purchase postings.</span>
+            <span>Sales by invoice date. For profit, cost and expenses use the Profit Statement.</span>
             <span>Generated {{ now()->format('d M Y, h:i A') }} by {{ auth()->user()->name }}</span>
         </div>
     </div>
@@ -232,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function () {
             datasets: [
                 { label: 'Sales', data: t.map(r => r.sales_amount), backgroundColor: 'rgba(16,185,129,.75)', borderRadius: 6, maxBarThickness: 26 },
                 { label: 'Purchases', data: t.map(r => r.purchase_amount), backgroundColor: 'rgba(249,115,22,.65)', borderRadius: 6, maxBarThickness: 26 },
-                { label: 'Gross Profit', data: t.map(r => r.gross_profit), type: 'line', borderColor: '#6366f1', backgroundColor: '#6366f1', tension: .35, pointRadius: 3, borderWidth: 2 }
+                { label: 'Collected', data: t.map(r => r.sales_paid), type: 'line', borderColor: '#6366f1', backgroundColor: '#6366f1', tension: .35, pointRadius: 3, borderWidth: 2 }
             ]
         },
         options: {

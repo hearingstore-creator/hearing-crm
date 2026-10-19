@@ -12,7 +12,7 @@
 <div class="td-stats">
     @if ($ok('gross_profit'))
         <div class="td-stat"><span>Revenue · {{ $label }}</span><b>{{ $m($gp['revenue']) }}</b><small>services {{ $m($gp['service_revenue']) }} on top</small></div>
-        <div class="td-stat"><span>Gross profit</span><b>{{ $m($gp['profit']) }}</b><small>{{ $gp['margin'] }}% margin{{ $gp['missing_cost'] ? ' · ' . $gp['missing_cost'] . ' lines without cost' : '' }}</small></div>
+        <div class="td-stat"><span>Gross profit (products)</span><b>{{ $m($gp['profit']) }}</b><small>{{ $gp['margin'] }}% margin{{ $gp['missing_cost'] ? ' · ' . $gp['missing_cost'] . ' lines without cost' : '' }}</small></div>
     @endif
     @if ($ok('aov_trend'))
         <div class="td-stat"><span>Average order value</span><b>{{ $m($aov['current']) }}</b><small class="{{ $aov['change'] >= 0 ? 'up' : 'down' }}">{{ $aov['change'] >= 0 ? '▲' : '▼' }} {{ abs($aov['change']) }}% vs last month</small></div>
@@ -122,7 +122,7 @@
                 Income and expense
                 <a class="td-more" href="{{ $report('admin/report/ledger') }}" id="td-s-report-ledger">Ledger</a>
             </h3>
-            <div class="td-note">Last 12 months · net {{ $m($e['net']) }} (revenue − purchases − expenses)</div>
+            <div class="td-note">Last 12 months · net {{ $m($e['net']) }} (revenue − purchases − operating expenses)@if (auth()->user()->hasAccess('profit_statement.index')) · <a href="{{ url('admin/report/profit-statement') }}?period=this_year" id="link-profit-statement">Full profit statement</a>@endif</div>
             <div class="td-chart-box"><canvas class="td-cv" data-cv="{{ json_encode(['kind' => 'bar', 'fmt' => 'money', 'labels' => array_column($e['series'], 'month'), 'sets' => [['label' => 'Revenue', 'data' => array_column($e['series'], 'revenue'), 'color' => $C['sales']], ['label' => 'Purchases', 'data' => array_column($e['series'], 'purchases'), 'color' => $C['purchases']], ['label' => 'Expenses', 'data' => array_column($e['series'], 'expenses'), 'color' => $C['expense']]]]) }}"></canvas></div>
         </div>
     @endif

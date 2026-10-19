@@ -1024,14 +1024,12 @@ class BusinessReportController extends Controller
                 $m[$name] = (float) ($set[$b->key] ?? 0);
             }
             $m['sales_due'] = $m['sales_amount'] - $m['sales_paid'];
-            $m['gross_profit'] = $m['sales_amount'] - $m['cogs'];
-            $m['net'] = $m['gross_profit'] - $m['expenses'];
 
             return (object) (['branch' => $b] + $m);
         });
 
-        $sumKeys = ['leads', 'customers', 'sales_count', 'sales_amount', 'sales_paid', 'sales_due', 'discount', 'cogs', 'gross_profit',
-            'purchase_count', 'purchase_amount', 'purchase_paid', 'expenses', 'other_income', 'net', 'appointments'];
+        $sumKeys = ['leads', 'customers', 'sales_count', 'sales_amount', 'sales_paid', 'sales_due', 'discount',
+            'purchase_count', 'purchase_amount', 'purchase_paid', 'appointments'];
         $totals = [];
         foreach ($sumKeys as $k) {
             $totals[$k] = $rows->sum($k);
@@ -1065,17 +1063,14 @@ class BusinessReportController extends Controller
                 'sales_amount' => array_sum($mm['sales_amount']),
                 'sales_paid' => array_sum($mm['sales_paid']),
                 'purchase_amount' => array_sum($mm['purchase_amount']),
-                'expenses' => array_sum($mm['expenses']),
-                'gross_profit' => array_sum($mm['sales_amount']) - array_sum($mm['cogs']),
             ];
         }
 
         if ($request->input('export') === 'csv') {
             return $this->csv("vendor-monthly-{$month}.csv",
-                ['Branch', 'New Leads', 'New Customers', 'Appointments', 'Invoices', 'Sales', 'Collected', 'Due', 'Discount', 'Est. COGS', 'Gross Profit',
-                    'Purchases', 'Purchase Paid', 'Expenses', 'Other Income', 'Net (GP - Exp)'],
+                ['Branch', 'New Leads', 'New Customers', 'Appointments', 'Invoices', 'Sales', 'Collected', 'Due', 'Discount', 'Purchases', 'Purchase Paid'],
                 $rows->map(fn ($r) => [$r->branch->name, $r->leads, $r->customers, $r->appointments, $r->sales_count, $r->sales_amount, $r->sales_paid, $r->sales_due,
-                    $r->discount, $r->cogs, $r->gross_profit, $r->purchase_amount, $r->purchase_paid, $r->expenses, $r->other_income, $r->net])
+                    $r->discount, $r->purchase_amount, $r->purchase_paid])
             );
         }
 
@@ -1090,6 +1085,7 @@ class BusinessReportController extends Controller
             'vendors' => $this->vendorOptions(),
             'isVendor' => $this->isVendor(),
             'company' => $this->companyInfo(),
+            'canSeeProfit' => auth()->user()->hasAccess('profit_statement.index'),
         ]);
     }
 
@@ -1126,12 +1122,6 @@ class BusinessReportController extends Controller
             'sales_amount' => $sales('COALESCE(SUM(sm.total_amount),0)'),
             'sales_paid' => $sales('COALESCE(SUM(sm.paid),0)'),
             'purchase_amount' => $purch('COALESCE(SUM(pm.total_amount),0)'),
-            'cogs' => $pluck(DB::table('sale_details as sd')->join('sale_masters as sm', 'sm.id', '=', 'sd.sale_master_id')
-                ->whereNull('sd.deleted_at')->whereNull('sm.deleted_at')->whereBetween('sm.date', [$s, $e]),
-                'COALESCE(SUM(sd.qty * sd.purchase_price),0)', 'sm.vendor_id'),
-            'expenses' => $pluck(DB::table('ledgers as lg')->whereNull('lg.deleted_at')->whereBetween('lg.date', [$s, $e])
-                ->where('lg.amount_type', 'Expense')->where(fn ($q) => $q->whereNull('lg.type')->orWhereNotIn('lg.type', ['Purchase'])),
-                'COALESCE(SUM(lg.expense_amount),0)', 'lg.vendor_id'),
         ];
 
         if ($light) {
@@ -1142,9 +1132,6 @@ class BusinessReportController extends Controller
             'discount' => $sales('COALESCE(SUM(sm.total_discount),0)'),
             'purchase_count' => $purch('COUNT(*)'),
             'purchase_paid' => $purch('COALESCE(SUM(pm.paid),0)'),
-            'other_income' => $pluck(DB::table('ledgers as lg')->whereNull('lg.deleted_at')->whereBetween('lg.date', [$s, $e])
-                ->where('lg.amount_type', 'Income')->where(fn ($q) => $q->whereNull('lg.type')->orWhereNotIn('lg.type', ['Sales'])),
-                'COALESCE(SUM(lg.income_amount),0)', 'lg.vendor_id'),
             'appointments' => $pluck(DB::table('appointments as a')->leftJoin('leads as l', 'l.id', '=', 'a.lead_id')
                 ->whereNull('a.deleted_at')->whereRaw('DATE(a.appointment_date) BETWEEN ? AND ?', [$s, $e]), 'COUNT(*)', 'l.vendor_id'),
         ];

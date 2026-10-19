@@ -1202,7 +1202,8 @@ class DashboardAnalyticsService
             ->selectRaw(sprintf($ym, 'sm.date') . ' as ym, SUM(sm.total_amount) as v')->pluck('v', 'ym');
         $pur = $this->purchases()->where('pm.date', '>=', $from)->groupByRaw(sprintf($ym, 'pm.date'))
             ->selectRaw(sprintf($ym, 'pm.date') . ' as ym, SUM(pm.total_amount) as v')->pluck('v', 'ym');
-        $exp = $this->ledgers()->where('amount_type', Helper::$expense)->where('type', '!=', Helper::$purchase)
+        // Operating expenses only, the same rule as the Profit Statement (supplier and doctor payments are not repeated)
+        $exp = \App\Services\ProfitStatement::onlyOperatingExpenses($this->ledgers()->where('amount_type', Helper::$expense), 'type')
             ->where('date', '>=', $from)->groupByRaw(sprintf($ym, 'date'))
             ->selectRaw(sprintf($ym, 'date') . ' as ym, SUM(expense_amount) as v')->pluck('v', 'ym');
 
