@@ -16,7 +16,12 @@
             <h1><i class="fas fa-history" style="color: var(--accent-500); margin-right: 8px;"></i>Activity Log</h1>
             <p>Track all system actions and changes</p>
         </div>
+        <div class="header-actions">
+            <a href="{{ route('activity-log.export', request()->query()) }}" class="btn btn-secondary btn-sm" id="btn-export"><i class="fas fa-file-csv mr-1"></i>Export CSV</a>
+        </div>
     </div>
+
+    @include('admin.activity-log.tabs', ['active' => 'changes'])
 
     <div class="crm-filter-panel crm-animate-in delay-1">
         <button class="crm-filter-toggle {{ request()->hasAny(['user_id','subject_type','action','start_date','end_date']) ? 'active' : '' }}" 

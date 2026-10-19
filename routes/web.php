@@ -354,6 +354,8 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
 
     Route::resource('setting', 'SettingController');
 
+    Route::get('settings-hub', [\App\Http\Controllers\Admin\SettingsHubController::class, 'index'])->name('settings.hub');
+    Route::get('activity-log/export', [\App\Http\Controllers\Admin\ActivityLogController::class, 'export'])->name('activity-log.export');
     Route::post('user/{id}/status', [\App\Http\Controllers\Admin\UserController::class, 'setStatus'])->whereNumber('id')->name('user.status');
     Route::post('user/{id}/reset-password', [\App\Http\Controllers\Admin\UserController::class, 'resetPassword'])->whereNumber('id')->name('user.reset');
     Route::resource('user', 'UserController');

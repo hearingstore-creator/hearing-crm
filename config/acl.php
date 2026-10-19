@@ -752,6 +752,12 @@ return [
             'category' => 'REPORTS & ADMINISTRATION',
             'children' => [
                 [
+                    'name' => 'Settings Hub',
+                    'label' => 'All Settings',
+                    'route' => 'admin/settings-hub',
+                    'actions' => ['index']
+                ],
+                [
                     'name' => 'Setting',
                     'label' => 'General Settings',
                     'route' => 'admin/setting/create',

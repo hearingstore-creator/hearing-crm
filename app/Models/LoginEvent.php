@@ -10,6 +10,8 @@ class LoginEvent extends Model
 {
     public const UPDATED_AT = null;
 
+    public const LABELS = ['login' => 'Signed in', 'failed' => 'Wrong password', 'blocked' => 'Blocked (deactivated)'];
+
     protected $fillable = ['user_id', 'email', 'event', 'ip', 'user_agent'];
 
     protected $casts = ['created_at' => 'datetime'];

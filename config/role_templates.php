@@ -29,7 +29,7 @@ return [
         'SMS'          => ['sms_centre', 'compose_&_send', 'templates', 'send_log', 'analytics', 'sms_automation'],
         'Reports'      => ['report', 'reports_hub', 'stock', 'purchase_&_stock', 'purchase_report', 'vendor_monthly_report', 'warranty_expiry', 'battery_usage_expiry', 'sales_performance', 'membership_&_loyalty', 'lead_funnel', 'advances_report', 'services_status_report'],
         'Branches'     => ['vendor', 'add_vendor', 'vendor_list'],
-        'Administration' => ['utilities', 'setting', 'roles', 'users', 'activity_log', 'database_backup'],
+        'Administration' => ['utilities', 'settings_hub', 'setting', 'roles', 'users', 'activity_log', 'database_backup'],
     ],
 
     'dashboard_basic' => ['index', 'daily_lookout', 'follow_ups', 'appointments', 'warranty_alerts', 'todays_sales', 'total_tickets', 'total_tasks', 'birthdays', 'service_due'],
