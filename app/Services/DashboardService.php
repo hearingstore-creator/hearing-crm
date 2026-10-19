@@ -627,6 +627,12 @@ class DashboardService
         ];
     }
 
+    /** Daily lookout alone (the new dashboard's My Day block), gated like the full statistics. */
+    public function dailyLookout(): array
+    {
+        return DataScope::can('dashboard.daily_lookout') ? $this->getDailyLookout() : [];
+    }
+
     /**
      * Daily lookout items — the first thing a user works on each day.
      * Each item carries the ids needed for click-through links and quick actions.

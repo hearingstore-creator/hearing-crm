@@ -49,6 +49,11 @@ Route::middleware('throttle:60,1')->group(function () {
 
 Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin', 'middleware' => 'auth'], function() {
     Route::get('/dashboard', [HomeController::class, 'dashboard']);
+    Route::get('/dashboard/legacy', [HomeController::class, 'legacyDashboard'])->name('dashboard.legacy');
+    Route::get('/dashboard/new', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'index'])->name('dashboard.new');
+    Route::get('/dashboard/today/tiles', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'tiles'])->name('dashboard.today.tiles');
+    Route::get('/dashboard/today/block/{block}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'block'])->name('dashboard.today.block');
+    Route::get('/dashboard/today/chart/{chart}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'chart'])->name('dashboard.today.chart');
     Route::get('/dashboard/audience/{segment}', [\App\Http\Controllers\Admin\DashboardAudienceController::class, 'export'])->name('dashboard.audience.export');
     Route::resource('leads', 'LeadController');
     // Old add/edit follow-up forms retired: activities are added from the lead profile / Deals board
@@ -395,5 +400,3 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
 });
 
 require __DIR__.'/auth.php';
-
-Route::get('/auto-login', function() { Auth::loginUsingId(1); return redirect('/admin/dashboard'); });

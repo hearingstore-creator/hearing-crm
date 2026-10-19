@@ -1,0 +1,404 @@
+<?php
+
+namespace App\Services;
+
+use App\Classes\Helper;
+use App\Models\Appointment;
+use App\Models\Lead;
+use App\Models\User;
+use App\Support\DataScope;
+use Carbon\Carbon;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * New "Today" dashboard (dashboard plan phase 2): KPI tiles, alerts and two charts.
+ *
+ * Reuses the analytics helpers (sales(), ledgers(), receivablesRaw()…) and adds a branch pick for
+ * users who may read every branch: "hq" (Head Office, the default, same rows as before),
+ * "all" or a branch id. Everyone else always gets their own scope. Results are cached briefly
+ * per user + branch: tiles 2 minutes, charts 10 minutes.
+ */
+class DashboardTodayService extends DashboardAnalyticsService
+{
+    public const TILE_TTL = 120;
+    public const CHART_TTL = 600;
+    public const DEFAULT_PERIOD = 'month';
+    protected const SPARK_DAYS = 14;
+
+    /** null = the user's own scope (branch-bound users); otherwise 'hq', 'all' or a branch id. */
+    protected ?string $branchPick = null;
+
+    public function __construct()
+    {
+        $this->setPeriod(self::DEFAULT_PERIOD);
+    }
+
+    /** Branch choices for the header picker; empty for users bound to one scope. */
+    public function branchChoices(): array
+    {
+        if (!auth()->user()?->canViewAllBranches()) {
+            return [];
+        }
+
+        return ['hq' => 'Head office', 'all' => 'All branches'] + Helper::branchOptions();
+    }
+
+    /** Apply the picker value; anything the user may not choose falls back to their own scope. */
+    public function forBranch(?string $pick): static
+    {
+        $choices = $this->branchChoices();
+        $this->branchPick = $choices ? (array_key_exists((string) $pick, $choices) ? (string) $pick : 'hq') : null;
+        $this->memo = [];
+
+        return $this;
+    }
+
+    public function branchKey(): string
+    {
+        return $this->branchPick ?? 'own';
+    }
+
+    public function forPeriod(?string $period): static
+    {
+        $this->setPeriod(array_key_exists((string) $period, self::PERIODS) ? $period : self::DEFAULT_PERIOD);
+        $this->memo = [];
+
+        return $this;
+    }
+
+    public function periodKey(): string
+    {
+        return $this->period;
+    }
+
+    // ==================================================================
+    //  Branch pick (overrides the analytics scope helpers)
+    // ==================================================================
+
+    protected function branch(Builder $q, string $col): Builder
+    {
+        return $this->branchPick === null ? parent::branch($q, $col) : $this->picked($q, $col);
+    }
+
+    protected function picked($q, string $col)
+    {
+        return match ($this->branchPick) {
+            null, 'all' => $q,
+            'hq'        => $q->whereNull($col),
+            default     => $q->where($col, (int) $this->branchPick),
+        };
+    }
+
+    /** Ledgers without vendor_id are scoped by who wrote the row: a branch = its login + its staff. */
+    protected function ledgerOwner(Builder $q, string $col): Builder
+    {
+        if ($this->branchPick === null || $this->branchPick === 'hq') {
+            return parent::ledgerOwner($q, $col);
+        }
+        if ($this->branchPick === 'all') {
+            return DataScope::seesAll() ? $q : $q->where($col, DataScope::uid());
+        }
+        $id = (int) $this->branchPick;
+
+        return $q->whereIn($col, User::where('vendor_id', $id)->pluck('id')->push($id)->all());
+    }
+
+    // ==================================================================
+    //  Cached entry points
+    // ==================================================================
+
+    protected function cacheKey(string $what): string
+    {
+        return 'dash-today:' . $what . ':' . auth()->id() . ':' . $this->branchKey() . ':' . $this->period . ':' . today()->toDateString();
+    }
+
+    public function tiles(): array
+    {
+        return Cache::remember($this->cacheKey('tiles'), self::TILE_TTL, fn () => $this->buildTiles());
+    }
+
+    public function chart(string $name): ?array
+    {
+        $method = ['revenue_month' => 'revenueMonth', 'sales_by_category' => 'salesByCategory'][$name] ?? null;
+        $perm = ['revenue_month' => 'revenue_chart', 'sales_by_category' => 'top_products'][$name] ?? null;
+        if (!$method || !DataScope::can('dashboard.' . $perm)) {
+            return null;
+        }
+
+        return Cache::remember($this->cacheKey('chart-' . $name), self::CHART_TTL, fn () => $this->safe($name, fn () => $this->{$method}()));
+    }
+
+    /** Smart alerts of the user's own scope; links to old-dashboard widgets open the legacy page. */
+    public function alerts(): ?array
+    {
+        if (!DataScope::can('dashboard.smart_alerts')) {
+            return null;
+        }
+
+        return Cache::remember($this->cacheKey('alerts'), self::TILE_TTL, function () {
+            $own = clone $this;
+            $own->branchPick = $this->branchChoices() ? 'hq' : null;
+            $r = $own->safe('smart_alerts', fn () => $own->smartAlerts());
+            foreach ($r['alerts'] ?? [] as $i => $a) {
+                if (str_starts_with($a['url'], '#')) {
+                    $r['alerts'][$i]['url'] = route('dashboard.legacy') . $a['url'];
+                }
+            }
+
+            return $r;
+        });
+    }
+
+    // ==================================================================
+    //  KPI tiles
+    // ==================================================================
+
+    protected function buildTiles(): array
+    {
+        $can = fn (string $k) => DataScope::can('dashboard.' . $k);
+        $user = auth()->user();
+        $tiles = [];
+        $today = today()->toDateString();
+
+        if ($can('todays_sales')) {
+            $tiles[] = $this->safeTile('sales_today', fn () => $this->dailyTile(
+                'sales_today', 'Sales today', 'fas fa-cash-register', 'money',
+                $this->daily($this->sales(), 'sm.date', 'SUM(sm.total_amount)'),
+                url('admin/sale?start_date=' . $today . '&end_date=' . $today),
+                fn ($v) => $this->sales()->whereDate('sm.date', $today)->count() . ' invoice(s)'
+            ));
+        }
+
+        if ($can('cash_today')) {
+            $tiles[] = $this->safeTile('cash_in', fn () => $this->dailyTile(
+                'cash_in', 'Cash in today', 'fas fa-wallet', 'money', $this->dailyCashIn(),
+                url('admin/report/ledger?start_date=' . $today . '&end_date=' . $today),
+                fn () => 'Patients + other income'
+            ));
+        }
+
+        if ($can('appointments')) {
+            $tiles[] = $this->safeTile('bookings', fn () => $this->dailyTile(
+                'bookings', 'Bookings today', 'far fa-calendar-check', 'count', $this->dailyBookings(),
+                url('admin/appointments/calendar'), fn () => 'Appointments on today\'s calendar'
+            ));
+        }
+
+        if ($user?->hasAccess('repair_jobs_board.index')) {
+            $tiles[] = $this->safeTile('open_repairs', fn () => $this->repairsTile());
+        }
+
+        if ($can('receivables_aging') || $can('net_balance')) {
+            $tiles[] = $this->safeTile('patient_dues', fn () => $this->duesTile());
+        }
+
+        if ($can('total_leads')) {
+            $tiles[] = $this->safeTile('new_leads', fn () => $this->dailyTile(
+                'new_leads', 'New leads', 'fas fa-user-plus', 'count', $this->dailyLeads(),
+                url('admin/leads'), fn () => 'Added today'
+            ));
+        }
+
+        return $tiles;
+    }
+
+    protected function safeTile(string $key, callable $fn): array
+    {
+        $r = $this->safe($key, $fn);
+
+        return empty($r['error']) ? $r : ['key' => $key, 'error' => true];
+    }
+
+    /** [Y-m-d => value] for the last SPARK_DAYS days, zero-filled. */
+    protected function daysAxis(): array
+    {
+        return collect(range(self::SPARK_DAYS - 1, 0))->mapWithKeys(fn ($i) => [today()->subDays($i)->toDateString() => 0.0])->all();
+    }
+
+    protected function daily($q, string $dateCol, string $aggregate): array
+    {
+        $from = today()->subDays(self::SPARK_DAYS - 1)->toDateString();
+        $rows = $q->whereBetween(DB::raw("DATE($dateCol)"), [$from, today()->toDateString()])
+            ->groupBy(DB::raw("DATE($dateCol)"))
+            ->selectRaw("DATE($dateCol) as d, $aggregate as v")->pluck('v', 'd');
+
+        $axis = $this->daysAxis();
+        foreach ($rows as $d => $v) {
+            if (array_key_exists((string) $d, $axis)) {
+                $axis[(string) $d] = (float) $v;
+            }
+        }
+
+        return $axis;
+    }
+
+    protected function dailyCashIn(): array
+    {
+        $customers = $this->daily(
+            $this->ledgerOwner(DB::table('customer_ledgers')->whereNull('deleted_at'), 'created_by')->where('type', '!=', Helper::$returnToCustomer),
+            'date', 'SUM(credit)'
+        );
+        $other = $this->daily(
+            $this->ledgers()->where('amount_type', Helper::$income)->where('type', '!=', Helper::$sales),
+            'date', 'SUM(income_amount)'
+        );
+
+        foreach ($other as $d => $v) {
+            $customers[$d] += $v;
+        }
+
+        return $customers;
+    }
+
+    protected function dailyBookings(): array
+    {
+        $q = DataScope::appointments(Appointment::query())->toBase()->whereNull('appointments.deleted_at')
+            ->whereNotIn('appointments.status', ['cancelled', 'cancelled_refunded', 'cancelled_credit_kept', 'rescheduled']);
+        $this->picked($q, 'appointments.branch_id');
+
+        return $this->daily($q, 'appointments.appointment_date', 'COUNT(*)');
+    }
+
+    protected function dailyLeads(): array
+    {
+        $q = DataScope::leads(Lead::query())->toBase()->whereNull('leads.deleted_at');
+        $this->picked($q, 'leads.vendor_id');
+
+        return $this->daily($q, 'leads.created_at', 'COUNT(*)');
+    }
+
+    protected function dailyTile(string $key, string $label, string $icon, string $format, array $series, string $url, callable $sub): array
+    {
+        $values = array_values($series);
+        $now = (float) end($values);
+        $prev = (float) ($values[count($values) - 2] ?? 0);
+
+        return [
+            'key'     => $key,
+            'label'   => $label,
+            'icon'    => $icon,
+            'format'  => $format,
+            'value'   => $now,
+            'change'  => $this->change($now, $prev),
+            'vs'      => 'vs yesterday',
+            'sub'     => $sub($now),
+            'spark'   => $values,
+            'url'     => $url,
+        ];
+    }
+
+    /** Change against the previous value: absolute and percent (null percent when there is no base). */
+    protected function change(float $now, float $prev): array
+    {
+        return [
+            'diff' => round($now - $prev, 2),
+            'pct'  => $prev > 0 ? round(($now - $prev) / $prev * 100) : null,
+        ];
+    }
+
+    protected function repairsTile(): array
+    {
+        $base = fn () => $this->branch(DB::table('repair_jobs')->whereNull('deleted_at'), 'vendor_id');
+        $open = (int) $base()->whereNotIn('current_status', ['delivered', 'cancelled', 'patient_declined'])->count();
+        $ready = (int) $base()->where('current_status', 'ready_for_pickup')->count();
+        $received = array_values($this->daily($base(), 'created_at', 'COUNT(*)'));
+
+        return [
+            'key'    => 'open_repairs',
+            'label'  => 'Open repairs',
+            'icon'   => 'fas fa-tools',
+            'format' => 'count',
+            'value'  => $open,
+            'change' => $this->change((float) end($received), 0.0),
+            'vs'     => 'received today',
+            'sub'    => $ready . ' ready for pickup',
+            'spark'  => $received,
+            'url'    => url('admin/repairs'),
+        ];
+    }
+
+    protected function duesTile(): array
+    {
+        $r = $this->receivablesRaw();
+        $old = (float) (($r['buckets']['61_90'] ?? 0) + ($r['buckets']['90_plus'] ?? 0));
+
+        return [
+            'key'    => 'patient_dues',
+            'label'  => 'Patient dues',
+            'icon'   => 'fas fa-hand-holding-usd',
+            'format' => 'money',
+            'value'  => (float) ($r['total'] ?? 0),
+            'change' => null,
+            'vs'     => null,
+            'sub'    => ($r['count'] ?? 0) . ' patient(s) · ৳' . number_format($old) . ' older than 60 days',
+            'spark'  => null,
+            'url'    => route('dashboard.legacy') . '#w-receivables_aging',
+        ];
+    }
+
+    // ==================================================================
+    //  Charts
+    // ==================================================================
+
+    /** Running total of sales, this month vs last month, by day of month. */
+    protected function revenueMonth(): array
+    {
+        $thisStart = now()->startOfMonth();
+        $lastStart = now()->startOfMonth()->subMonth();
+        $byDay = fn (Carbon $start, Carbon $end) => $this->sales()->whereBetween('sm.date', [$start->toDateString(), $end->toDateString()])
+            ->groupBy(DB::raw('DAY(sm.date)'))->selectRaw('DAY(sm.date) as d, SUM(sm.total_amount) as v')->pluck('v', 'd');
+
+        $cur = $byDay($thisStart, today());
+        $prev = $byDay($lastStart, $lastStart->copy()->endOfMonth());
+        $days = max($thisStart->daysInMonth, $lastStart->daysInMonth);
+
+        $run = function ($rows, int $upTo) use ($days) {
+            $sum = 0.0;
+            $out = [];
+            for ($d = 1; $d <= $days; $d++) {
+                $sum += (float) ($rows[$d] ?? 0);
+                $out[] = $d <= $upTo ? round($sum, 2) : null;
+            }
+
+            return $out;
+        };
+
+        $current = $run($cur, (int) today()->day);
+        $last = $run($prev, $lastStart->daysInMonth);
+        $sameDayLast = $last[today()->day - 1] ?? end($last);
+
+        return [
+            'labels'     => range(1, $days),
+            'this_month' => $current,
+            'last_month' => $last,
+            'this_label' => $thisStart->format('M Y'),
+            'last_label' => $lastStart->format('M Y'),
+            'total'      => (float) ($current[today()->day - 1] ?? 0),
+            'same_day_last' => (float) $sameDayLast,
+        ];
+    }
+
+    /** Sales by product category in the chosen period (top 6, the rest as "Other"). */
+    protected function salesByCategory(): array
+    {
+        $rev = $this->lineRevenueSql();
+        $rows = $this->lineBase()->groupBy('cat.category_name')
+            ->selectRaw("COALESCE(cat.category_name, 'Uncategorised') as name, SUM($rev) as revenue")
+            ->orderByDesc('revenue')->get();
+
+        $top = $rows->take(6)->map(fn ($r) => ['name' => $r->name, 'revenue' => round((float) $r->revenue, 2)])->values();
+        $other = (float) $rows->slice(6)->sum('revenue');
+        if ($other > 0) {
+            $top->push(['name' => 'Other', 'revenue' => round($other, 2)]);
+        }
+
+        return [
+            'labels'  => $top->pluck('name')->all(),
+            'values'  => $top->pluck('revenue')->all(),
+            'total'   => round((float) $rows->sum('revenue'), 2),
+            'period'  => self::PERIODS[$this->period],
+        ];
+    }
+}

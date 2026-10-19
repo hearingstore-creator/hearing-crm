@@ -512,7 +512,7 @@
                 @if ($canAud && empty($w['error']) && ($w['count'] ?? 0) > 0)<a href="{{ route('dashboard.audience.export', 'debtors') }}" class="an-link"><i class="fas fa-download mr-1"></i>Export debtors</a>@endif
             </div>
             @if (!empty($w['error'])) {!! $err !!} @else
-            @include('admin.dashboard.partials.aging-body', ['w' => $w, 'who' => 'customer', 'linkBase' => 'admin/customers/'])
+            @include('admin.dashboard-legacy.partials.aging-body', ['w' => $w, 'who' => 'customer', 'linkBase' => 'admin/customers/'])
             @endif
         </div>
         @endif
@@ -828,7 +828,7 @@
                 <a href="{{ url('admin/report/supplier-statement') }}" class="an-link">Statement →</a>
             </div>
             @if (!empty($w['error'])) {!! $err !!} @else
-            @include('admin.dashboard.partials.aging-body', ['w' => $w, 'who' => 'supplier', 'linkBase' => 'admin/report/supplier-statement?supplier_id='])
+            @include('admin.dashboard-legacy.partials.aging-body', ['w' => $w, 'who' => 'supplier', 'linkBase' => 'admin/report/supplier-statement?supplier_id='])
             @endif
         </div>
         @endif

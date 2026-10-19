@@ -14,6 +14,10 @@ return [
     'sms_quiet_from_hour' => (int) env('SMS_QUIET_FROM_HOUR', 21),
     'sms_quiet_until_hour' => (int) env('SMS_QUIET_UNTIL_HOUR', 9),
 
+    // Which dashboard /admin/dashboard opens: "legacy" (the old one, kept until the new one is accepted) or "new".
+    // Both stay reachable at /admin/dashboard/legacy and /admin/dashboard/new.
+    'dashboard' => env('CRM_DASHBOARD', 'legacy') === 'new' ? 'new' : 'legacy',
+
     // Activity log rows older than this many months are deleted by the monthly clean-up
     'activity_log_keep_months' => (int) env('ACTIVITY_LOG_KEEP_MONTHS', 24),
 ];

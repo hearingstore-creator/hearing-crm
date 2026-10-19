@@ -153,6 +153,18 @@ class DashboardAnalyticsService
         return $out;
     }
 
+    /** Only the named widgets (same permission rule and error handling as build()). */
+    public function pick(array $keys, ?string $period = null): array
+    {
+        $this->setPeriod($period);
+        $out = [];
+        foreach (array_intersect_key(self::WIDGETS, array_flip($keys)) as $key => $method) {
+            $out[$key] = DataScope::can('dashboard.' . $key) ? $this->safe($key, fn () => $this->{$method}()) : null;
+        }
+
+        return $out;
+    }
+
     /** Members of an audience segment (used by the dashboard and the CSV export). */
     public function segmentMembers(string $segment): Collection
     {

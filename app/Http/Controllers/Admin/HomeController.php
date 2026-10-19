@@ -25,7 +25,7 @@ class HomeController extends Controller
     public function __construct(DashboardService $dashboardService)
     {
         $this->dashboardService = $dashboardService;
-        $this->middleware('permission:dashboard.index')->only(['dashboard']);
+        $this->middleware('permission:dashboard.index')->only(['dashboard', 'legacyDashboard']);
         // Legacy medicine / employee screens have no menu; their permissions are Super Admin only
         $this->middleware('permission:medicine.index')->only(['medicineSearch']);
         $this->middleware('permission:employee.index')->only(['employeeSearch']);
@@ -41,17 +41,28 @@ class HomeController extends Controller
      *
      * @return \Illuminate\Contracts\View\View
      */
-    public function dashboard(): View
+    public function dashboard()
+    {
+        // config crm.dashboard (CRM_DASHBOARD) picks which one opens here; both also keep their own URL
+        if (config('crm.dashboard') === 'new') {
+            return app(DashboardTodayController::class)->index(request());
+        }
+
+        return $this->legacyDashboard();
+    }
+
+    /** The old dashboard, kept at /admin/dashboard/legacy until the new one is accepted. */
+    public function legacyDashboard(): View
     {
         $statistics = $this->dashboardService->getDashboardStatistics();
         $analytics  = app(\App\Services\DashboardAnalyticsService::class)->build(request('period'));
         $myDay      = $this->myDay($statistics, $analytics);
 
-        return view('admin.dashboard.index', compact('statistics', 'analytics', 'myDay'));
+        return view('admin.dashboard-legacy.index', compact('statistics', 'analytics', 'myDay'));
     }
 
     /** "My Day": my open deal activities, appointments, and actionable after-sales care tasks (service, warranty, birthdays). */
-    private function myDay(array $statistics = [], array $analytics = []): array
+    public function myDay(array $statistics = [], array $analytics = []): array
     {
         $user = auth()->user();
         $today = today();

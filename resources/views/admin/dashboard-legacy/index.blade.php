@@ -203,6 +203,7 @@ a.md-main:hover b { color:var(--accent-600); }
             </p>
         </div>
         <div class="header-actions">
+            <a href="{{ route('dashboard.new') }}" class="btn btn-outline-secondary btn-sm" id="btn-dash-switch-new" title="Preview the new Today dashboard"><i class="fas fa-columns mr-1"></i>New dashboard</a>
             @if ($canP('add_appointment.create'))
                 <a href="{{ url('admin/appointments/create') }}" class="btn btn-secondary btn-sm" id="btn-dash-add-appointment"><i class="far fa-calendar-plus mr-1"></i>Add Appointment</a>
             @endif
@@ -304,10 +305,10 @@ a.md-main:hover b { color:var(--accent-600); }
     </div>
 
     {{-- ═══ SMART ALERTS (Phase 1) ═══ --}}
-    @include('admin.dashboard.partials.smart-alerts')
+    @include('admin.dashboard-legacy.partials.smart-alerts')
 
     {{-- ═══ SUPER MY DAY & LOOKOUT HUB (Phase 3) ═══ --}}
-    @include('admin.dashboard.partials.my-day')
+    @include('admin.dashboard-legacy.partials.my-day')
 
 
     {{-- ═══ INSIGHTS + INVENTORY ═══ --}}
@@ -524,7 +525,7 @@ a.md-main:hover b { color:var(--accent-600); }
     @endif
 
     {{-- ═══ BUSINESS ANALYTICS (Phase 1) ═══ --}}
-    @include('admin.dashboard.partials.analytics')
+    @include('admin.dashboard-legacy.partials.analytics')
 
     @if (!$can('index') && !auth()->user()?->isSuperAdmin())
         <div class="lk-empty">No dashboard widgets are enabled for your role yet. Ask an administrator to enable them in <b>Roles → Manage Permissions → Dashboard</b>.</div>
