@@ -58,6 +58,14 @@
 .md-sum { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--page-text-muted); margin-bottom:6px; }
 .md-sum b { color:var(--page-text); }
 .td-panel[hidden] { display:none; }
+.td-today { display:flex; flex-direction:column; }
+.td-today > * { order:5; }
+.td-today.td-myday-first > .td-grid { order:1; }
+.td-today.td-myday-first > #td-alerts { order:2; }
+.td-pin { margin-left:auto; border:0; background:transparent; color:var(--page-text-muted); font-size:12px; font-weight:600; padding:6px 10px; border-radius:8px; white-space:nowrap; cursor:pointer; align-self:center; }
+.td-pin:hover { background:var(--accent-50); color:var(--accent-700); }
+.td-pin.on { color:var(--accent-600); }
+.td-pin i { margin-right:6px; }
 .td-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:20px; }
 .td-stat { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:14px 16px; }
 .td-stat span { display:block; font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--page-text-muted); }
@@ -90,7 +98,7 @@
      data-tiles="{{ route('dashboard.today.tiles') }}"
      data-block="{{ url('admin/dashboard/today/block') }}"
      data-chart="{{ url('admin/dashboard/today/chart') }}"
-     data-tab="{{ url('admin/dashboard/today/tab') }}"
+     data-tab="{{ url('admin/dashboard/today/tab') }}" data-start="{{ $startTab }}" data-pin="{{ route('dashboard.today.pin') }}" data-token="{{ csrf_token() }}"
      data-branch="{{ $branch }}" data-period="{{ $period }}">
 
     <div class="crm-page-header">
@@ -124,6 +132,9 @@
             @if ($user->hasAccess('add_sale.create'))
                 <a href="{{ url('admin/sale/create') }}" class="btn btn-primary btn-sm" id="td-new-sale"><i class="fas fa-plus mr-1"></i>New sale</a>
             @endif
+            @if ($user->hasAccess('reports_hub.index'))
+                <a href="{{ route('reports.hub') }}" class="btn btn-outline-secondary btn-sm" id="td-reports"><i class="fas fa-th-large mr-1"></i>Reports</a>
+            @endif
             <a href="{{ route('dashboard.legacy') }}" class="btn btn-outline-secondary btn-sm" id="td-switch-legacy" title="Open the old dashboard"><i class="fas fa-history mr-1"></i>Old dashboard</a>
         </div>
     </div>
@@ -133,9 +144,10 @@
         @foreach ($tabs as $key => $tabLabel)
             <a href="#{{ $key }}" class="td-tab" role="tab" data-tab="{{ $key }}" aria-selected="false" id="td-tab-{{ $key }}">{{ $tabLabel }}</a>
         @endforeach
+        <button type="button" class="td-pin" id="td-pin" title="Open the dashboard on the tab you are viewing next time"><i class="fas fa-thumbtack"></i><span>Make this my start tab</span></button>
     </nav>
 
-    <div class="td-panel" id="td-panel-today">
+    <div class="td-panel td-today {{ $myDayFirst ? 'td-myday-first' : '' }}" id="td-panel-today">
     <section class="td-tiles" id="td-tiles" aria-live="polite">
         @for ($i = 0; $i < 6; $i++)<div class="td-skel"></div>@endfor
     </section>

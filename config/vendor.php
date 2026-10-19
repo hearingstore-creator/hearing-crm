@@ -106,6 +106,8 @@ return [
         'stock_report.index',
         'purchase_&_stock.index',
 
+        // Reports Hub lists only the reports this login may open
+        'reports_hub.index',
         // Business reports (vendor sees own branch only)
         'supplier_statement.index',
         'purchase_report.index',

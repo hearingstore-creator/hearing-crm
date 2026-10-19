@@ -35,6 +35,8 @@ class DashboardTodayController extends Controller
             'period'     => $this->today->periodKey(),
             'periods'    => DashboardAnalyticsService::PERIODS,
             'tabs'       => $this->today->visibleTabs(),
+            'startTab'   => $this->today->defaultTab($request->user()),
+            'myDayFirst' => $this->today->myDayFirst(),
             'scopeLabel' => DataScope::label(),
             'can'        => fn (string $p) => DataScope::can('dashboard.' . $p),
         ]);
@@ -53,6 +55,15 @@ class DashboardTodayController extends Controller
         return response()->json($data);
     }
 
+    /** Remember the tab this user wants to open on. */
+    public function pin(Request $request): JsonResponse
+    {
+        $data = $request->validate(['tab' => 'required|string|max:20']);
+        abort_unless($this->today->pin($request->user(), $data['tab']), 422, 'That tab is not available to you.');
+
+        return response()->json(['tab' => $data['tab']]);
+    }
+
     /** One of the other tabs (Sales & Money, Patients & Care, Pipeline, Branches), loaded when first opened. */
     public function tab(Request $request, string $tab)
     {
@@ -65,6 +76,7 @@ class DashboardTodayController extends Controller
             'label'  => DashboardAnalyticsService::PERIODS[$this->today->periodKey()],
             'branch' => $this->today->branchKey(),
             'legacy' => route('dashboard.legacy'),
+            'report' => fn (string $path) => $this->today->reportUrl($path),
         ]);
     }
 

@@ -49,8 +49,11 @@ Route::middleware('throttle:60,1')->group(function () {
 
 Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin', 'middleware' => 'auth'], function() {
     Route::get('/dashboard', [HomeController::class, 'dashboard']);
-    Route::get('/dashboard/legacy', [HomeController::class, 'legacyDashboard'])->name('dashboard.legacy');
+    Route::get('reports', [\App\Http\Controllers\Admin\ReportHubController::class, 'index'])->name('reports.hub');
+    Route::post('reports/star', [\App\Http\Controllers\Admin\ReportHubController::class, 'star'])->name('reports.star');
+    Route::get('/dashboard/legacy',[HomeController::class, 'legacyDashboard'])->name('dashboard.legacy');
     Route::get('/dashboard/new', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'index'])->name('dashboard.new');
+    Route::post('/dashboard/today/pin', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'pin'])->name('dashboard.today.pin');
     Route::get('/dashboard/today/tiles', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'tiles'])->name('dashboard.today.tiles');
     Route::get('/dashboard/today/block/{block}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'block'])->name('dashboard.today.block');
     Route::get('/dashboard/today/tab/{tab}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'tab'])->whereIn('tab', ['sales', 'care', 'pipeline', 'branches'])->name('dashboard.today.tab');

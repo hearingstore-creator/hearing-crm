@@ -82,10 +82,11 @@ class DashboardTodayTest extends TestCase
         $value = fn (string $query = '') => $this->tile($this->getJson('/admin/dashboard/today/tiles' . $query)->assertOk()->json('tiles'), 'sales_today')['value'] ?? null;
 
         $this->as($this->admin);
-        $this->assertEquals($hq, $value(), 'head office is the default pick');
+        $this->assertEquals($hq + 5000, $value(), 'Super Admin opens on all branches');
+        $this->assertEquals($hq, $value('?branch=hq'));
         $this->assertEquals($hq + 5000, $value('?branch=all'));
         $this->assertEquals(5000, $value('?branch=' . $this->branch->id));
-        $this->assertEquals($hq, $value('?branch=999999'), 'unknown branch falls back to head office');
+        $this->assertEquals($hq + 5000, $value('?branch=999999'), 'unknown branch falls back to the default pick');
 
         // A branch login always sees its own branch, whatever it asks for
         $this->as($this->branch);
@@ -102,7 +103,7 @@ class DashboardTodayTest extends TestCase
         $hq = $this->salesAtBothPlaces();
 
         $this->as($this->admin);
-        $rev = $this->getJson('/admin/dashboard/today/chart/revenue_month')->assertOk()->json();
+        $rev = $this->getJson('/admin/dashboard/today/chart/revenue_month?branch=hq')->assertOk()->json();
         $this->assertEquals($hq, $rev['this_month'][now()->day - 1]);
         $this->assertNull($rev['this_month'][now()->day] ?? null, 'future days stay empty');
 
@@ -152,7 +153,7 @@ class DashboardTodayTest extends TestCase
         $this->as($this->admin);
 
         // The payment mix doughnut carries each pick's invoice total
-        $this->assertStringContainsString('&quot;data&quot;:[' . (int) $hq . ']', $revenue(''), 'head office only');
+        $this->assertStringContainsString('&quot;data&quot;:[' . (int) $hq . ']', $revenue('&branch=hq'), 'head office only');
         $this->assertStringContainsString('&quot;data&quot;:[' . (int) ($hq + 5000) . ']', $revenue('&branch=all'));
         $this->assertStringContainsString('&quot;data&quot;:[5000]', $revenue('&branch=' . $this->branch->id));
         $this->assertStringContainsString('data-cv=', $revenue(''));
@@ -170,7 +171,7 @@ class DashboardTodayTest extends TestCase
         DB::table('sale_masters')->insert(array_merge($row, ['sale_invoice_no' => 'LATE-1', 'total_amount' => 777777]));
         $this->assertSame($before + 1, DB::table('sale_masters')->count());
 
-        $this->assertStringNotContainsString('777977', $this->get('/admin/dashboard/today/tab/sales?period=year')->getContent());
-        $this->assertStringContainsString('782977', $this->get('/admin/dashboard/today/tab/sales?period=year&branch=all')->getContent());
+        $this->assertStringNotContainsString('782977', $this->get('/admin/dashboard/today/tab/sales?period=year')->getContent());
+        $this->assertStringContainsString('777977', $this->get('/admin/dashboard/today/tab/sales?period=year&branch=hq')->getContent());
     }
 }

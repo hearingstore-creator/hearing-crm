@@ -166,5 +166,27 @@
             show(t.dataset.tab);
         });
     });
-    if (location.hash) show(location.hash.slice(1));
+    // Start tab: a link with #tab wins, otherwise the one this user pinned (or their role's default)
+    var active = 'today', pinned = root.dataset.start || 'today', pinBtn = document.getElementById('td-pin');
+
+    function paintPin() {
+        if (!pinBtn) return;
+        var isStart = active === pinned;
+        pinBtn.classList.toggle('on', isStart);
+        pinBtn.querySelector('span').textContent = isStart ? 'This is your start tab' : 'Make this my start tab';
+    }
+
+    var baseShow = show;
+    show = function (name) { baseShow(name); active = document.querySelector('.td-tab.active').dataset.tab; paintPin(); };
+
+    if (pinBtn) {
+        pinBtn.addEventListener('click', function () {
+            fetch(root.dataset.pin, {method: 'POST', credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': root.dataset.token, 'X-Requested-With': 'XMLHttpRequest'},
+                body: JSON.stringify({tab: active})
+            }).then(function (r) { if (r.ok) { pinned = active; paintPin(); } });
+        });
+    }
+
+    show(location.hash ? location.hash.slice(1) : pinned);
 })();

@@ -638,6 +638,14 @@ return [
             'category' => 'REPORTS & ADMINISTRATION',
             'children' => [
                 [
+                    'name' => 'Reports Hub',
+                    'label' => 'All Reports',
+                    'route' => 'admin/reports',
+                    'icon' => 'fa-th-large',
+                    'order' => 0,
+                    'actions' => ['index']
+                ],
+                [
                     'name' => 'Stock',
                     'label' => 'Stock Report',
                     'route' => 'admin/report/stock',

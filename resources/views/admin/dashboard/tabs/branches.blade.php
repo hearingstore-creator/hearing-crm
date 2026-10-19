@@ -13,7 +13,7 @@
 <div class="td-charts">
     @if ($ok('branch_leaderboard'))
         @php $b = $w['branch_leaderboard']; @endphp
-        <div class="td-card" style="grid-column:1/-1"><h3><i class="fas fa-trophy"></i>Branch league table<a class="td-more" href="{{ url('admin/report/vendor-monthly') }}" id="td-b-report-monthly">Branch monthly</a></h3>
+        <div class="td-card" style="grid-column:1/-1"><h3><i class="fas fa-trophy"></i>Branch league table<a class="td-more" href="{{ $report('admin/report/vendor-monthly') }}" id="td-b-report-monthly">Branch monthly</a></h3>
             <div class="td-note">This month against last month</div>
             <div style="overflow-x:auto"><table class="td-table">
                 <thead><tr><th>Branch</th><th>This month</th><th></th><th>Last month</th><th>Growth</th><th>Invoices</th><th>Leads</th><th>Won</th></tr></thead>
@@ -28,7 +28,7 @@
 
     @if ($ok('branch_stock'))
         @php $s = $w['branch_stock']; @endphp
-        <div class="td-card"><h3><i class="fas fa-boxes"></i>Stock value by branch<a class="td-more" href="{{ url('admin/report/stock') }}" id="td-b-report-stock">Stock report</a></h3>
+        <div class="td-card"><h3><i class="fas fa-boxes"></i>Stock value by branch<a class="td-more" href="{{ $report('admin/report/stock') }}" id="td-b-report-stock">Stock report</a></h3>
             <div class="td-note">{{ $m($s['total']) }} in stock at cost</div>
             @foreach ($s['rows'] as $r)
                 <div class="td-row"><span class="td-name">{{ $r['name'] }}<span class="td-sub">{{ number_format($r['units']) }} units · {{ $r['products'] }} products</span></span><span class="td-meter"><i style="width:{{ $r['value'] / $s['max'] * 100 }}%;background:#f59e0b"></i></span><b>{{ $m($r['value']) }}</b></div>
@@ -37,7 +37,7 @@
 
     @if ($ok('dead_stock'))
         @php $d = $w['dead_stock']; @endphp
-        <div class="td-card"><h3><i class="fas fa-box-open"></i>Dead and slow stock<a class="td-more" href="{{ url('admin/report/stock') }}" id="td-b-report-dead">Stock report</a></h3>
+        <div class="td-card"><h3><i class="fas fa-box-open"></i>Dead and slow stock<a class="td-more" href="{{ $report('admin/report/stock') }}" id="td-b-report-dead">Stock report</a></h3>
             <div class="td-note">{{ $d['count'] }} product(s), {{ number_format($d['units']) }} units, {{ $m($d['value']) }} with no sale for 90+ days (head office scope)</div>
             @forelse (array_slice($d['list'], 0, 8) as $x)
                 <div class="td-row"><span class="td-name">{{ $x['name'] }}<span class="td-sub">{{ $x['category'] }} · last sold {{ $x['last'] }}</span></span><small>{{ $x['qty'] }} pcs</small><b>{{ $m($x['value']) }}</b></div>

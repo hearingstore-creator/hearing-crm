@@ -27,3 +27,6 @@ Illuminate\Support\Facades\Artisan::command('crm:prune-activity-log', function (
     $this->info("Deleted {$deleted} activity log rows older than {$months} months.");
 })->purpose('Delete activity log rows older than the retention period');
 Schedule::command('crm:prune-activity-log')->monthlyOn(1, '03:00')->withoutOverlapping();
+
+// Dashboard: warm the heavy widgets before the working day (prints timings; see DashboardSnapshots)
+Schedule::command('crm:dashboard-snapshots')->dailyAt('02:00')->withoutOverlapping();

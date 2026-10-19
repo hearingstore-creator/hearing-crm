@@ -11,7 +11,7 @@
 <div class="td-charts">
     @if ($ok('test_to_sale_funnel'))
         @php $f = $w['test_to_sale_funnel']; @endphp
-        <div class="td-card"><h3><i class="fas fa-filter"></i>Test to sale funnel<a class="td-more" href="{{ url('admin/report/lead-funnel') }}" id="td-p-report-funnel">Lead funnel</a></h3>
+        <div class="td-card"><h3><i class="fas fa-filter"></i>Test to sale funnel<a class="td-more" href="{{ $report('admin/report/lead-funnel') }}" id="td-p-report-funnel">Lead funnel</a></h3>
             <div class="td-note">{{ $label }} · {{ $f['conversion'] }}% of booked tests end in a device sale{{ $f['avg_days'] !== null ? ' · about ' . $f['avg_days'] . ' days to buy' : '' }}</div>
             @foreach ($f['stages'] as $s)
                 <div class="td-row"><span class="td-name"><i class="{{ $s['icon'] }}" style="color:{{ $s['color'] }};width:18px"></i> {{ $s['label'] }}</span><span class="td-meter"><i style="width:{{ $s['pct'] }}%;background:{{ $s['color'] }}"></i></span><b>{{ $s['count'] }}</b><small>{{ $s['pct'] }}%</small></div>
@@ -31,7 +31,7 @@
 
     @if ($ok('lost_reasons'))
         @php $r = $w['lost_reasons']; @endphp
-        <div class="td-card"><h3><i class="fas fa-times-circle"></i>Why leads are lost<a class="td-more" href="{{ url('admin/report/lead-funnel') }}" id="td-p-report-lost">Lead funnel</a></h3>
+        <div class="td-card"><h3><i class="fas fa-times-circle"></i>Why leads are lost<a class="td-more" href="{{ $report('admin/report/lead-funnel') }}" id="td-p-report-lost">Lead funnel</a></h3>
             <div class="td-note">{{ $label }} · {{ $r['total'] }} lost ({{ $r['lost_rate'] }}% of leads)</div>
             @forelse ($r['reasons'] as $x)
                 <div class="td-row"><span class="td-name"><i class="{{ $x['icon'] }}" style="color:{{ $x['color'] }};width:16px"></i> {{ $x['label'] }}</span><span class="td-meter"><i style="width:{{ $x['count'] / $r['max'] * 100 }}%;background:{{ $x['color'] }}"></i></span><b>{{ $x['count'] }}</b><small>{{ $x['share'] }}%</small></div>
@@ -50,7 +50,7 @@
 
     @if ($ok('top_doctors'))
         @php $d = $w['top_doctors']; @endphp
-        <div class="td-card"><h3><i class="fas fa-user-md"></i>Top referring doctors<a class="td-more" href="{{ url('admin/report/doctor-statement') }}" id="td-p-report-doctor">Doctor statement</a></h3>
+        <div class="td-card"><h3><i class="fas fa-user-md"></i>Top referring doctors<a class="td-more" href="{{ $report('admin/report/doctor-statement') }}" id="td-p-report-doctor">Doctor statement</a></h3>
             <div class="td-note">{{ $label }} · {{ $m($d['total_revenue']) }} referred revenue</div>
             @forelse (array_slice($d['list'], 0, 8) as $x)
                 <div class="td-row"><span class="td-name">{{ $x['name'] }}<span class="td-sub">{{ $x['referrals'] }} referral(s) · last {{ $x['last'] }}</span></span><b>{{ $m($x['revenue']) }}</b>@if ($x['due'] > 0)<span class="md-badge warning">due {{ $m($x['due']) }}</span>@endif</div>
@@ -76,7 +76,7 @@
 
     @if ($ok('commission_due'))
         @php $c = $w['commission_due']; @endphp
-        <div class="td-card"><h3><i class="fas fa-percent"></i>Doctor commission due<a class="td-more" href="{{ url('admin/report/doctor-statement') }}" id="td-p-report-commission">Doctor statement</a></h3>
+        <div class="td-card"><h3><i class="fas fa-percent"></i>Doctor commission due<a class="td-more" href="{{ $report('admin/report/doctor-statement') }}" id="td-p-report-commission">Doctor statement</a></h3>
             <div class="td-note">{{ $m($c['due']) }} owed to {{ $c['doctors_due'] }} doctor(s) · earned {{ $m($c['earned']) }}, paid {{ $m($c['paid']) }}</div>
             @forelse ($c['list'] as $x)
                 <div class="td-row"><span class="td-name">{{ $x['name'] }}<span class="td-sub">{{ $x['rule'] }} · last paid {{ $x['last_paid'] }}</span></span><b>{{ $m($x['due']) }}</b></div>

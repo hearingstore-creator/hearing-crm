@@ -57,7 +57,7 @@
 
     @if ($ok('membership_breakdown'))
         @php $mb = $w['membership_breakdown']; @endphp
-        <div class="td-card"><h3><i class="fas fa-id-card"></i>Membership tiers<a class="td-more" href="{{ url('admin/report/membership-loyalty') }}" id="td-c-report-members">Membership report</a></h3>
+        <div class="td-card"><h3><i class="fas fa-id-card"></i>Membership tiers<a class="td-more" href="{{ $report('admin/report/membership-loyalty') }}" id="td-c-report-members">Membership report</a></h3>
             <div class="td-note">{{ number_format($mb['members']) }} patient(s) · {{ $mb['upgrades_month'] }} upgrade(s) this month</div>
             @if (!$mb['members'])<div class="td-empty">No members yet.</div>@else
             <div class="td-chart-box" style="height:200px"><canvas class="td-cv" data-cv="{{ json_encode(['kind' => 'doughnut', 'fmt' => 'num', 'labels' => array_column($mb['tiers'], 'name'), 'sets' => [['label' => 'Patients', 'data' => array_column($mb['tiers'], 'customers'), 'colors' => array_column($mb['tiers'], 'color')]]]) }}"></canvas></div>@endif</div>
@@ -65,7 +65,7 @@
 
     @if ($ok('points_liability'))
         @php $p = $w['points_liability']; @endphp
-        <div class="td-card"><h3><i class="fas fa-coins"></i>Loyalty points<a class="td-more" href="{{ url('admin/report/membership-loyalty') }}" id="td-c-report-points">Membership report</a></h3>
+        <div class="td-card"><h3><i class="fas fa-coins"></i>Loyalty points<a class="td-more" href="{{ $report('admin/report/membership-loyalty') }}" id="td-c-report-points">Membership report</a></h3>
             <div class="td-note">{{ number_format($p['outstanding']) }} outstanding · {{ number_format($p['expiring_30']) }} expire within 30 days · {{ $p['redeem_rate'] }}% redeemed</div>
             @forelse ($p['top_holders'] as $h)
                 <div class="td-row"><a class="td-name" href="{{ url('admin/customers/' . $h['id']) }}">{{ $h['name'] }}</a><b>{{ number_format($h['points']) }} pts</b>{!! $call($h['phone']) !!}</div>
@@ -74,7 +74,7 @@
 
     @if ($ok('service_due'))
         @php $s = $w['service_due']; @endphp
-        <div class="td-card"><h3><i class="fas fa-tools"></i>Service and cleaning due<a class="td-more" href="{{ url('admin/report/warranty-expiry') }}" id="td-c-report-warranty">Warranty expiry</a></h3>
+        <div class="td-card"><h3><i class="fas fa-tools"></i>Service and cleaning due<a class="td-more" href="{{ $report('admin/report/warranty-expiry') }}" id="td-c-report-warranty">Warranty expiry</a></h3>
             <div class="td-note">{{ $s['overdue'] }} overdue · {{ $s['due'] }} due in the next 30 days</div>
             @forelse (array_slice($s['list'], 0, 8) as $p)
                 <div class="td-row"><a class="td-name" href="{{ url('admin/customers/' . $p['customer_id']) }}">{{ $p['name'] }}<span class="td-sub">{{ $p['model'] }} · {{ $p['due_label'] }}</span></a><span class="md-badge {{ $p['stage'] === 'overdue' ? 'danger' : 'warning' }}">{{ $p['stage'] === 'overdue' ? abs($p['days']) . 'd late' : 'in ' . $p['days'] . 'd' }}</span>{!! $call($p['phone']) !!}</div>

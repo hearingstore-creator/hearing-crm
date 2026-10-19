@@ -6,11 +6,13 @@ use App\Classes\Helper;
 use App\Models\Appointment;
 use App\Models\Lead;
 use App\Models\User;
+use App\Models\UserPreference;
 use App\Support\DataScope;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * New "Today" dashboard (dashboard plan phase 2): KPI tiles, alerts and two charts.
@@ -27,7 +29,7 @@ class DashboardTodayService extends DashboardAnalyticsService
     public const DEFAULT_PERIOD = 'month';
     protected const SPARK_DAYS = 14;
 
-    /** null = the user's own scope (branch-bound users); otherwise 'hq', 'all' or a branch id. */
+    /** null = the user's own scope (branch-bound users); otherwise 'hq', 'all' or a branch id. Super Admin opens on 'all', other company-wide users on 'hq'. */
     protected ?string $branchPick = null;
 
     public function __construct()
@@ -49,7 +51,8 @@ class DashboardTodayService extends DashboardAnalyticsService
     public function forBranch(?string $pick): static
     {
         $choices = $this->branchChoices();
-        $this->branchPick = $choices ? (array_key_exists((string) $pick, $choices) ? (string) $pick : 'hq') : null;
+        $default = auth()->user()?->isSuperAdmin() ? 'all' : 'hq';
+        $this->branchPick = $choices ? (array_key_exists((string) $pick, $choices) ? (string) $pick : $default) : null;
         $this->memo = [];
 
         return $this;
@@ -152,6 +155,31 @@ class DashboardTodayService extends DashboardAnalyticsService
     }
 
     // ==================================================================
+    //  Report links that carry the dashboard's period and branch
+    // ==================================================================
+
+    /** Reports that take start_date / end_date. */
+    protected const REPORT_DATES = ['admin/report/sales-performance', 'admin/report/lead-funnel', 'admin/report/ledger'];
+
+    /** Reports that take a branch (vendor_id). */
+    protected const REPORT_BRANCH = ['admin/report/sales-performance', 'admin/report/lead-funnel'];
+
+    /** URL of a report with the dashboard's filters filled in, for the reports that understand them. */
+    public function reportUrl(string $path): string
+    {
+        $q = [];
+        if (in_array($path, self::REPORT_DATES, true) && $this->period !== 'all') {
+            $q['start_date'] = $this->from->toDateString();
+            $q['end_date'] = $this->to->toDateString();
+        }
+        if (in_array($path, self::REPORT_BRANCH, true) && ctype_digit((string) $this->branchPick)) {
+            $q['vendor_id'] = $this->branchPick;
+        }
+
+        return url($path) . ($q ? '?' . http_build_query($q) : '');
+    }
+
+    // ==================================================================
     //  Tabs (loaded on demand)
     // ==================================================================
 
@@ -202,12 +230,121 @@ class DashboardTodayService extends DashboardAnalyticsService
         return Cache::remember($this->cacheKey('tab-' . $name), $ttl, function () use ($keys) {
             $out = [];
             foreach ($keys as $key) {
-                [$perm, $method] = self::EXTRA[$key] ?? [$key, self::WIDGETS[$key] ?? null];
-                $out[$key] = $method && DataScope::can('dashboard.' . $perm) ? $this->safe($key, fn () => $this->{$method}()) : null;
+                $out[$key] = $this->runWidget($key);
             }
 
             return $out;
         });
+    }
+
+    /** Widgets that are slow on real data: kept for a day (warmed by crm:dashboard-snapshots at 02:00). */
+    public const HEAVY = ['customer_rfm', 'dormant_customers', 'upgrade_due', 'binaural_opportunity', 'dead_stock', 'branch_stock'];
+    public const SNAPSHOT_TTL = 90000;
+    protected const SLOW_MS = 1500;
+
+    /** Milliseconds each widget took in this run (the crm:dashboard-snapshots command prints them). */
+    public array $timings = [];
+    protected bool $refreshSnapshots = false;
+
+    public function refreshing(bool $on = true): static
+    {
+        $this->refreshSnapshots = $on;
+
+        return $this;
+    }
+
+    /** One widget: null when the user may not see it, ['error' => true] when it failed, otherwise its data. */
+    protected function runWidget(string $key): ?array
+    {
+        [$perm, $method] = self::EXTRA[$key] ?? [$key, self::WIDGETS[$key] ?? null];
+        if (!$method || !DataScope::can('dashboard.' . $perm)) {
+            return null;
+        }
+
+        $compute = function () use ($key, $method) {
+            $t = microtime(true);
+            $r = $this->safe($key, fn () => $this->{$method}());
+            $this->timings[$key] = (int) round((microtime(true) - $t) * 1000);
+            if ($this->timings[$key] > self::SLOW_MS) {
+                Log::warning("Dashboard widget [$key] was slow", ['ms' => $this->timings[$key], 'period' => $this->period, 'branch' => $this->branchKey()]);
+            }
+
+            return $r;
+        };
+
+        if (!in_array($key, self::HEAVY, true)) {
+            return $compute();
+        }
+
+        $cacheKey = $this->snapshotKey($key);
+        if (!$this->refreshSnapshots && ($hit = Cache::get($cacheKey)) !== null) {
+            return $hit;
+        }
+        $r = $compute();
+        if (empty($r['error'])) {
+            Cache::put($cacheKey, $r, self::SNAPSHOT_TTL);
+        }
+
+        return $r;
+    }
+
+    /** Recompute the heavy widgets now and store them as today's snapshot (the nightly job); returns [key => ms]. */
+    public function warm(): array
+    {
+        $this->refreshing();
+        $this->timings = [];
+        foreach (self::HEAVY as $key) {
+            $this->runWidget($key);
+        }
+
+        return $this->timings;
+    }
+    /** Whose data a user sees, so users with the same view share one snapshot. */
+    public function scopeSignature(): string
+    {
+        $user = auth()->user();
+
+        return DataScope::seesAll() ? 'all:' . ($user?->branchId() ?? 0) : 'user:' . $user?->id;
+    }
+
+    protected function snapshotKey(string $key): string
+    {
+        return 'dash-today:snap:' . $key . ':' . $this->scopeSignature() . ':' . $this->branchKey() . ':' . today()->toDateString();
+    }
+
+    // ==================================================================
+    //  Start tab (pinned by the user, otherwise by role)
+    // ==================================================================
+
+    /** The tab to open on: the user's pinned tab if they can still open it, else a default by what their role has. */
+    public function defaultTab(User $user): string
+    {
+        $tabs = $this->visibleTabs();
+        $pinned = UserPreference::read($user->id, 'dashboard_tab');
+        if ($pinned === 'today' || ($pinned && isset($tabs[$pinned]))) {
+            return $pinned;
+        }
+
+        // Money without the daily work lists (an accounts role) opens on Sales & Money
+        $worklists = DataScope::can('dashboard.follow_ups') || DataScope::can('dashboard.appointments') || DataScope::can('dashboard.daily_lookout');
+
+        return isset($tabs['sales']) && !$worklists ? 'sales' : 'today';
+    }
+
+    /** Front desk style roles (no money widgets) see My Day before the tiles. */
+    public function myDayFirst(): bool
+    {
+        return !DataScope::can('dashboard.total_sales') && !DataScope::can('dashboard.net_balance') && !DataScope::can('dashboard.gross_profit');
+    }
+
+    public function pin(User $user, string $tab): bool
+    {
+        if ($tab !== 'today' && !isset($this->visibleTabs()[$tab])) {
+            return false;
+        }
+        UserPreference::write($user->id, 'dashboard_tab', $tab);
+
+        return true;
     }
 
     // ==================================================================
