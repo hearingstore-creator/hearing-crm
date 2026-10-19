@@ -6,6 +6,8 @@ use App\Classes\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Batch;
 use App\Models\Brand;
+use App\Support\CsvDownload;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Models\Category;
 use App\Models\Doctor;
 use App\Models\DoctorLedger;
@@ -121,7 +123,7 @@ class ReportController extends Controller
      * @param Request $request
      * @return View
      */
-    public function warrantyExpiryReport(Request $request): View
+    public function warrantyExpiryReport(Request $request): View|StreamedResponse
     {
         $alertDaysBefore = 10; // Fixed 10 days before expiry
         $alertProducts = [];
@@ -277,6 +279,13 @@ class ReportController extends Controller
             return $a['days_until_alert'] <=> $b['days_until_alert'];
         });
 
+        if ($request->input('export') === 'csv') {
+            return CsvDownload::stream('warranty-expiry-' . now()->format('Y-m-d') . '.csv',
+                ['Type', 'Serial / batch', 'Product', 'Category', 'Brand', 'Purchased', 'Inventory warranty (months)', 'Sales warranty (months)', 'Alert date', 'Days to alert', 'Status'],
+                collect($alertProducts)->map(fn ($a) => [$a['type'], $a['identifier'], $a['product']->model ?? '', $a['product']->category->category_name ?? '', $a['product']->brand->brand_name ?? '',
+                    $a['purchase_date']->format('Y-m-d'), $a['inventory_warranty_months'], $a['sales_warranty_months'], $a['alert_date']->format('Y-m-d'), $a['days_until_alert'], $a['status']]));
+        }
+
         return view('admin.report.warranty-expiry', compact('alertProducts', 'alertDaysBefore'));
     }
 
@@ -286,7 +295,7 @@ class ReportController extends Controller
      *
      * @return View
      */
-    public function batteryUsageExpiryReport()
+    public function batteryUsageExpiryReport(Request $request)
     {
         $alertDaysBefore = 15; // Alert 15 days before expiry
         $alertProducts = [];
@@ -379,6 +388,13 @@ class ReportController extends Controller
         usort($alertProducts, function($a, $b) {
             return $a['days_until_expiry'] <=> $b['days_until_expiry'];
         });
+
+        if ($request->input('export') === 'csv') {
+            return CsvDownload::stream('battery-expiry-' . now()->format('Y-m-d') . '.csv',
+                ['Type', 'Serial / batch', 'Product', 'Patient', 'Invoice', 'Sold', 'Usage (months)', 'Expires', 'Days to expiry', 'Status'],
+                collect($alertProducts)->map(fn ($a) => [$a['type'], $a['identifier'], $a['product']->model ?? '', $a['customer'] ?? '', $a['sale_invoice'],
+                    $a['sale_date']->format('Y-m-d'), $a['usage_months'], $a['usage_expiry_date']->format('Y-m-d'), $a['days_until_expiry'], $a['status']]));
+        }
 
         return view('admin.report.battery-usage-expiry', compact('alertProducts', 'alertDaysBefore'));
     }
@@ -623,7 +639,7 @@ class ReportController extends Controller
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Contracts\View\View
      */
-    public function stockReportByProduct(Request $request): View
+    public function stockReportByProduct(Request $request): View|StreamedResponse
     {
         // Get filter parameters
         $filters = [
@@ -650,6 +666,12 @@ class ReportController extends Controller
         // Filter by product if specified
         if ($request->filled('product_id')) {
             $data['selectedProduct'] = Product::with('category')->find($request->product_id);
+        }
+
+        if ($request->input('export') === 'csv') {
+            return CsvDownload::stream('stock-report-' . now()->format('Y-m-d') . '.csv',
+                ['Product', 'Category', 'Brand', 'Type', 'In', 'Out', 'Balance'],
+                collect($data['stockReports'])->map(fn ($i) => [$i['product'] ?? '', $i['category'] ?? '', $i['brand'] ?? '', $i['type'] ?? '', $i['total_in'], $i['total_out'], $i['stock_balance']]));
         }
 
         return view('admin.report.stock', $data);
@@ -1706,7 +1728,7 @@ class ReportController extends Controller
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Contracts\View\View
      */
-    public function advancesReport(Request $request): View
+    public function advancesReport(Request $request): View|StreamedResponse
     {
         $allBranches = Helper::isAllBranchesMode();
         $branchFilter = $allBranches ? (string) $request->input('branch', 'all') : null;
@@ -1761,6 +1783,14 @@ class ReportController extends Controller
             COALESCE(SUM(CASE WHEN status = 'active' THEN balance ELSE 0 END), 0) as total_active_balance
         ")->first();
 
+        if ($request->input('export') === 'csv') {
+            return CsvDownload::stream('advances-' . now()->format('Y-m-d') . '.csv',
+                ['Date', 'Receipt', 'Patient', 'Branch', 'Received', 'Applied', 'Refunded', 'Deduction fee', 'Balance', 'Status'],
+                (clone $query)->orderBy('date', 'desc')->orderBy('id', 'desc')->limit(5000)->get()->map(fn ($a) => [
+                    $a->date, $a->receipt_no, $a->customer->lead->full_name ?? '', $a->vendorUser->name ?? 'Head Office',
+                    $a->amount, $a->applied_amount, $a->refunded_amount, $a->deduction_fee, $a->balance, $a->status]));
+        }
+
         $advances = $query->orderBy('date', 'desc')->orderBy('id', 'desc')->paginate(25)->withQueryString();
 
         return view('admin.report.advances', compact(
@@ -1782,7 +1812,7 @@ class ReportController extends Controller
      * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Contracts\View\View
      */
-    public function servicesStatusReport(Request $request): View
+    public function servicesStatusReport(Request $request): View|StreamedResponse
     {
         $allBranches = Helper::isAllBranchesMode();
         $branchFilter = $allBranches ? (string) $request->input('branch', 'all') : null;
@@ -1869,6 +1899,13 @@ class ReportController extends Controller
                 return $item->daysWaiting();
             });
             $avgWaitingDays = round($totalDays / $pendingItems->count(), 1);
+        }
+
+        if ($request->input('export') === 'csv') {
+            return CsvDownload::stream('services-status-' . now()->format('Y-m-d') . '.csv',
+                ['Sold on', 'Invoice', 'Patient', 'Service', 'Qty', 'Price', 'Status', 'Days waiting'],
+                $allDetails->take(5000)->map(fn ($s) => [$s->saleMaster->date ?? '', $s->saleMaster->sale_invoice_no ?? '', $s->saleMaster->customer->lead->full_name ?? '',
+                    $s->serviceType->service_type_name ?? '', $s->qty, $s->service_price, $s->fulfillment_status, in_array($s->fulfillment_status, [ServiceDetail::STATUS_NOT_BOOKED, ServiceDetail::STATUS_BOOKED], true) ? $s->daysWaiting() : '']));
         }
 
         $services = $query->orderBy('created_at', 'desc')->paginate(25)->withQueryString();

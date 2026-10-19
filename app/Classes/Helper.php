@@ -641,6 +641,10 @@ class Helper
     {
         if ($branchId = self::reportBranchId()) {
             $request->merge(['vendor_id' => (string) $branchId, 'branch' => (string) $branchId]);
+        } elseif ($request->filled('vendor_id') xor $request->filled('branch')) {
+            // Reports used two names for the branch filter; accept either on every report
+            $picked = (string) ($request->input('vendor_id') ?: $request->input('branch'));
+            $request->merge(['vendor_id' => $picked, 'branch' => $picked]);
         }
 
         return $next($request);

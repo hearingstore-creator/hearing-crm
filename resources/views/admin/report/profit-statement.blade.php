@@ -47,8 +47,7 @@
             <p>{{ $start->format('d M Y') }} to {{ $end->format('d M Y') }} · income and cost by invoice date, expenses by their category</p>
         </div>
         <div class="header-actions">
-            <a href="{{ request()->fullUrlWithQuery(['export' => 'xlsx']) }}" class="btn btn-secondary btn-sm" id="btn-export-xlsx"><i class="fas fa-file-excel mr-1"></i>Excel</a>
-            <a href="{{ request()->fullUrlWithQuery(['export' => 'csv']) }}" class="btn btn-secondary btn-sm" id="btn-export-csv"><i class="fas fa-file-csv mr-1"></i>CSV</a>
+            @include('admin.report.partials.export-buttons', ['formats' => ['xlsx', 'csv']])
         </div>
     </div>
 

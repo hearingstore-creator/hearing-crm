@@ -5,7 +5,9 @@ Status: plan only, no code yet. Written 2026-10-21 after reading the Report menu
 ## Status
 
 - **Phase 1 built (2026-10-21):** `App\Services\ProfitStatement`, `ProfitStatementController`, view `admin/report/profit-statement`, menu entry `Profit Statement` (permission `profit_statement.index`, also listed in the Reports Hub and in the Branch Manager and Accounts role templates), CSV and Excel export, shared date filter `App\Support\ReportPeriod`. Built on the recommended defaults: invoice-date basis, referral commission shown as owed, repairs included, access by permission only (branch-bound people are forced to their own branch). 193 tests pass.
-- Phases 2 to 4: not started.
+- **Bug fixed after phase 1:** line discounts (`sale_details.discount`, `service_details.discount`) are percentages, not amounts; the statement now applies them as percentages (test added).
+- **Phase 2 built (2026-10-21), partly:** `vendor_id` and `branch` are one filter on every report (`Helper::forceReportBranch`); branch-bound people still cannot widen it. CSV export added to Stock, Warranty Expiry, Battery Expiry, Advances and Services Status (shared `CsvDownload` and export-buttons partial); report labels in the menu now end in "Report" or "Statement"; a test checks every menu report is in the hub. **Not done:** replacing each report's own filter form with one shared filter bar (only the Profit Statement and the Purchase and Supplier reports use the shared period filter), and moving the stray reports (Ledger, Doctor statements, Deal reports) into the Report menu. 199 tests pass.
+- Phases 3 and 4: not started.
 
 ## 1. Goal
 

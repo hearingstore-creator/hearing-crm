@@ -79,6 +79,16 @@ class ProfitStatementTest extends TestCase
         $this->assertEquals(45, $s['summary']['net_profit']);
     }
 
+    public function test_line_discounts_are_percentages(): void
+    {
+        DB::table('sale_details')->where('sale_master_id', $this->saleId)->update(['discount' => 10]);
+        DB::table('sale_masters')->where('id', $this->saleId)->update(['total_amount' => 180]);
+
+        $s = $this->statement();
+        $this->assertEquals(180, $this->row($s, 'Hearing aids')['total']);
+        $this->assertEquals(180, $this->row($s, 'Net sales')['total']);
+    }
+
     public function test_cash_movements_left_out_are_listed_and_commission_paid_is_a_memo(): void
     {
         $s = $this->statement();

@@ -16,6 +16,7 @@
                             </div>
                             <div class="col-md-6">
                                     <div class="text-right pb-2 print-btn">
+                                        @include('admin.report.partials.export-buttons', ['formats' => ['csv']])
                                         <a href="#" class="btn-success btn-sm"><i
                                                 class="fas fa-align-justify mr-1 print"></i>Print</a>
                                     </div>

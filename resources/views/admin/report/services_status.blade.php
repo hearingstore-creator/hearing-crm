@@ -40,6 +40,7 @@
             <p>Track delivery, fulfillment status, appointment scheduling, and patient waiting times for sold services</p>
         </div>
         <div class="header-actions">
+            @include('admin.report.partials.export-buttons', ['formats' => ['csv']])
             <button type="button" onclick="window.print()" class="btn btn-primary btn-sm" id="btn-print">
                 <i class="fas fa-print mr-1"></i>Print Report
             </button>

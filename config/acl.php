@@ -687,11 +687,13 @@ return [
                 ],
                 [
                     'name' => 'Purchase & Stock',
+                    'label' => 'Purchase vs Stock Report',
                     'route' => 'admin/report/purchase-stock',
                     'actions' => ['index']
                 ],
                 [
                     'name' => 'Purchase Report',
+                    'label' => 'Purchase Report',
                     'route' => 'admin/report/purchase-summary',
                     'actions' => ['index']
                 ],
@@ -703,33 +705,37 @@ return [
                 ],
                 [
                     'name' => 'Vendor Monthly Report',
-                    'label' => 'Branch Monthly',
+                    'label' => 'Branch Monthly Report',
                     'route' => 'admin/report/vendor-monthly',
                     'actions' => ['index']
                 ],
                 [
                     'name' => 'Warranty Expiry',
+                    'label' => 'Warranty Expiry Report',
                     'route' => 'admin/report/warranty-expiry',
                     'actions' => ['index']
                 ],
                 [
                     'name' => 'Battery Usage Expiry',
-                    'label' => 'Battery Expiry',
+                    'label' => 'Battery Expiry Report',
                     'route' => 'admin/report/battery-usage-expiry',
                     'actions' => ['index']
                 ],
                 [
                     'name' => 'Sales Performance',
+                    'label' => 'Sales Performance Report',
                     'route' => 'admin/report/sales-performance',
                     'actions' => ['index']
                 ],
                 [
                     'name' => 'Membership & Loyalty',
+                    'label' => 'Membership & Loyalty Report',
                     'route' => 'admin/report/membership-loyalty',
                     'actions' => ['index']
                 ],
                 [
                     'name' => 'Lead Funnel',
+                    'label' => 'Lead Funnel Report',
                     'route' => 'admin/report/lead-funnel',
                     'actions' => ['index']
                 ],
@@ -742,7 +748,7 @@ return [
                 ],
                 [
                     'name' => 'Services Status',
-                    'label' => 'Services Status',
+                    'label' => 'Services Status Report',
                     'route' => 'admin/report/services-status',
                     'icon' => 'fa-stethoscope',
                     'permission' => 'services_status_report',

@@ -138,10 +138,10 @@ class ProfitStatement
 
     // ------------------------------------------------------------------ income and cost
 
-    /** @return array<string, array<string, float>> category name => branch => amount */
+    /** Line discounts are stored as percentages. @return array<string, array<string, float>> category name => branch => amount */
     private function productLines(string $what): array
     {
-        $expr = $what === 'cost' ? 'SUM(sd.qty * sd.purchase_price)' : 'SUM(sd.qty * sd.mrp_price - COALESCE(sd.discount,0))';
+        $expr = $what === 'cost' ? 'SUM(sd.qty * sd.purchase_price)' : 'SUM(sd.qty * sd.mrp_price * (1 - COALESCE(sd.discount,0) / 100))';
         $q = DB::table('sale_details as sd')
             ->join('sale_masters as sm', 'sm.id', '=', 'sd.sale_master_id')
             ->leftJoin('products as p', 'p.id', '=', 'sd.product_id')
@@ -160,7 +160,7 @@ class ProfitStatement
             ->whereNull('sv.deleted_at')->whereNull('sm.deleted_at')
             ->whereBetween('sm.date', $this->dates());
 
-        return $this->grouped($q, 'sm.vendor_id', "COALESCE(st.service_type_name, 'Other service')", 'SUM(sv.qty * sv.service_price - COALESCE(sv.discount,0))');
+        return $this->grouped($q, 'sm.vendor_id', "COALESCE(st.service_type_name, 'Other service')", 'SUM(sv.qty * sv.service_price * (1 - COALESCE(sv.discount,0) / 100))');
     }
 
     /** What the invoice totals say beyond the lines (an invoice-wide discount, rounding); VAT is not income. */

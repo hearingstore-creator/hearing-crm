@@ -31,6 +31,7 @@
                 <div class="col-md-12">
                     <div class="card card-outline card-primary">
                         <div class="card-header">
+                            <div class="float-right">@include('admin.report.partials.export-buttons', ['formats' => ['csv']])</div>
                             <h5 class="mb-0">Warranty Expiry Alert Report</h5>
                             <small class="text-muted">
                                 Shows unsold products approaching inventory warranty expiry
