@@ -304,7 +304,7 @@ class DashboardAnalyticsService
     protected function avgCostSub(): Builder
     {
         return DB::table('purchase_details')->whereNull('deleted_at')->where('purchase_price', '>', 0)
-            ->groupBy('product_id')->selectRaw('product_id, AVG(purchase_price) as avg_cost');
+            ->groupBy('product_id')->selectRaw('product_id, SUM(qty * purchase_price) / NULLIF(SUM(qty), 0) as avg_cost');
     }
 
     protected function days($date): int

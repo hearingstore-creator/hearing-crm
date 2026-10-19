@@ -95,9 +95,9 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group row">
-                                            <label for="warranty_inventory_months" class="col-sm-3 col-form-label">Inventory Warranty (Months) <i class="text-danger">*</i>:</label>
+                                            <label for="warranty_inventory_months" class="col-sm-3 col-form-label">Inventory (Supplier) Warranty, Months <i class="text-danger">*</i> (0 = none):</label>
                                             <div class="col-sm-6">
-                                                <input type="number" class="form-control" id="warranty_inventory_months" placeholder="Enter Inventory Warranty Months" name="warranty_inventory_months" value="27" min="1" required>
+                                                <input type="number" class="form-control" id="warranty_inventory_months" placeholder="0 = no supplier warranty" name="warranty_inventory_months" value="27" min="0" required>
                                                 <small class="form-text text-muted">Default is 27 months with alert after 25 months</small>
                                                 @error('warranty_inventory_months')
                                                     <span class="text-danger">{{ $message }}</span>

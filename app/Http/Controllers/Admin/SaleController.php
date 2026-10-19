@@ -473,7 +473,7 @@ class SaleController extends Controller
                         $saleDetails->serial_no = isset($serialNos[$key]) ? $serialNos[$key] : null;
 
                         $saleDetails->qty = $request->qty[$key];
-                        $saleDetails->purchase_price = $request->purchase_price[$key];
+                        $saleDetails->purchase_price = \App\Services\SaleCost::resolve((int) $saleDetails->product_id, $saleDetails->batch_id, $saleDetails->serial_no, (float) $request->purchase_price[$key]);
                         $saleDetails->mrp_price = $request->unit_price[$key];
                         $saleDetails->discount = $request->discount[$key];
                         $saleDetails->save();
@@ -1053,7 +1053,7 @@ class SaleController extends Controller
                         $saleDetails->batch_id = $batchId;
                         $saleDetails->serial_no = $serialNo;
                         $saleDetails->qty = $val['qty'];
-                        $saleDetails->purchase_price = $val['purchase_price'];
+                        $saleDetails->purchase_price = \App\Services\SaleCost::resolve((int) $saleDetails->product_id, $saleDetails->batch_id, $saleDetails->serial_no, (float) $val['purchase_price']);
                         $saleDetails->mrp_price = $val['unit_price'];
                         $saleDetails->discount = $val['discount'];
                         $saleDetails->update();
@@ -1096,7 +1096,7 @@ class SaleController extends Controller
                         $saleDetails->serial_no = isset($serialNos[$key]) ? $serialNos[$key] : null;
 
                         $saleDetails->qty = $request->qty[$key];
-                        $saleDetails->purchase_price = $request->purchase_price[$key];
+                        $saleDetails->purchase_price = \App\Services\SaleCost::resolve((int) $saleDetails->product_id, $saleDetails->batch_id, $saleDetails->serial_no, (float) $request->purchase_price[$key]);
                         $saleDetails->mrp_price = $request->unit_price[$key];
                         $saleDetails->discount = $request->discount[$key];
                         $saleDetails->save();

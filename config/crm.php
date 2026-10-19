@@ -18,6 +18,10 @@ return [
     // Both stay reachable at /admin/dashboard/legacy and /admin/dashboard/new.
     'dashboard' => env('CRM_DASHBOARD', 'legacy') === 'new' ? 'new' : 'legacy',
 
+    // Cost saved on sale lines: 'shadow' keeps the cost posted by the form and logs differences from the purchase records;
+    // 'server' saves the cost found in the purchase records (the form value is only a fallback).
+    'sale_cost_mode' => env('CRM_SALE_COST_MODE', 'shadow') === 'server' ? 'server' : 'shadow',
+
     // Activity log rows older than this many months are deleted by the monthly clean-up
     'activity_log_keep_months' => (int) env('ACTIVITY_LOG_KEEP_MONTHS', 24),
 ];

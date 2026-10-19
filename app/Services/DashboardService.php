@@ -358,7 +358,25 @@ class DashboardService
             ->get()
             ->map($mapStock);
 
-        $stockValue = DB::select("SELECT COALESCE(SUM(s.sq * COALESCE(p.avg_cost, 0)), 0) as val FROM (SELECT product_id, SUM(in_qty - out_qty) as sq FROM stocks WHERE deleted_at IS NULL GROUP BY product_id HAVING sq > 0) s LEFT JOIN (SELECT product_id, AVG(purchase_price) as avg_cost FROM purchase_details GROUP BY product_id) p ON s.product_id = p.product_id");
+        // Same branch rule as the Stock model (Helper::vendorScope); cost = purchase price weighted by quantity, deleted lines ignored
+        $stockBranch = '';
+        $stockBindings = [];
+        if (!\App\Classes\Helper::isAllBranchesMode()) {
+            if ($branchId = \App\Classes\Helper::currentBranchId()) {
+                $stockBranch = ' AND vendor_id = ?';
+                $stockBindings[] = $branchId;
+            } else {
+                $stockBranch = ' AND vendor_id IS NULL';
+            }
+        }
+        $stockValue = DB::select(
+            'SELECT COALESCE(SUM(s.sq * COALESCE(p.avg_cost, 0)), 0) as val FROM '
+            . '(SELECT product_id, SUM(in_qty - out_qty) as sq FROM stocks WHERE deleted_at IS NULL' . $stockBranch . ' GROUP BY product_id HAVING sq > 0) s '
+            . 'LEFT JOIN (SELECT d.product_id, SUM(d.qty * d.purchase_price) / NULLIF(SUM(d.qty), 0) as avg_cost FROM purchase_details d '
+            . 'JOIN purchase_masters m ON m.id = d.purchase_master_id WHERE d.deleted_at IS NULL AND m.deleted_at IS NULL AND d.purchase_price > 0 GROUP BY d.product_id) p '
+            . 'ON s.product_id = p.product_id',
+            $stockBindings
+        );
 
         return [
             'low_stock'       => ['count' => $lowStockProducts->count(), 'products' => $lowStockProducts],

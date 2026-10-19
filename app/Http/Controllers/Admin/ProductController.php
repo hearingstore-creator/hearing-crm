@@ -18,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -79,13 +80,13 @@ class ProductController extends Controller
             'category_id' => 'required|exists:categories,id',
             'type_id' => 'required|exists:types,id',
             'brand_id' => 'required|exists:brands,id',
-            'model' => 'required|string|max:255',
+            'model' => ['required', 'string', 'max:255', $this->uniqueModel($request)],
             'battery_size' => 'nullable|in:10,13,312,675',
-            'warranty_inventory_months' => 'required|integer|min:1',
+            'warranty_inventory_months' => 'required|integer|min:0',
             'warranty_sales_months' => 'nullable|integer|min:1',
             'reorder_level' => 'nullable|integer|min:0|max:100000',
             'service_interval_months' => 'nullable|integer|min:1|max:60',
-        ]);
+        ], $this->modelMessages());
 
         $data = $request->all();
 
@@ -134,14 +135,14 @@ class ProductController extends Controller
             'category_id' => 'required|exists:categories,id',
             'type_id' => 'required|exists:types,id',
             'brand_id' => 'required|exists:brands,id',
-            'model' => 'required|string|max:255',
+            'model' => ['required', 'string', 'max:255', $this->uniqueModel($request, $id)],
             'battery_size' => 'nullable|in:10,13,312,675',
-            'warranty_inventory_months' => 'required|integer|min:1',
+            'warranty_inventory_months' => 'required|integer|min:0',
             'warranty_sales_months' => 'nullable|integer|min:1',
             'reorder_level' => 'nullable|integer|min:0|max:100000',
             'service_interval_months' => 'nullable|integer|min:1|max:60',
             'status' => 'nullable|in:0,1',
-        ]);
+        ], $this->modelMessages());
 
         $product = Product::findOrFail($id);
         $data = $request->all();
@@ -181,6 +182,19 @@ class ProductController extends Controller
         return redirect('/admin/product')->with('success', 'Product Deleted Successfully');
     }
 
+    /** A brand cannot have two products with the same model name (deleted products do not count). */
+    protected function uniqueModel(Request $request, ?int $ignoreId = null)
+    {
+        return Rule::unique('products', 'model')
+            ->where(fn ($q) => $q->where('brand_id', $request->input('brand_id'))->whereNull('deleted_at'))
+            ->ignore($ignoreId);
+    }
+
+    protected function modelMessages(): array
+    {
+        return ['model.unique' => 'This brand already has a product with that model name.'];
+    }
+
     /**
      * Search for products based on request parameters.
      *
@@ -206,6 +220,11 @@ class ProductController extends Controller
 
         $exclude_ids = $request->input('exclude_ids', []);
 
+        // Sale mode lists only products with stock here: one grouped subquery instead of a stock query per product
+        if ($request->type !== 'purchase') {
+            $query->whereIn('id', Stock::select('product_id')->groupBy('product_id')->havingRaw('SUM(in_qty - out_qty) > 0'));
+        }
+
         $data = $query->where(function($q) use ($request) {
                 $q->where('model', 'LIKE', '%' . $request->search . '%')
                   ->orWhereHas('category', function($subQ) use ($request) {
@@ -215,25 +234,21 @@ class ProductController extends Controller
                       $subQ->where('brand_name', 'LIKE', '%' . $request->search . '%');
                   });
             })
-            ->with(['category', 'type', 'brand'])
+            ->with(['category:id,category_name'])
             ->whereNotIn('id', $exclude_ids)
-            ->get();
+            ->orderBy('model')
+            ->limit(50)
+            ->get(['id', 'model', 'category_id']);
 
         $response = [];
 
         foreach ($data as $val) {
-            $stock = $this->productStock($val['id']);
-
-            // Always allow in purchase mode, or check stock for sale mode
-            if ($request->type === 'purchase' || $stock > 0) {
-                $response[] = [
-                    "id" => $val['id'],
-                    "text" => ($val['category']->category_name ?? 'Unknown') . ' - ' . ($val['model'] ?? 'N/A'),
-                    "category_id" => $val['category_id'],
-                ];
-            }
+            $response[] = [
+                "id" => $val['id'],
+                "text" => ($val['category']->category_name ?? 'Unknown') . ' - ' . ($val['model'] ?? 'N/A'),
+                "category_id" => $val['category_id'],
+            ];
         }
-
         return response()->json($response);
     }
 
