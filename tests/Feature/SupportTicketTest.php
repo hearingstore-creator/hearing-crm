@@ -52,7 +52,7 @@ class SupportTicketTest extends TestCase
             ->assertSee($ticket->number)->assertSee('Left ear distortion')->assertSee('Sound is crackly')->assertSee('Timeline')->assertSee('Ticket created');
 
         // The list links to it
-        $this->get('/admin/ticket')->assertOk()->assertSee('ticket-open-' . $ticket->id, false)->assertSee($ticket->number);
+        $this->get('/admin/ticket')->assertOk()->assertSee('ticket-row-' . $ticket->id, false)->assertSee($ticket->number);
     }
 
     public function test_page_access_follows_permissions_and_branches(): void

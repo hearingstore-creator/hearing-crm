@@ -102,6 +102,57 @@ class Ticket extends Model
         return trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     }
 
+    /** Statuses where the ticket is waiting on the patient: the SLA clock is paused. */
+    public const WAITING = ['Pending', 'On Hold'];
+
+    /** Hours allowed for a priority (config crm.ticket_sla_hours). */
+    public static function slaHoursFor(string $priority): int
+    {
+        $hours = config('crm.ticket_sla_hours', []);
+
+        return (int) ($hours[$priority] ?? $hours['Medium'] ?? 72);
+    }
+
+    /** When the ticket is due: opened time plus the hours for its priority. */
+    public function getDueAtAttribute(): \Illuminate\Support\Carbon
+    {
+        return $this->created_at->copy()->addHours(self::slaHoursFor($this->priority->value));
+    }
+
+    /**
+     * What the inbox shows next to a ticket: state (done, waiting, overdue, soon, ok), a short label and a tone.
+     * soon = due within the next 8 hours.
+     */
+    public function dueState(): array
+    {
+        if (!$this->isOpen()) {
+            return ['state' => 'done', 'label' => $this->status->value, 'tone' => 'muted'];
+        }
+        if (in_array($this->status->value, self::WAITING, true)) {
+            return ['state' => 'waiting', 'label' => 'Waiting on patient', 'tone' => 'muted'];
+        }
+
+        $minutes = (int) now()->diffInMinutes($this->due_at, false);
+        $span = fn (int $m) => $m >= 2880 ? intdiv($m, 1440) . 'd' : ($m >= 120 ? intdiv($m, 60) . 'h' : max($m, 1) . 'm');
+
+        if ($minutes < 0) {
+            return ['state' => 'overdue', 'label' => 'Overdue ' . $span(-$minutes), 'tone' => 'danger'];
+        }
+
+        return ['state' => $minutes <= 480 ? 'soon' : 'ok', 'label' => 'Due in ' . $span($minutes), 'tone' => $minutes <= 480 ? 'warning' : 'muted'];
+    }
+
+    /** SQL for the due time of a ticket (opened time plus the hours of its priority). */
+    public static function dueSql(string $table = 'tickets'): string
+    {
+        $cases = '';
+        foreach (config('crm.ticket_sla_hours', []) as $priority => $hours) {
+            $cases .= " WHEN '" . addslashes($priority) . "' THEN " . (int) $hours;
+        }
+
+        return "DATE_ADD({$table}.created_at, INTERVAL CASE {$table}.priority{$cases} ELSE " . self::slaHoursFor('Medium') . " END HOUR)";
+    }
+
     public function isOpen(): bool
     {
         return !in_array($this->status, [TicketStatus::SOLVED, TicketStatus::CLOSED], true);

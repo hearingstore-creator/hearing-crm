@@ -28,6 +28,10 @@ return [
     // Stock transfer screens (move stock between head office and branches). Off until switched on.
     'stock_transfer' => (bool) env('CRM_STOCK_TRANSFER', false),
 
+    // Hours a ticket may stay unanswered, by priority. The inbox shows the time left; the clock pauses while a
+    // ticket is waiting on the patient (Pending / On Hold) and stops when it is Solved or Closed.
+    'ticket_sla_hours' => ['Critical' => 4, 'High' => 24, 'Medium' => 72, 'Low' => 168],
+
     // Activity log rows older than this many months are deleted by the monthly clean-up
     'activity_log_keep_months' => (int) env('ACTIVITY_LOG_KEEP_MONTHS', 24),
 ];

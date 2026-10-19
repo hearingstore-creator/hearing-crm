@@ -46,6 +46,12 @@
             @can('permission', 'ticket_list.edit')
                 <a href="{{ url('admin/ticket/' . $ticket->id . '/edit') }}" class="btn btn-secondary btn-sm" id="btn-ticket-edit"><i class="fas fa-pen mr-1"></i>Edit</a>
             @endcan
+            @can('permission', 'ticket_list.delete')
+                <form method="POST" action="{{ url('admin/ticket/' . $ticket->id) }}" style="display:inline;" onsubmit="return confirm('Delete this ticket?');">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn btn-secondary btn-sm" id="btn-ticket-delete" title="Delete"><i class="fas fa-trash"></i></button>
+                </form>
+            @endcan
         </div>
     </div>
 

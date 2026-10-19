@@ -53,14 +53,10 @@
                                         <div class="form-group row">
                                             <label for="customer_id" class="col-sm-3 col-form-label">Customer <i class="text-danger">*</i>:</label>
                                             <div class="col-sm-6">
-                                                <select class="form-control select" name="customer_id" required>
-                                                    <option value="">Select Customer</option>
-                                                    @foreach ($customers ?? [] as $customer)
-                                                        <option value="{{ $customer->id }}" {{ old('customer_id', request('customer_id')) == $customer->id ? 'selected' : '' }}>
-                                                            {{ $customer->lead->full_name }}
-                                                        </option>
-                                                    @endforeach
+                                                <select class="form-control patient-search" name="customer_id" id="customer_id" required>
+                                                    @if ($selectedCustomer)<option value="{{ $selectedCustomer['id'] }}" selected>{{ $selectedCustomer['text'] }}</option>@endif
                                                 </select>
+                                                <small class="form-text text-muted">Type a name, phone number or patient ID</small>
                                             </div>
                                         </div>
 
@@ -127,6 +123,14 @@
     <!-- /.content -->
 @push('scripts')
     <script src="{{ asset('assets/plugins/select2/js/select2.full.min.js') }}"></script>
-    <script>$(document).ready(function() { $('.select').select2(); });</script>
+    <script>
+        $(document).ready(function() {
+            $('.select').select2();
+            $('.patient-search').select2({
+                width: '100%', placeholder: 'Search patient', minimumInputLength: 2,
+                ajax: {url: @json(route('ticket.patients')), dataType: 'json', delay: 300, data: function (p) { return {search: p.term}; }, processResults: function (r) { return {results: r}; }}
+            });
+        });
+    </script>
 @endpush
 @endsection

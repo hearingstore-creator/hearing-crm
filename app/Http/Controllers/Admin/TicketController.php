@@ -33,6 +33,7 @@ class TicketController extends Controller
         $this->middleware('permission:add_ticket.create')->only(['create', 'store']);
         $this->middleware('permission:ticket_list.edit')->only(['edit', 'update', 'updateStatus', 'assign', 'addNote']);
         $this->middleware('permission:ticket_list.delete')->only(['destroy']);
+        $this->middleware('permission:add_ticket.create|ticket_list.edit')->only(['patientSearch']);
     }
 
     /**
@@ -45,6 +46,17 @@ class TicketController extends Controller
             ->where(fn ($q) => $q->whereNull('type')->orWhere('type', '!=', 'vendor'))
             ->orderBy('name')
             ->get();
+    }
+
+    /** The option shown for an already chosen patient in the search box: [id, text] or null. */
+    private function patientOption($customerId): ?array
+    {
+        if (!$customerId) {
+            return null;
+        }
+        $c = Helper::readAllBranches(fn () => Customer::with('lead:id,full_name,phone_number')->find($customerId));
+
+        return $c ? ['id' => $c->id, 'text' => ($c->lead->full_name ?? 'Unknown') . ($c->lead?->phone_number ? ' (' . $c->lead->phone_number . ')' : '')] : null;
     }
 
     /**
@@ -61,78 +73,153 @@ class TicketController extends Controller
         }
     }
 
+    /** Saved views of the inbox, in the order they are shown. */
+    public const VIEWS = [
+        'mine'    => 'My work',
+        'unassigned' => 'Unassigned',
+        'today'   => 'Due today',
+        'overdue' => 'Overdue',
+        'waiting' => 'Waiting on patient',
+        'solved'  => 'Solved this week',
+        'open'    => 'All open',
+        'all'     => 'All tickets',
+    ];
+
+    /** Narrow a ticket query to one saved view. */
+    private function applyView($query, string $view)
+    {
+        $done = ['Solved', 'Closed'];
+        $active = ['Open', 'In Progress'];
+        $due = Ticket::dueSql();
+
+        return match ($view) {
+            'mine'       => $query->where('assigned_to', auth()->id())->whereNotIn('status', $done),
+            'unassigned' => $query->whereNull('assigned_to')->whereNotIn('status', $done),
+            'today'      => $query->whereIn('status', $active)->whereRaw("$due >= ?", [now()])->whereRaw("$due <= ?", [now()->endOfDay()]),
+            'overdue'    => $query->whereIn('status', $active)->whereRaw("$due < ?", [now()]),
+            'waiting'    => $query->whereIn('status', Ticket::WAITING),
+            'solved'     => $query->whereIn('status', $done)->where('resolved_at', '>=', now()->startOfWeek()),
+            'open'       => $query->whereNotIn('status', $done),
+            default      => $query,
+        };
+    }
+
     /**
-     * Display a listing of tickets with filters.
+     * The support inbox: saved views with counts, search, and the tickets that need attention first.
      *
      * @param Request $request
      * @return View
      */
     public function index(Request $request): View
     {
-        $query = Ticket::with(['customer', 'assignedTo']);
+        $legacy = $request->hasAny(['status', 'customer_id', 'start_date', 'end_date', 'open_only', 'done_only']);
 
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+        return Helper::readAllBranches(function () use ($request, $legacy) {
+            // Counts for the views (one query each, on the same scope as the list)
+            $counts = [];
+            foreach (array_keys(self::VIEWS) as $key) {
+                $counts[$key] = $this->applyView(Ticket::query(), $key)->count();
+            }
 
-        // Filter by priority
-        if ($request->filled('priority')) {
-            $query->where('priority', $request->priority);
-        }
+            $view = (string) $request->query('view', '');
+            if (!isset(self::VIEWS[$view])) {
+                // No choice made: legacy links show everything, otherwise start with my work (or all open when there is none)
+                $view = $legacy ? 'all' : ($counts['mine'] > 0 ? 'mine' : 'open');
+            }
 
-        // Filter by customer
-        if ($request->filled('customer_id')) {
-            $query->where('customer_id', $request->customer_id);
-        }
+            $query = $this->applyView(Ticket::with(['customer.lead', 'assignedTo']), $view);
 
-        // Filter by assigned user
-        if ($request->filled('assigned_to')) {
-            $query->where('assigned_to', $request->assigned_to);
-        }
+            // Search: ticket number, subject, patient name or phone
+            if ($request->filled('q')) {
+                $q = trim((string) $request->q);
+                $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
+                $digits = preg_replace('/\D/', '', $q);
+                $query->where(function ($w) use ($q, $like, $digits) {
+                    $w->where('subject', 'like', $like)
+                      ->orWhereHas('customer.lead', fn ($l) => $l->where('full_name', 'like', $like)->orWhere('phone_number', 'like', $like)
+                          ->when($digits !== '', fn ($p) => $p->orWhere('normalized_phone', 'like', '%' . $digits . '%')));
+                    if (preg_match('/^(tk-?)?0*(\d+)$/i', $q, $m)) {
+                        $w->orWhere('id', (int) $m[2]);
+                    }
+                });
+            }
 
-        // Filter by date range (the whole of the end day is included)
-        $data['start_date'] = $request->start_date ?? null;
-        $data['end_date'] = $request->end_date ?? null;
+            if ($request->filled('priority') && in_array($request->priority, array_column(TicketPriority::cases(), 'value'), true)) {
+                $query->where('priority', $request->priority);
+            }
+            if ($request->filled('assigned_to')) {
+                $request->assigned_to === 'none' ? $query->whereNull('assigned_to') : $query->where('assigned_to', (int) $request->assigned_to);
+            }
 
-        if ($data['start_date'] && $data['end_date']) {
-            $query->whereBetween('created_at', [
-                date('Y-m-d 00:00:00', strtotime($data['start_date'])),
-                date('Y-m-d 23:59:59', strtotime($data['end_date'])),
+            // Older links and bookmarks
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+            if ($request->filled('customer_id')) {
+                $query->where('customer_id', $request->customer_id);
+            }
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                // The whole of the end day is included
+                $query->whereBetween('created_at', [
+                    date('Y-m-d 00:00:00', strtotime($request->start_date)),
+                    date('Y-m-d 23:59:59', strtotime($request->end_date)),
+                ]);
+            }
+            if ($request->boolean('open_only')) {
+                $query->whereNotIn('status', ['Solved', 'Closed']);
+            }
+            if ($request->boolean('done_only')) {
+                $query->whereIn('status', ['Solved', 'Closed']);
+            }
+
+            // Needs attention first for the working views; newest first for the history views
+            if (in_array($view, ['solved', 'all'], true)) {
+                $query->orderByDesc('created_at')->orderByDesc('id');
+            } else {
+                $due = Ticket::dueSql();
+                $query->orderByRaw("CASE WHEN status IN ('Solved','Closed') THEN 3 WHEN status IN ('Pending','On Hold') THEN 2 WHEN $due < ? THEN 0 ELSE 1 END", [now()])
+                    ->orderByRaw("FIELD(priority, 'Critical','High','Medium','Low')")
+                    ->orderBy('created_at');
+            }
+
+            return view('admin.ticket.index', [
+                'tickets'    => $query->paginate(20)->withQueryString(),
+                'views'      => self::VIEWS,
+                'counts'     => $counts,
+                'view'       => $view,
+                'users'      => $this->assignableUsers(),
+                'priorities' => TicketPriority::cases(),
+                'q'          => (string) $request->query('q', ''),
             ]);
-        }
-
-        if ($request->boolean('open_only')) {
-            $query->whereNotIn('status', ['Solved', 'Closed']);
-        }
-        if ($request->boolean('done_only')) {
-            $query->whereIn('status', ['Solved', 'Closed']);
-        }
-
-        $data['tickets'] = Helper::readAllBranches(fn () => $query->latest()->paginate(20));
-        // Customers of every branch (read-only dropdown) for HQ support staff who can view all branches
-        $data['customers'] = Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
-        $data['users'] = User::select('id', 'name')->orderBy('id', 'desc')->get();
-        $data['statuses'] = TicketStatus::cases();
-        $data['priorities'] = TicketPriority::cases();
-
-        // Summary cards
-        $byStatus = Ticket::selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status');
-        $completed = (int) (($byStatus['Solved'] ?? 0) + ($byStatus['Closed'] ?? 0));
-        $total = (int) $byStatus->sum();
-        $data['ticketStats'] = [
-            'total' => $total,
-            'completed' => $completed,
-            'due' => $total - $completed,
-            'in_progress' => (int) ($byStatus['In Progress'] ?? 0),
-            'open' => (int) ($byStatus['Open'] ?? 0),
-            'today' => Ticket::whereDate('created_at', today())->count(),
-            'mine_open' => Ticket::where('assigned_to', auth()->id())->whereNotIn('status', ['Solved', 'Closed'])->count(),
-        ];
-
-        return view('admin.ticket.index', $data);
+        });
     }
 
+    /**
+     * Patient search for the ticket forms (name, phone or patient ID), across branches for head office users who may view them.
+     */
+    public function patientSearch(Request $request): JsonResponse
+    {
+        $term = trim((string) $request->input('search', ''));
+        if (mb_strlen($term) < 2) {
+            return response()->json([]);
+        }
+
+        $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term) . '%';
+        $digits = preg_replace('/\D/', '', $term);
+
+        $rows = Helper::readAllBranches(fn () => Customer::with('lead:id,full_name,phone_number')
+            ->where(function ($q) use ($like, $digits) {
+                $q->where('customer_uid', 'like', $like)
+                  ->orWhereHas('lead', fn ($l) => $l->where('full_name', 'like', $like)->orWhere('phone_number', 'like', $like)
+                      ->when($digits !== '', fn ($p) => $p->orWhere('normalized_phone', 'like', '%' . $digits . '%')));
+            })
+            ->orderBy('id', 'desc')->limit(20)->get());
+
+        return response()->json($rows->map(fn ($c) => [
+            'id'   => $c->id,
+            'text' => ($c->lead->full_name ?? 'Unknown') . ($c->lead?->phone_number ? ' (' . $c->lead->phone_number . ')' : '') . ($c->customer_uid ? ' [' . $c->customer_uid . ']' : ''),
+        ])->values());
+    }
     /**
      * The ticket page: details, quick actions and the timeline of notes and changes.
      */
@@ -156,8 +243,8 @@ class TicketController extends Controller
      */
     public function create(): View
     {
-        // Customers of every branch (read-only dropdown) for HQ support staff who can view all branches
-        $data['customers'] = Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
+        // The patient is chosen with a search box; one may arrive preselected (?customer_id=)
+        $data['selectedCustomer'] = $this->patientOption(old('customer_id', request('customer_id')));
         $data['users'] = $this->assignableUsers();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
@@ -216,8 +303,7 @@ class TicketController extends Controller
     public function edit(int $id): View
     {
         $data['ticket'] = Ticket::findOrFail($id);
-        // Customers of every branch (read-only dropdown) for HQ support staff who can view all branches
-        $data['customers'] = Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
+        $data['selectedCustomer'] = $this->patientOption(old('customer_id', $data['ticket']->customer_id));
         $data['users'] = $this->assignableUsers();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
