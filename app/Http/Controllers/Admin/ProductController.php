@@ -280,19 +280,20 @@ class ProductController extends Controller
         $batch = Batch::where('id', $id)
             ->select('id', 'batch_no', 'ref_invoice_no', DB::raw("coalesce(SUM(purchase_qty),0) + coalesce(SUM(sale_return_qty),0) + coalesce(SUM(adjust_qty),0) - coalesce(SUM(sale_qty),0) - coalesce(SUM(purchase_return_qty),0) as stock"))
             ->first();
-        $purchaseMasterId = PurchaseMaster::where('purchase_invoice_no', $batch->ref_invoice_no)->value('id');    
+        // A batch created by a stock transfer points back (origin_batch_id) to the batch that was purchased or adjusted in
+        $originId = Batch::withoutGlobalScopes()->where('id', $id)->value('origin_batch_id') ?: $id;
 
-        $purchaseDetails = PurchaseDetail::select('id', 'purchase_price', 'mrp_price')->where('purchase_master_id', $purchaseMasterId)
-            ->whereBatchId($id)->first();
+        $purchaseDetails = PurchaseDetail::withoutGlobalScopes()->select('id', 'purchase_price', 'mrp_price')
+            ->whereBatchId($originId)->first();
 
         if ($purchaseDetails) {
             $batch->purchase_price = $purchaseDetails->purchase_price;
             $batch->mrp_price = $purchaseDetails->mrp_price;
         } else {
             // Batch created by a stock adjustment: cost and selling price come from the adjustment line
-            $line = \App\Models\StockAdjustmentDetail::where('batch_id', $id)->where('direction', 'in')->first();
+            $line = \App\Models\StockAdjustmentDetail::where('batch_id', $originId)->where('direction', 'in')->first();
             $batch->purchase_price = $line->unit_cost ?? 0;
-            $batch->mrp_price = $line->mrp_price ?? (\App\Models\Product::find(Batch::where('id', $id)->value('product_id'))?->latest_mrp ?? 0);
+            $batch->mrp_price = $line->mrp_price ?? (\App\Models\Product::find(Batch::withoutGlobalScopes()->where('id', $id)->value('product_id'))?->latest_mrp ?? 0);
         }
 
         return $batch;

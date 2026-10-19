@@ -199,9 +199,15 @@ class StockGuard
         }
         $adjustedOut = $this->adjustedSerials($productId, $vendorId, 'out');
 
+        // Units moved to or from this location by a completed stock transfer
+        foreach ($this->transferredSerials($productId, $vendorId, 'in') as $key => $n) {
+            $purchased[$key] = ($purchased[$key] ?? 0) + $n;
+        }
+        $transferredOut = $this->transferredSerials($productId, $vendorId, 'out');
+
         $balance = [];
         foreach ($purchased as $key => $n) {
-            $balance[$key] = $n - ($toSupplier[$key] ?? 0) - ($sold[$key] ?? 0) + ($fromPatients[$key] ?? 0) - ($adjustedOut[$key] ?? 0);
+            $balance[$key] = $n - ($toSupplier[$key] ?? 0) - ($sold[$key] ?? 0) + ($fromPatients[$key] ?? 0) - ($adjustedOut[$key] ?? 0) - ($transferredOut[$key] ?? 0);
         }
 
         return ['purchased' => $purchased, 'balance' => $balance];
@@ -293,12 +299,12 @@ class StockGuard
 
             if (!$kept) {
                 if ($isUsed) {
-                    $problems[] = "{$label}: this line cannot be removed because its stock was already sold, returned or adjusted out.";
+                    $problems[] = "{$label}: this line cannot be removed because its stock was already sold, returned, adjusted out or transferred.";
                 }
                 continue;
             }
             if ($isUsed && (int) $kept['product_id'] !== $usage['product_id']) {
-                $problems[] = "{$label}: the product cannot be changed because its stock was already sold, returned or adjusted out.";
+                $problems[] = "{$label}: the product cannot be changed because its stock was already sold, returned, adjusted out or transferred.";
                 continue;
             }
             if ($usage['used_serials']) {
@@ -355,10 +361,10 @@ class StockGuard
         if ($usedSerials) {
             $problems[] = 'Serial(s) ' . implode(', ', array_slice($usedSerials, 0, 3))
                 . (count($usedSerials) > 3 ? ' and ' . (count($usedSerials) - 3) . ' more' : '')
-                . ' from this purchase were already sold, returned or adjusted out.';
+                . ' from this purchase were already sold, returned, adjusted out or transferred.';
         }
         if ($usedBatch) {
-            $problems[] = 'Stock from its batch(es) was already sold, returned or adjusted out.';
+            $problems[] = 'Stock from its batch(es) was already sold, returned, adjusted out or transferred.';
         }
 
         return $problems;
@@ -405,9 +411,10 @@ class StockGuard
                         ->pluck('rd.serial_no')
                 );
                 $writtenOff = $this->adjustedSerials((int) $d->product_id, null, 'out', true);
+                $movedAway = $this->movedAway((int) $d->product_id, $master->vendor_id);
                 foreach ($serials as $serial) {
                     $key = self::key($serial);
-                    if (isset($sold[$key]) || isset($returned[$key]) || isset($writtenOff[$key])) {
+                    if (isset($sold[$key]) || isset($returned[$key]) || isset($writtenOff[$key]) || isset($movedAway[$key])) {
                         $row['used_serials'][$key] = $serial;
                     }
                 }
@@ -530,6 +537,79 @@ class StockGuard
         return $counts;
     }
 
+    /**
+     * Serial keys moved by COMPLETED transfers, as [key => count]: 'in' = arrived at the location, 'out' = left it.
+     * $anyVendor ignores the location.
+     */
+    public function transferredSerials(?int $productId, ?int $vendorId, string $direction, bool $anyVendor = false): array
+    {
+        $query = DB::table('stock_transfer_details as d')
+            ->join('stock_transfers as t', 't.id', '=', 'd.stock_transfer_id')
+            ->where('t.status', 'completed')
+            ->whereNotNull('d.serial_no')
+            ->whereNull('d.deleted_at')
+            ->whereNull('t.deleted_at');
+        if ($productId) {
+            $query->where('d.product_id', $productId);
+        }
+        if (!$anyVendor) {
+            $query = $this->vendorWhere($query, $direction === 'in' ? 't.to_vendor_id' : 't.from_vendor_id', $vendorId);
+        }
+
+        return $this->countSerials($query->pluck('d.serial_no'));
+    }
+
+    /** Serial keys that left a location by transfer and have not come back: [key => true]. */
+    public function movedAway(int $productId, ?int $vendorId): array
+    {
+        $out = $this->transferredSerials($productId, $vendorId, 'out');
+        $in = $this->transferredSerials($productId, $vendorId, 'in');
+        $away = [];
+        foreach ($out as $key => $n) {
+            if ($n > ($in[$key] ?? 0)) {
+                $away[$key] = true;
+            }
+        }
+
+        return $away;
+    }
+
+    /**
+     * Where each serial of a product first entered stock, as [key => info]: the purchase line (with its price and
+     * purchase master) or the stock adjustment that added it. Used to keep purchase price, selling price and
+     * warranty dates attached to a unit that was moved to another location.
+     */
+    public function serialOrigins(int $productId): array
+    {
+        $out = [];
+        $rows = DB::table('purchase_details as d')->join('purchase_masters as m', 'm.id', '=', 'd.purchase_master_id')
+            ->where('d.product_id', $productId)->whereNotNull('d.serial_no')->whereNull('d.deleted_at')->whereNull('m.deleted_at')
+            ->orderBy('d.id')->get(['d.id', 'd.serial_no', 'd.mrp_price', 'd.purchase_price', 'd.purchase_master_id']);
+        foreach ($rows as $row) {
+            foreach (self::serialList($row->serial_no) as $serial) {
+                $out[self::key($serial)] = [
+                    'serial' => $serial, 'purchase_detail_id' => $row->id, 'mrp_price' => $row->mrp_price, 'purchase_price' => $row->purchase_price,
+                    'purchase_master_id' => $row->purchase_master_id, 'adjustment_detail_id' => null, 'warranty_start_date' => null,
+                ];
+            }
+        }
+
+        $adjusted = DB::table('stock_adjustment_details as d')->join('stock_adjustments as a', 'a.id', '=', 'd.stock_adjustment_id')
+            ->where('d.product_id', $productId)->where('d.direction', 'in')->where('a.status', 'completed')
+            ->whereNotNull('d.serial_no')->whereNull('d.deleted_at')->whereNull('a.deleted_at')
+            ->orderBy('d.id')->get(['d.id', 'd.serial_no', 'd.unit_cost', 'd.mrp_price', 'd.warranty_start_date']);
+        foreach ($adjusted as $row) {
+            foreach (self::serialList($row->serial_no) as $serial) {
+                $out[self::key($serial)] = [
+                    'serial' => $serial, 'purchase_detail_id' => null, 'mrp_price' => $row->mrp_price, 'purchase_price' => $row->unit_cost,
+                    'purchase_master_id' => null, 'adjustment_detail_id' => $row->id, 'warranty_start_date' => $row->warranty_start_date,
+                ];
+            }
+        }
+
+        return $out;
+    }
+
     /** Serials in stock at one location as [key => serial as entered], for pick lists. */
     public function serialsInStock(int $productId, ?int $vendorId): array
     {
@@ -550,7 +630,15 @@ class StockGuard
             $vendorId
         )->pluck('d.serial_no');
 
-        foreach ($purchased->merge($added) as $raw) {
+        $arrived = $this->vendorWhere(
+            DB::table('stock_transfer_details as d')->join('stock_transfers as t', 't.id', '=', 'd.stock_transfer_id')
+                ->where('d.product_id', $productId)->where('t.status', 'completed')
+                ->whereNotNull('d.serial_no')->whereNull('d.deleted_at')->whereNull('t.deleted_at'),
+            't.to_vendor_id',
+            $vendorId
+        )->pluck('d.serial_no');
+
+        foreach ($purchased->merge($added)->merge($arrived) as $raw) {
             foreach (self::serialList($raw) as $serial) {
                 $names[self::key($serial)] = $serial;
             }

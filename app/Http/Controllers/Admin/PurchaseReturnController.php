@@ -257,6 +257,16 @@ class PurchaseReturnController extends Controller
             ], 422);
         }
 
+        // Moved to another location by a stock transfer: it can only go back to the supplier from the location that bought it
+        $boughtAt = $detail->purchaseMaster->vendor_id ?? null;
+        if (isset(app(\App\Services\StockGuard::class)->movedAway((int) $detail->product_id, $boughtAt)[\App\Services\StockGuard::key($serial)])) {
+            $place = $boughtAt ? (\App\Models\User::find($boughtAt)?->name ?? 'the buying branch') : 'Head office';
+            return response()->json([
+                'success' => false,
+                'message' => "Serial '{$serial}' is not at {$place} now. Move it back to {$place} first, then return it to the supplier."
+            ], 422);
+        }
+
         return response()->json([
             'success' => true,
             'item' => [
@@ -341,9 +351,10 @@ class PurchaseReturnController extends Controller
                 ->toArray();
 
             $writtenOff = app(\App\Services\StockGuard::class)->adjustedSerials((int) $d->product_id, null, 'out', true);
+            $movedAway = app(\App\Services\StockGuard::class)->movedAway((int) $d->product_id, $purchase->vendor_id);
             $availableSerials = array_values(array_filter(
                 array_diff($serials, $soldSerials, $alreadyReturnedSerials),
-                fn ($s) => !isset($writtenOff[\App\Services\StockGuard::key((string) $s)])
+                fn ($s) => !isset($writtenOff[\App\Services\StockGuard::key((string) $s)]) && !isset($movedAway[\App\Services\StockGuard::key((string) $s)])
             ));
 
             $items[] = [

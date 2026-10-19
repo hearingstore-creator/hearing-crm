@@ -366,6 +366,12 @@ return [
                     'actions' => ['index', 'create', 'edit', 'delete']
                 ],
                 [
+                    'name' => 'Stock Transfer',
+                    'label' => 'Stock Transfers',
+                    'route' => 'admin/stock-transfers',
+                    'actions' => ['index', 'create', 'view', 'cancel']
+                ],
+                [
                     'name' => 'Stock Adjustment',
                     'label' => 'Stock Adjustments',
                     'route' => 'admin/stock-adjustments',

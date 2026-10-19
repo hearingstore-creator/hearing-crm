@@ -57,6 +57,7 @@
         'admin/type'                            => 'fa-layer-group',
         'admin/brand'                           => 'fa-copyright',
         'admin/stock-adjustments'               => 'fa-balance-scale-left',
+        'admin/stock-transfers'                 => 'fa-exchange-alt',
 
         // Appointments
         'admin/appointments/create'             => 'fa-calendar-plus',

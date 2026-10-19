@@ -147,7 +147,9 @@ class ReportController extends Controller
                 ->get();
 
             foreach ($unsoldBatches as $batch) {
-                $purchaseDetail = PurchaseDetail::where('batch_id', $batch->id)->first();
+                // A batch created by a stock transfer keeps the purchase date of the batch it came from
+                $originId = $batch->origin_batch_id ?: $batch->id;
+                $purchaseDetail = PurchaseDetail::withoutGlobalScopes()->with(['purchaseMaster' => fn ($q) => $q->withoutGlobalScopes()])->where('batch_id', $originId)->first();
                 if (!($batch->stock > 0)) {
                     continue;
                 }
@@ -156,7 +158,7 @@ class ReportController extends Controller
                     $purchaseDate = $purchaseDetail->purchaseMaster->date;
                 } else {
                     // Batch created by a stock adjustment: use its optional warranty start date, otherwise leave it out
-                    $adjustedLine = \App\Models\StockAdjustmentDetail::where('batch_id', $batch->id)->where('direction', 'in')->whereNotNull('warranty_start_date')->first();
+                    $adjustedLine = \App\Models\StockAdjustmentDetail::where('batch_id', $originId)->where('direction', 'in')->whereNotNull('warranty_start_date')->first();
                     if (!$adjustedLine) {
                         continue;
                     }
@@ -228,7 +230,8 @@ class ReportController extends Controller
 
             // Process each purchase detail group
             foreach ($groupedSerials as $purchaseDetailId => $groupData) {
-                $purchaseDetail = PurchaseDetail::with(['purchaseMaster'])
+                // The unit may have been bought at another location and moved here by a stock transfer
+                $purchaseDetail = PurchaseDetail::withoutGlobalScopes()->with(['purchaseMaster' => fn ($q) => $q->withoutGlobalScopes()])
                     ->where('id', $purchaseDetailId)
                     ->whereNull('batch_id') // Exclude batch products
                     ->first();

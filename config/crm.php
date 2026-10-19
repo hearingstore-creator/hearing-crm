@@ -25,6 +25,9 @@ return [
     // Stock adjustment screens (damaged, lost, found, count correction, opening stock). Off until switched on.
     'stock_adjustment' => (bool) env('CRM_STOCK_ADJUSTMENT', false),
 
+    // Stock transfer screens (move stock between head office and branches). Off until switched on.
+    'stock_transfer' => (bool) env('CRM_STOCK_TRANSFER', false),
+
     // Activity log rows older than this many months are deleted by the monthly clean-up
     'activity_log_keep_months' => (int) env('ACTIVITY_LOG_KEEP_MONTHS', 24),
 ];

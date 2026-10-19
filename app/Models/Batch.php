@@ -24,6 +24,7 @@ class Batch extends Model
         'purchase_return_qty',
         'sale_return_qty',
         'adjust_qty',
+        'origin_batch_id',
     ];
     protected $appends = ['stock'];
 

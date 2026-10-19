@@ -51,6 +51,12 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('/dashboard', [HomeController::class, 'dashboard']);
     Route::get('reports', [\App\Http\Controllers\Admin\ReportHubController::class, 'index'])->name('reports.hub');
     Route::post('reports/star', [\App\Http\Controllers\Admin\ReportHubController::class, 'star'])->name('reports.star');
+    Route::get('stock-transfers/product-stock', [\App\Http\Controllers\Admin\StockTransferController::class, 'productStock'])->name('stock-transfers.product-stock');
+    Route::get('stock-transfers', [\App\Http\Controllers\Admin\StockTransferController::class, 'index'])->name('stock-transfers.index');
+    Route::get('stock-transfers/create', [\App\Http\Controllers\Admin\StockTransferController::class, 'create'])->name('stock-transfers.create');
+    Route::post('stock-transfers', [\App\Http\Controllers\Admin\StockTransferController::class, 'store'])->name('stock-transfers.store');
+    Route::get('stock-transfers/{id}', [\App\Http\Controllers\Admin\StockTransferController::class, 'show'])->whereNumber('id')->name('stock-transfers.show');
+    Route::post('stock-transfers/{id}/cancel', [\App\Http\Controllers\Admin\StockTransferController::class, 'cancel'])->whereNumber('id')->name('stock-transfers.cancel');
     Route::get('stock-adjustments/product-stock', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'productStock'])->name('stock-adjustments.product-stock');
     Route::get('stock-adjustments', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'index'])->name('stock-adjustments.index');
     Route::get('stock-adjustments/create', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'create'])->name('stock-adjustments.create');

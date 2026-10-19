@@ -969,7 +969,12 @@ class Helper
             ->when(!$adjustAnywhere, fn ($q) => $adjustVendor ? $q->where('a.vendor_id', $adjustVendor) : $q->whereNull('a.vendor_id'))
             ->get(['d.id', 'd.serial_no', 'd.unit_cost', 'd.mrp_price', 'd.warranty_start_date']);
 
-        if ($purchases->isEmpty() && $adjustedInLines->isEmpty()) {
+        // Units moved between locations by a stock transfer (when one location is read, not when reading every branch)
+        $transferIn = $adjustAnywhere ? [] : $guard->transferredSerials($productId, $adjustVendor, 'in');
+        $transferOut = $adjustAnywhere ? [] : $guard->transferredSerials($productId, $adjustVendor, 'out');
+        $movedAway = fn (string $key) => ($transferOut[$key] ?? 0) > ($transferIn[$key] ?? 0);
+
+        if ($purchases->isEmpty() && $adjustedInLines->isEmpty() && !$transferIn) {
             return $result;
         }
 
@@ -1028,7 +1033,7 @@ class Helper
 
             foreach ($serialNumbers as $serialNumber) {
                 // Skip already active-sold, supplier-returned or written-off serial
-                if (in_array($serialNumber, $activeSoldSerials) || in_array($serialNumber, $returnedSerials) || isset($adjustedOut[StockGuard::key((string) $serialNumber)])) {
+                if (in_array($serialNumber, $activeSoldSerials) || in_array($serialNumber, $returnedSerials) || isset($adjustedOut[StockGuard::key((string) $serialNumber)]) || $movedAway(StockGuard::key((string) $serialNumber))) {
                     continue;
                 }
 
@@ -1046,7 +1051,7 @@ class Helper
         $productMrp = null;
         foreach ($adjustedInLines as $line) {
             foreach (StockGuard::serialList($line->serial_no) as $serialNumber) {
-                if (in_array($serialNumber, $activeSoldSerials) || isset($adjustedOut[StockGuard::key($serialNumber)])) {
+                if (in_array($serialNumber, $activeSoldSerials) || isset($adjustedOut[StockGuard::key($serialNumber)]) || $movedAway(StockGuard::key($serialNumber))) {
                     continue;
                 }
                 $productMrp ??= (float) (\App\Models\Product::find($productId)?->latest_mrp ?? 0);
@@ -1060,6 +1065,35 @@ class Helper
                     'warranty_start_date' => $line->warranty_start_date,
                 ];
             }
+        }
+
+        // Units that arrived here by transfer keep the purchase line (price, selling price, supplier warranty) they were bought on
+        $listed = array_flip(array_map(fn ($r) => StockGuard::key((string) $r['serial_number']), $result));
+        $origins = null;
+        foreach ($transferIn as $key => $n) {
+            if ($n <= ($transferOut[$key] ?? 0) || isset($listed[$key])) {
+                continue;
+            }
+            $origins ??= $guard->serialOrigins($productId);
+            $origin = $origins[$key] ?? null;
+            if (!$origin) {
+                continue;
+            }
+            $serialNumber = $origin['serial'];
+            if (in_array($serialNumber, $activeSoldSerials) || in_array($serialNumber, $returnedSerials) || isset($adjustedOut[$key])) {
+                continue;
+            }
+            $productMrp ??= (float) (\App\Models\Product::find($productId)?->latest_mrp ?? 0);
+            $result[] = [
+                'purchase_detail_id'   => $origin['purchase_detail_id'],
+                'serial_number'        => $serialNumber,
+                'mrp_price'            => $origin['mrp_price'] ?? $productMrp,
+                'purchase_price'       => $origin['purchase_price'],
+                'purchase_master_id'   => $origin['purchase_master_id'],
+                'adjustment_detail_id' => $origin['adjustment_detail_id'],
+                'warranty_start_date'  => $origin['warranty_start_date'],
+                'transferred'          => true,
+            ];
         }
 
         return $result;
