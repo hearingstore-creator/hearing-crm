@@ -10,6 +10,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use App\Services\RoleAccess;
 
 class UserController extends Controller
 {
@@ -22,7 +24,8 @@ class UserController extends Controller
     {
         $this->middleware('permission:users.index')->only(['index']);
         $this->middleware('permission:users.create')->only(['create', 'store']);
-        $this->middleware('permission:users.edit')->only(['edit', 'update']);
+        $this->middleware('permission:users.edit')->only(['edit', 'update', 'setStatus', 'resetPassword']);
+        $this->middleware('permission:users.index')->only(['show']);
         $this->middleware('permission:users.delete')->only(['destroy']);
     }
 
@@ -33,10 +36,98 @@ class UserController extends Controller
      */
     public function index(): View
     {
-        $users = User::orderBy('id', 'desc')->get();
+        $f = [
+            'q'      => trim((string) request('q')),
+            'role'   => (int) request('role'),
+            'branch' => (string) request('branch'),
+            'status' => (string) request('status'),
+        ];
+
+        $staff = fn ($q) => $q->where(fn ($w) => $w->whereNull('type')->orWhereNotIn('type', ['vendor', 'professional']));
+
+        $users = User::with(['roles', 'branch'])
+            ->when($f['q'] !== '', fn ($q) => $q->where(fn ($w) => $w->where('name', 'like', '%' . $f['q'] . '%')->orWhere('email', 'like', '%' . $f['q'] . '%')))
+            ->when($f['role'], fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('roles.id', $f['role'])))
+            ->when($f['branch'] === 'head', fn ($q) => $q->whereNull('vendor_id')->where(fn ($w) => $w->whereNull('type')->orWhere('type', '!=', 'vendor')))
+            ->when($f['branch'] !== '' && ctype_digit($f['branch']), fn ($q) => $q->where(fn ($w) => $w->where('vendor_id', (int) $f['branch'])->orWhere('id', (int) $f['branch'])))
+            ->when($f['status'] === 'active', fn ($q) => $q->where('status', 1))
+            ->when($f['status'] === 'inactive', fn ($q) => $q->where('status', 0))
+            ->when($f['status'] === 'norole', fn ($q) => $staff($q->where('status', 1))->whereDoesntHave('roles'))
+            ->orderBy('name')->get();
+
+        $counts = [
+            'all'      => User::count(),
+            'active'   => User::where('status', 1)->count(),
+            'inactive' => User::where('status', 0)->count(),
+            'norole'   => $staff(User::where('status', 1))->whereDoesntHave('roles')->count(),
+        ];
+
         $guard = new AccessGuard();
         $manageable = $users->filter(fn ($u) => $guard->canManageUser($u))->pluck('id')->flip();
-        return view('admin.user.index', compact('users', 'manageable'));
+
+        return view('admin.user.index', [
+            'users' => $users, 'manageable' => $manageable, 'counts' => $counts, 'f' => $f,
+            'roles' => Role::orderBy('name')->get(['id', 'name']),
+            'branches' => \App\Classes\Helper::branchOptions(),
+        ]);
+    }
+
+    /** What this person can do, in plain words (their roles added together). */
+    public function show(int $id): View
+    {
+        $user = User::with('roles', 'branch')->findOrFail($id);
+        $fixed = $user->isVendor() || $user->isProfessional();
+        $names = $user->isSuperAdmin() || $fixed ? collect() : $user->roles()->with('permissions:id,name')->get()->pluck('permissions')->flatten()->pluck('name')->unique();
+
+        return view('admin.user.show', [
+            'user'    => $user,
+            'fixed'   => $fixed,
+            'summary' => RoleAccess::summarise($names),
+            'widgets' => RoleAccess::dashboardWidgets($names),
+            'canEdit' => (new AccessGuard())->canManageUser($user),
+        ]);
+    }
+
+    /** One-click Activate / Deactivate from the People list. */
+    public function setStatus(Request $request, int $id): RedirectResponse
+    {
+        $user = User::findOrFail($id);
+        $request->validate(['status' => 'required|in:0,1']);
+        $guard = new AccessGuard();
+
+        if (!$guard->canManageUser($user)) {
+            return back()->with('warning', 'You cannot change this account.');
+        }
+        if ($user->id === auth()->id()) {
+            return back()->with('warning', 'You cannot change your own status.');
+        }
+        if ((int) $request->status === 0 && $user->isSuperAdmin()
+            && User::where('status', 1)->where('id', '!=', $user->id)->get()->filter->isSuperAdmin()->isEmpty()) {
+            return back()->with('warning', 'This is the last active Super Admin and cannot be deactivated.');
+        }
+
+        $user->status = (int) $request->status;
+        $user->save();
+
+        return back()->with('success', $user->name . ($user->status ? ' is active again.' : ' is deactivated and signed out on their next click.'));
+    }
+
+    /** Sets a temporary password, shown once to the admin; the person must choose their own at next sign-in. */
+    public function resetPassword(int $id): RedirectResponse
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->id === auth()->id()) {
+            return back()->with('warning', 'Change your own password from My Profile.');
+        }
+        if (!(new AccessGuard())->canManageUser($user)) {
+            return back()->with('warning', 'You cannot reset this account.');
+        }
+
+        $temp = Str::password(10, symbols: false);
+        $user->forceFill(['password' => Hash::make($temp), 'must_change_password' => true])->save();
+
+        return back()->with('success', "New temporary password for {$user->name}: {$temp} — share it privately. They must choose their own at next sign-in.");
     }
 
     /**
