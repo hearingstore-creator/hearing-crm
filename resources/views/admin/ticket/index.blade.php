@@ -94,7 +94,7 @@
             <table class="crm-table">
                 <thead>
                     <tr>
-                        <th style="width: 50px;">#</th>
+                        <th style="width: 90px;">Ticket</th>
                         <th>Subject</th>
                         <th>Customer</th>
                         <th>Status</th>
@@ -107,8 +107,8 @@
                 <tbody>
                     @forelse ($tickets ?? [] as $key => $ticket)
                     <tr>
-                        <td style="color: var(--page-text-muted); font-size: 12px;">{{ ++$key }}</td>
-                        <td><span style="font-weight: 500;">{{ $ticket->subject }}</span></td>
+                        <td style="font-size: 12px; font-weight: 600;"><a href="{{ url('admin/ticket/'.$ticket->id) }}" id="ticket-no-{{ $ticket->id }}">{{ $ticket->number }}</a></td>
+                        <td><a href="{{ url('admin/ticket/'.$ticket->id) }}" style="font-weight: 500; color: inherit;" id="ticket-open-{{ $ticket->id }}">{{ $ticket->subject }}</a></td>
                         <td style="font-size: 13px;">{{ $ticket->customer->lead->full_name ?? '' }}</td>
                         <td><span class="badge" style="background-color: {{ $ticket->status->color() }}; color: #fff; font-size: 11px; padding: 4px 10px; border-radius: 20px;">{{ $ticket->status->value }}</span></td>
                         <td><span class="badge" style="background-color: {{ $ticket->priority->color() }}; color: #fff; font-size: 11px; padding: 4px 10px; border-radius: 20px;">{{ $ticket->priority->value }}</span></td>
@@ -116,6 +116,7 @@
                         <td><span style="font-size: 12px; color: var(--page-text-muted);">{{ $ticket->created_at->format('d M Y') }}</span></td>
                         <td>
                             <div class="crm-actions">
+                                @can('permission','ticket_list.index')<a href="{{ url('admin/ticket/'.$ticket->id) }}" class="action-btn" title="Open" id="btn-open-{{ $ticket->id }}"><i class="fas fa-eye"></i></a>@endcan
                                 @can('permission','ticket_list.edit')<a href="{{ url('admin/ticket/'.$ticket->id.'/edit') }}" class="action-btn btn-edit" title="Edit"><i class="fas fa-pen"></i></a>@endcan
                                 @can('permission','ticket_list.delete')<form action="{{ url('admin/ticket/'.$ticket->id) }}" method="POST" style="display:inline;">@csrf @method('DELETE')<button type="submit" class="action-btn btn-delete" title="Delete" onclick="confirmDelete(event)"><i class="far fa-trash-alt"></i></button></form>@endcan
                             </div>

@@ -63,9 +63,11 @@ class TaskController extends Controller
         $data['end_date'] = $request->end_date ?? null;
 
         if ($data['start_date'] && $data['end_date']) {
-            $start = date('Y-m-d', strtotime($data['start_date']));
-            $end = date('Y-m-d', strtotime($data['end_date']));
-            $query->whereBetween('created_at', [$start, $end]);
+            // The whole of the end day is included
+            $query->whereBetween('created_at', [
+                date('Y-m-d 00:00:00', strtotime($data['start_date'])),
+                date('Y-m-d 23:59:59', strtotime($data['end_date'])),
+            ]);
         }
 
         // Search by subject or description

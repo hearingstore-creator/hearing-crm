@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Classes\Helper;
 use App\Enums\SmsAutomationTrigger;
 use App\Services\SmsAutomationService;
 use App\Enums\TicketPriority;
@@ -11,12 +12,16 @@ use App\Models\Customer;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 
 class TicketController extends Controller
 {
+    /** The only fields a ticket form may set (branch and creator are never taken from the request). */
+    private const FORM_FIELDS = ['subject', 'description', 'customer_id', 'assigned_to', 'status', 'priority'];
+
     /**
      * Configure middleware to handle authorization for different ticket operations
      *
@@ -24,10 +29,36 @@ class TicketController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('permission:ticket_list.index')->only(['index']);
+        $this->middleware('permission:ticket_list.index')->only(['index', 'show']);
         $this->middleware('permission:add_ticket.create')->only(['create', 'store']);
-        $this->middleware('permission:ticket_list.edit')->only(['edit', 'update', 'updateStatus']);
+        $this->middleware('permission:ticket_list.edit')->only(['edit', 'update', 'updateStatus', 'assign', 'addNote']);
         $this->middleware('permission:ticket_list.delete')->only(['destroy']);
+    }
+
+    /**
+     * People a ticket can be given to: active staff, never a shared branch login.
+     */
+    private function assignableUsers()
+    {
+        return User::select('id', 'name')
+            ->where('status', 1)
+            ->where(fn ($q) => $q->whereNull('type')->orWhere('type', '!=', 'vendor'))
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * A ticket may not be given to a branch login. A legacy ticket that already has one keeps it until someone changes it.
+     */
+    private function assertAssignable($userId, $currentId = null): void
+    {
+        if (!$userId || (int) $userId === (int) $currentId) {
+            return;
+        }
+        $user = User::find($userId);
+        if (!$user || $user->type === 'vendor' || !$user->status) {
+            throw ValidationException::withMessages(['assigned_to' => 'Give the ticket to a person, not to a branch login.']);
+        }
     }
 
     /**
@@ -60,14 +91,15 @@ class TicketController extends Controller
             $query->where('assigned_to', $request->assigned_to);
         }
 
-        // Filter by date range
+        // Filter by date range (the whole of the end day is included)
         $data['start_date'] = $request->start_date ?? null;
         $data['end_date'] = $request->end_date ?? null;
 
         if ($data['start_date'] && $data['end_date']) {
-            $start = date('Y-m-d', strtotime($data['start_date']));
-            $end = date('Y-m-d', strtotime($data['end_date']));
-            $query->whereBetween('created_at', [$start, $end]);
+            $query->whereBetween('created_at', [
+                date('Y-m-d 00:00:00', strtotime($data['start_date'])),
+                date('Y-m-d 23:59:59', strtotime($data['end_date'])),
+            ]);
         }
 
         if ($request->boolean('open_only')) {
@@ -77,9 +109,9 @@ class TicketController extends Controller
             $query->whereIn('status', ['Solved', 'Closed']);
         }
 
-        $data['tickets'] = \App\Classes\Helper::readAllBranches(fn () => $query->latest()->paginate(20));
+        $data['tickets'] = Helper::readAllBranches(fn () => $query->latest()->paginate(20));
         // Customers of every branch (read-only dropdown) for HQ support staff who can view all branches
-        $data['customers'] = \App\Classes\Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
+        $data['customers'] = Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
         $data['users'] = User::select('id', 'name')->orderBy('id', 'desc')->get();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
@@ -102,6 +134,22 @@ class TicketController extends Controller
     }
 
     /**
+     * The ticket page: details, quick actions and the timeline of notes and changes.
+     */
+    public function show(int $id): View
+    {
+        // Same reach as the list: head office users who may view all branches can open any branch's ticket
+        $ticket = Helper::readAllBranches(fn () => Ticket::with(['customer.lead', 'assignedTo', 'notes.user'])->findOrFail($id));
+
+        return view('admin.ticket.show', [
+            'ticket'     => $ticket,
+            'users'      => $this->assignableUsers(),
+            'statuses'   => TicketStatus::cases(),
+            'priorities' => TicketPriority::cases(),
+        ]);
+    }
+
+    /**
      * Show the form for creating a new ticket.
      *
      * @return View
@@ -109,8 +157,8 @@ class TicketController extends Controller
     public function create(): View
     {
         // Customers of every branch (read-only dropdown) for HQ support staff who can view all branches
-        $data['customers'] = \App\Classes\Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
-        $data['users'] = User::orderBy('id', 'desc')->get();
+        $data['customers'] = Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
+        $data['users'] = $this->assignableUsers();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
         return view('admin.ticket.create', $data);
@@ -129,18 +177,19 @@ class TicketController extends Controller
 
         $this->validate($request, [
             'subject' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'required|string|max:10000',
             'customer_id' => 'required|exists:customers,id',
             'assigned_to' => 'nullable|exists:users,id',
             'status' => 'required|in:' . $statusValues,
             'priority' => 'required|in:' . $priorityValues,
         ]);
+        $this->assertAssignable($request->assigned_to);
 
-        $ticket = new Ticket($request->all());
+        $ticket = new Ticket($request->only(self::FORM_FIELDS));
 
         if ($ticket->save()) {
             // "Service Ticket Created" SMS (text managed in SMS Center → Automation)
-            $customer = \App\Classes\Helper::readAllBranches(fn () => Customer::with('lead')->find($request->customer_id));
+            $customer = Helper::readAllBranches(fn () => Customer::with('lead')->find($request->customer_id));
 
             if ($customer && $customer->lead && $customer->lead->phone_number) {
                 app(SmsAutomationService::class)->fire(SmsAutomationTrigger::TICKET_CREATED, $customer->lead->phone_number, 'customer', (int) $customer->id, [
@@ -152,7 +201,7 @@ class TicketController extends Controller
                 ], 'ticket-created:' . $ticket->id);
             }
 
-            return redirect('admin/ticket')->with('success', 'Ticket created successfully');
+            return redirect('admin/ticket/' . $ticket->id)->with('success', 'Ticket ' . $ticket->number . ' created');
         }
 
         return redirect()->back()->with('warning', 'Ticket not created');
@@ -168,8 +217,8 @@ class TicketController extends Controller
     {
         $data['ticket'] = Ticket::findOrFail($id);
         // Customers of every branch (read-only dropdown) for HQ support staff who can view all branches
-        $data['customers'] = \App\Classes\Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
-        $data['users'] = User::orderBy('id', 'desc')->get();
+        $data['customers'] = Helper::readAllBranches(fn () => Customer::with('lead')->orderBy('id', 'desc')->get());
+        $data['users'] = $this->assignableUsers();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
         return view('admin.ticket.edit', $data);
@@ -189,7 +238,7 @@ class TicketController extends Controller
 
         $this->validate($request, [
             'subject' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'required|string|max:10000',
             'customer_id' => 'required|exists:customers,id',
             'assigned_to' => 'nullable|exists:users,id',
             'status' => 'required|in:' . $statusValues,
@@ -197,28 +246,25 @@ class TicketController extends Controller
         ]);
 
         $ticket = Ticket::findOrFail($id);
-        $ticket->fill($request->all());
+        $this->assertAssignable($request->assigned_to, $ticket->assigned_to);
+        $ticket->fill($request->only(self::FORM_FIELDS));
 
-        // Set resolved_at timestamp if status is changed to Solved
-        if ($ticket->isDirty('status') && $request->status === TicketStatus::SOLVED->value) {
-            $ticket->resolved_at = now();
-        }
-
+        // The resolved time follows the status (see Ticket::booted); every change is added to the timeline
         if ($ticket->save()) {
-            return redirect('admin/ticket')->with('success', 'Ticket updated successfully');
+            return redirect('admin/ticket/' . $ticket->id)->with('success', 'Ticket updated');
         }
 
         return redirect()->back()->with('warning', 'Ticket not updated');
     }
 
     /**
-     * Quick status update (used by dashboard Daily Lookout).
+     * Quick status update (ticket page buttons and the dashboard Daily Lookout).
      *
      * @param Request $request
      * @param int $id
-     * @return JsonResponse
+     * @return JsonResponse|RedirectResponse
      */
-    public function updateStatus(Request $request, int $id): JsonResponse
+    public function updateStatus(Request $request, int $id)
     {
         $request->validate([
             'status' => 'required|in:' . implode(',', array_column(TicketStatus::cases(), 'value')),
@@ -226,15 +272,41 @@ class TicketController extends Controller
 
         $ticket = Ticket::findOrFail($id);
         $ticket->status = $request->status;
-
-        // Same rule as update(): stamp resolved_at when moving to Solved
-        if ($ticket->isDirty('status') && $request->status === TicketStatus::SOLVED->value) {
-            $ticket->resolved_at = now();
-        }
-
         $ticket->save();
 
-        return response()->json(['success' => true, 'message' => 'Ticket status updated']);
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Ticket status updated']);
+        }
+
+        return redirect('admin/ticket/' . $ticket->id)->with('success', 'Status changed to ' . $request->status);
+    }
+
+    /**
+     * Give the ticket to someone else (or to nobody).
+     */
+    public function assign(Request $request, int $id): RedirectResponse
+    {
+        $request->validate(['assigned_to' => 'nullable|exists:users,id']);
+
+        $ticket = Ticket::findOrFail($id);
+        $this->assertAssignable($request->assigned_to, $ticket->assigned_to);
+        $ticket->assigned_to = $request->assigned_to ?: null;
+        $ticket->save();
+
+        return redirect('admin/ticket/' . $ticket->id)->with('success', 'Owner updated');
+    }
+
+    /**
+     * Add a note to the timeline.
+     */
+    public function addNote(Request $request, int $id): RedirectResponse
+    {
+        $data = $request->validate(['body' => 'required|string|max:2000']);
+
+        $ticket = Ticket::findOrFail($id);
+        $ticket->addNote('note', trim($data['body']));
+
+        return redirect('admin/ticket/' . $ticket->id . '#timeline')->with('success', 'Note added');
     }
 
     /**

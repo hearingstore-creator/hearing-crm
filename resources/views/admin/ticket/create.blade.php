@@ -1,41 +1,10 @@
 @extends('admin.layouts.master')
+@section('page_title', 'New ticket')
+@section('breadcrumb_parent', 'Support')
+@section('breadcrumb_parent_url', url('admin/ticket'))
+
 @push('css')
     <link rel="stylesheet" href="{{ asset('assets/plugins/select2/css/select2.min.css') }}">
-    <!-- Summernote CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.1/dist/summernote.min.css" rel="stylesheet">
-    <style>
-        #description-editor {
-            min-height: 300px;
-        }
-        .note-editor {
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-        }
-        .note-toolbar {
-            background-color: #f8f9fa;
-            border-radius: 4px 4px 0 0;
-        }
-        .note-editable {
-            background-color: white;
-        }
-        /* Table styles */
-        .note-editable table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 10px 0;
-        }
-        .note-editable table td,
-        .note-editable table th {
-            border: 1px solid #ddd;
-            padding: 8px;
-            min-width: 2em;
-        }
-        .note-editable table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-            text-align: left;
-        }
-    </style>
 @endpush
 
 @section('content')
@@ -77,9 +46,7 @@
                                         <div class="form-group row">
                                             <label for="description" class="col-sm-3 col-form-label">Description <i class="text-danger">*</i>:</label>
                                             <div class="col-sm-6">
-                                                <input type="hidden" name="description" id="description">
-                                                <div id="description-editor"></div>
-                                                <small class="form-text text-muted">Rich text editor for ticket description</small>
+                                                <textarea name="description" id="description" class="form-control" rows="6" maxlength="10000" required placeholder="What did the patient report? When did it start?">{{ old('description') }}</textarea>
                                             </div>
                                         </div>
 
@@ -160,44 +127,6 @@
     <!-- /.content -->
 @push('scripts')
     <script src="{{ asset('assets/plugins/select2/js/select2.full.min.js') }}"></script>
-    <!-- Summernote Library (jQuery already loaded in master layout) -->
-    <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.1/dist/summernote.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            // Initialize Select2
-            $('.select').select2();
-
-            // Initialize Summernote Editor
-            $('#description-editor').summernote({
-                placeholder: 'Compose your ticket description here...',
-                tabsize: 2,
-                height: 300,
-                toolbar: [
-                    // [groupName, [list of button]]
-                    ['style', ['style']],
-                    ['font', ['bold', 'italic', 'underline', 'clear']],
-                    ['fontname', ['fontname']],
-                    ['fontsize', ['fontsize']],
-                    ['color', ['color']],
-                    ['para', ['ul', 'ol', 'paragraph']],
-                    ['insert', ['link', 'table', 'hr']],
-                    ['view', ['fullscreen', 'codeview', 'help']]
-                ],
-                tableClassName: 'table table-bordered',
-                callbacks: {
-                    onChange: function(contents, $editable) {
-                        // Update hidden input on content change
-                        $('#description').val(contents);
-                    }
-                }
-            });
-
-            // Update hidden input when form submits
-            $('form').on('submit', function(e) {
-                var content = $('#description-editor').summernote('code');
-                $('#description').val(content);
-            });
-        });
-    </script>
+    <script>$(document).ready(function() { $('.select').select2(); });</script>
 @endpush
 @endsection
