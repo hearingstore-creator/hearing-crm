@@ -525,6 +525,60 @@ class MembershipController extends Controller
     /**
      * Update loyalty settings
      */
+    /** Download the tiers, milestones and loyalty settings of this site as a file. */
+    public function exportSettings()
+    {
+        abort_unless(auth()->user()->hasAccess('loyalty_settings.index'), 403);
+        $json = json_encode((new \App\Services\MembershipSettingsTransfer())->export(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+        return response($json, 200, [
+            'Content-Type'        => 'application/json',
+            'Content-Disposition' => 'attachment; filename="membership-settings-' . now()->format('Y-m-d') . '.json"',
+        ]);
+    }
+
+    /** Read an uploaded settings file and show what applying it would change. Nothing is saved yet. */
+    public function previewImport(Request $request)
+    {
+        $this->requireImportAccess();
+        $request->validate(['settings_file' => 'required|file|max:512']);
+
+        try {
+            $plan = (new \App\Services\MembershipSettingsTransfer())->plan(json_decode($request->file('settings_file')->get(), true));
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['settings_file' => $e->getMessage()]);
+        }
+
+        $request->session()->put('membership_import', $plan['data'] + ['format' => \App\Services\MembershipSettingsTransfer::FORMAT, 'version' => \App\Services\MembershipSettingsTransfer::VERSION]);
+
+        return view('admin.membership.import-preview', ['plan' => $plan]);
+    }
+
+    /** Apply the file that was just previewed. */
+    public function applyImport(Request $request)
+    {
+        $this->requireImportAccess();
+        $data = $request->session()->pull('membership_import');
+        if (! $data) {
+            return redirect()->route('membership.settings')->withErrors(['settings_file' => 'The preview expired. Choose the file again.']);
+        }
+
+        try {
+            $changed = (new \App\Services\MembershipSettingsTransfer())->apply($data);
+        } catch (\InvalidArgumentException $e) {
+            return redirect()->route('membership.settings')->withErrors(['settings_file' => $e->getMessage()]);
+        }
+
+        return redirect()->route('membership.settings')->with('success', $changed ? "Imported: {$changed} setting(s) changed." : 'Nothing to change: this site already has these amounts.');
+    }
+
+    private function requireImportAccess(): void
+    {
+        $user = auth()->user();
+        abort_unless($user->hasAccess('loyalty_settings.edit') && $user->hasAccess('membership_tiers.edit') && $user->hasAccess('milestones.edit'), 403,
+            'Importing changes tiers, milestones and loyalty settings, so you need permission to edit all three.');
+    }
+
     public function updateLoyaltySettings(Request $request)
     {
         $validated = $request->validate([

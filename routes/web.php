@@ -216,6 +216,9 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
         Route::post('milestones/{id}/toggle', [MembershipController::class, 'toggleMilestone'])->name('membership.milestones.toggle');
         Route::delete('milestones/{id}', [MembershipController::class, 'destroyMilestone'])->name('membership.milestones.destroy');
 
+        Route::get('settings/export', [MembershipController::class, 'exportSettings'])->name('membership.settings.export');
+        Route::post('settings/import', [MembershipController::class, 'previewImport'])->name('membership.settings.import');
+        Route::post('settings/import/apply', [MembershipController::class, 'applyImport'])->name('membership.settings.import.apply');
         Route::get('settings', [MembershipController::class, 'loyaltySettings'])->name('membership.settings');
         Route::post('settings', [MembershipController::class, 'updateLoyaltySettings'])->name('membership.settings.update');
         Route::put('settings', [MembershipController::class, 'updateLoyaltySettings']);

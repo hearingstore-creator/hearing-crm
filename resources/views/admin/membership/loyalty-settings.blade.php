@@ -57,6 +57,21 @@
     </div>
     @endif
 
+    <div class="settings-card crm-animate-in delay-1" id="move-settings" style="margin-bottom: 18px;">
+        <div class="settings-row">
+            <div class="settings-section-title"><i class="fas fa-exchange-alt text-primary mr-1"></i> Move membership amounts between sites</div>
+            <div class="settings-hint">Amounts (tiers, milestones, loyalty settings) are saved in each site's own database, so changing them on a test copy does not change the live site. Export them here, then import the file on the other site. You see what would change before anything is saved. Customers, points and sales are never touched.</div>
+            <div class="mt-3 d-flex flex-wrap" style="gap:10px; align-items:center;">
+                <a href="{{ route('membership.settings.export') }}" class="btn btn-secondary btn-sm" id="btn-export-settings"><i class="fas fa-download mr-1"></i>Export this site's amounts</a>
+                <form action="{{ route('membership.settings.import') }}" method="POST" enctype="multipart/form-data" class="d-flex" style="gap:8px; align-items:center;">
+                    @csrf
+                    <input type="file" name="settings_file" accept=".json,application/json" required class="form-control-file" style="max-width:260px;">
+                    <button type="submit" class="btn btn-primary btn-sm" id="btn-preview-import"><i class="fas fa-upload mr-1"></i>Review import</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="settings-card crm-animate-in delay-1">
         <form action="{{ route('membership.settings.update') }}" method="POST">
             @csrf
