@@ -94,6 +94,22 @@
                 @endif
             </div>
         </div>
+        <div class="crm-form-section crm-animate-in delay-2" id="signin-history">
+            <div class="crm-form-section-header">
+                <div class="section-icon" style="background: var(--accent-500);"><i class="fas fa-shield-alt"></i></div>
+                <h6>Sign-in security</h6>
+            </div>
+            <div class="crm-form-section-body" style="font-size:13px;">
+                <div class="mb-2">Last sign-in: <b>{{ $user->last_login_at ? $user->last_login_at->format('d M Y, h:i A') . ' · ' . $user->last_login_ip : 'Never' }}</b></div>
+                @if ($user->must_change_password)<div class="mb-2" style="color:#b45309;">Must choose a new password at next sign-in.</div>@endif
+                <div class="text-muted mb-1">Recent activity</div>
+                @forelse ($events as $e)
+                    <div>{{ $e->created_at->format('d M, h:i A') }} — {{ ['login' => 'Signed in', 'failed' => 'Wrong password', 'blocked' => 'Blocked (deactivated)'][$e->event] ?? $e->event }} · {{ $e->ip }}</div>
+                @empty
+                    <div class="text-muted">Nothing recorded yet.</div>
+                @endforelse
+            </div>
+        </div>
         <div class="crm-form-submit-bar">
             <a href="{{ url('admin/user') }}" class="btn btn-secondary btn-sm">Cancel</a>
             <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i>Update</button>

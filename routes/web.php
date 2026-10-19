@@ -49,6 +49,8 @@ Route::middleware('throttle:60,1')->group(function () {
 
 Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin', 'middleware' => 'auth'], function() {
     Route::get('/dashboard', [HomeController::class, 'dashboard']);
+    Route::get('profile', [\App\Http\Controllers\Admin\ProfileController::class, 'show'])->name('profile.show');
+    Route::put('profile/password', [\App\Http\Controllers\Admin\ProfileController::class, 'password'])->name('profile.password');
     Route::get('reports', [\App\Http\Controllers\Admin\ReportHubController::class, 'index'])->name('reports.hub');
     Route::post('reports/star', [\App\Http\Controllers\Admin\ReportHubController::class, 'star'])->name('reports.star');
     Route::get('stock-transfers/product-stock', [\App\Http\Controllers\Admin\StockTransferController::class, 'productStock'])->name('stock-transfers.product-stock');

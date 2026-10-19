@@ -75,6 +75,7 @@ class UserController extends Controller
             'name'     => $request->name,
             'email'    => $request->email,
             'password' => Hash::make($request->password),
+            'must_change_password' => true, // they pick their own at first sign-in
             'details'  => $request->details,
             'vendor_id' => \App\Classes\Helper::staffBranchFromRequest($request->vendor_id),
         ]);
@@ -100,7 +101,9 @@ class UserController extends Controller
         $roles = $guard->grantableRoles()->merge($user->roles)->unique('id')->values();
         $userRoles = $user->roles->pluck('id')->toArray();
 
-        return view('admin.user.edit', compact('user', 'roles', 'userRoles'));
+        $events = \App\Models\LoginEvent::where('user_id', $user->id)->latest('created_at')->limit(8)->get();
+
+        return view('admin.user.edit', compact('user', 'roles', 'userRoles', 'events'));
     }
 
     /**
@@ -143,6 +146,8 @@ class UserController extends Controller
         $user->status = $request->status;
         if ($request->password) {
             $user->password = bcrypt($request->password);
+            // An admin-set password is temporary; changing your own is not
+            $user->must_change_password = $user->id !== auth()->id();
         }
         $user->details = $request->details;
         if (!$user->isVendor() && !$user->isSuperAdmin() && $request->has('vendor_id')) {

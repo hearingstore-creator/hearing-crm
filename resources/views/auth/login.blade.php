@@ -447,6 +447,10 @@
                         </div>
                     @endif
 
+                    @if (session('login_notice'))
+                        <div class="alert alert-danger">{{ session('login_notice') }}</div>
+                    @endif
+
                     <!-- Validation Errors -->
                     @if ($errors->any())
                         <div class="alert alert-danger">

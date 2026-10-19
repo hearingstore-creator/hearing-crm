@@ -131,7 +131,7 @@
                             <p class="user-email">{{ Auth::user()->email ?? 'admin@example.com' }}</p>
                         </div>
                         <div class="user-dropdown-body">
-                            <a href="#"><i class="fa-regular fa-user"></i> My Profile</a>
+                            <a href="{{ route('profile.show') }}"><i class="fa-regular fa-user"></i> My Profile</a>
                             <a href="#"><i class="fa-solid fa-sliders"></i> Account Settings</a>
                             <a href="#"><i class="fa-solid fa-chart-line"></i> Activity Log</a>
                         </div>

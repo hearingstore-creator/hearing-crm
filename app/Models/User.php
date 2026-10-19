@@ -31,6 +31,7 @@ class User extends Authenticatable
         'details',
         'status',
         'vendor_id',
+        'must_change_password',
     ];
 
     /**
@@ -52,6 +53,8 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'designation' => Designation::class,
         'notification_mutes' => 'array',
+        'last_login_at' => 'datetime',
+        'must_change_password' => 'boolean',
     ];
 
     /**

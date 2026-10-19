@@ -4,7 +4,10 @@ namespace App\Http\Requests\Auth;
 
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
+use App\Models\LoginEvent;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -45,8 +48,19 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        // A deactivated person with the right password gets a clear message, not a session
+        $known = User::where('email', $this->input('email'))->first();
+        if ($known && (int) $known->status !== 1 && Hash::check((string) $this->input('password'), $known->password)) {
+            LoginEvent::record('blocked', $known->email, $known->id, $this);
+
+            throw ValidationException::withMessages([
+                'email' => 'This account has been deactivated. Please ask your administrator.',
+            ]);
+        }
+
         if (! Auth::attempt($this->only('email', 'password'), $this->filled('remember'))) {
             RateLimiter::hit($this->throttleKey());
+            LoginEvent::record('failed', $this->input('email'), $known?->id, $this);
 
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
@@ -54,6 +68,10 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        $user = Auth::user();
+        $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $this->ip()])->saveQuietly();
+        LoginEvent::record('login', $user->email, $user->id, $this);
     }
 
     /**
