@@ -57,6 +57,25 @@
 .md-wa { color:#16a34a; font-size:16px; padding:0 4px; }
 .md-sum { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--page-text-muted); margin-bottom:6px; }
 .md-sum b { color:var(--page-text); }
+.td-panel[hidden] { display:none; }
+.td-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:20px; }
+.td-stat { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:14px 16px; }
+.td-stat span { display:block; font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--page-text-muted); }
+.td-stat b { display:block; font-size:22px; font-weight:800; margin-top:4px; }
+.td-stat small { display:block; font-size:11.5px; color:var(--page-text-muted); margin-top:2px; }
+.td-stat small.up, td.up { color:#059669; } .td-stat small.down, td.down { color:#e11d48; }
+.td-row { display:flex; align-items:center; gap:10px; padding:7px 2px; border-bottom:1px solid var(--card-border); font-size:13px; }
+.td-row:last-child { border-bottom:0; }
+.td-row .td-name { flex:1; min-width:0; color:var(--page-text); text-decoration:none !important; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.td-row .td-sub { display:block; font-weight:400; font-size:11.5px; color:var(--page-text-muted); overflow:hidden; text-overflow:ellipsis; }
+.td-row small { color:var(--page-text-muted); font-size:11.5px; white-space:nowrap; }
+.td-row b { white-space:nowrap; }
+.td-meter { flex:0 0 28%; height:7px; border-radius:99px; background:var(--card-border); overflow:hidden; }
+.td-meter i { display:block; height:100%; border-radius:99px; }
+.td-table { width:100%; font-size:13px; border-collapse:collapse; }
+.td-table th { text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--page-text-muted); padding:6px 10px; border-bottom:1px solid var(--card-border); }
+.td-table td { padding:8px 10px; border-bottom:1px solid var(--card-border); }
+.td-charts .td-card .td-more { margin-left:auto; }
 </style>
 @endpush
 
@@ -71,6 +90,7 @@
      data-tiles="{{ route('dashboard.today.tiles') }}"
      data-block="{{ url('admin/dashboard/today/block') }}"
      data-chart="{{ url('admin/dashboard/today/chart') }}"
+     data-tab="{{ url('admin/dashboard/today/tab') }}"
      data-branch="{{ $branch }}" data-period="{{ $period }}">
 
     <div class="crm-page-header">
@@ -89,7 +109,7 @@
                         @endforeach
                     </select>
                 @endif
-                <select name="period" id="td-period" aria-label="Period for the category chart" onchange="this.form.submit()">
+                <select name="period" id="td-period" aria-label="Period" onchange="this.form.submit()">
                     @foreach ($periods as $k => $label)
                         <option value="{{ $k }}" @selected($k === $period)>{{ $label }}</option>
                     @endforeach
@@ -108,16 +128,14 @@
         </div>
     </div>
 
-    <nav class="td-tabs" aria-label="Dashboard sections">
-        <a href="#" class="td-tab active" aria-current="page" id="td-tab-today">Today</a>
-        <a href="{{ route('dashboard.legacy') }}#analytics" class="td-tab" id="td-tab-sales" title="Coming in phase 3; opens the old dashboard for now">Sales &amp; Money<span class="soon">soon</span></a>
-        <a href="{{ route('dashboard.legacy') }}#analytics" class="td-tab" id="td-tab-care" title="Coming in phase 3; opens the old dashboard for now">Patients &amp; Care<span class="soon">soon</span></a>
-        <a href="{{ route('dashboard.legacy') }}#analytics" class="td-tab" id="td-tab-pipeline" title="Coming in phase 4; opens the old dashboard for now">Pipeline<span class="soon">soon</span></a>
-        @if ($branches)
-            <a href="{{ route('dashboard.legacy') }}#analytics" class="td-tab" id="td-tab-branches" title="Coming in phase 5; opens the old dashboard for now">Branches<span class="soon">soon</span></a>
-        @endif
+    <nav class="td-tabs" aria-label="Dashboard sections" role="tablist">
+        <a href="#today" class="td-tab active" role="tab" data-tab="today" aria-selected="true" id="td-tab-today">Today</a>
+        @foreach ($tabs as $key => $tabLabel)
+            <a href="#{{ $key }}" class="td-tab" role="tab" data-tab="{{ $key }}" aria-selected="false" id="td-tab-{{ $key }}">{{ $tabLabel }}</a>
+        @endforeach
     </nav>
 
+    <div class="td-panel" id="td-panel-today">
     <section class="td-tiles" id="td-tiles" aria-live="polite">
         @for ($i = 0; $i < 6; $i++)<div class="td-skel"></div>@endfor
     </section>
@@ -162,6 +180,11 @@
             </div>
         </div>
     </div>
+    </div>
+
+    @foreach ($tabs as $key => $tabLabel)
+        <div class="td-panel" id="td-panel-{{ $key }}" role="tabpanel" hidden><div class="td-empty">Loading…</div></div>
+    @endforeach
 </div>
 @endsection
 

@@ -34,6 +34,7 @@ class DashboardTodayController extends Controller
             'branch'     => $this->today->branchKey(),
             'period'     => $this->today->periodKey(),
             'periods'    => DashboardAnalyticsService::PERIODS,
+            'tabs'       => $this->today->visibleTabs(),
             'scopeLabel' => DataScope::label(),
             'can'        => fn (string $p) => DataScope::can('dashboard.' . $p),
         ]);
@@ -50,6 +51,21 @@ class DashboardTodayController extends Controller
         abort_if($data === null, 404);
 
         return response()->json($data);
+    }
+
+    /** One of the other tabs (Sales & Money, Patients & Care, Pipeline, Branches), loaded when first opened. */
+    public function tab(Request $request, string $tab)
+    {
+        $data = $this->scoped($request)->tab($tab);
+        abort_if($data === null, 404);
+
+        return view('admin.dashboard.tabs.' . $tab, [
+            'w'      => $data,
+            'period' => $this->today->periodKey(),
+            'label'  => DashboardAnalyticsService::PERIODS[$this->today->periodKey()],
+            'branch' => $this->today->branchKey(),
+            'legacy' => route('dashboard.legacy'),
+        ]);
     }
 
     /** HTML blocks: My Day (always the signed-in user's own list) and the alerts strip. */

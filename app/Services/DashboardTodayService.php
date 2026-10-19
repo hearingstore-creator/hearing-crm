@@ -152,6 +152,65 @@ class DashboardTodayService extends DashboardAnalyticsService
     }
 
     // ==================================================================
+    //  Tabs (loaded on demand)
+    // ==================================================================
+
+    /** tab => [label, widget keys, cache seconds]. Widget keys are the analytics WIDGETS plus EXTRA. */
+    public const TABS = [
+        'sales'    => ['Sales & Money', ['revenue_extended', 'gross_profit', 'aov_trend', 'payment_mix', 'discount_leakage', 'receivables_aging', 'supplier_aging', 'expense_revenue', 'cash_today'], 600],
+        'care'     => ['Patients & Care', ['new_vs_returning', 'customer_rfm', 'dormant_customers', 'upgrade_due', 'binaural_opportunity', 'membership_breakdown', 'points_liability', 'service_due'], 1800],
+        'pipeline' => ['Pipeline', ['test_to_sale_funnel', 'lead_response_time', 'lost_reasons', 'source_roi', 'top_doctors', 'inactive_doctors', 'referral_trend', 'commission_due'], 600],
+        'branches' => ['Branches', ['branch_leaderboard', 'branch_stock', 'dead_stock', 'appointment_utilisation'], 600],
+    ];
+
+    /** Widgets that are not in WIDGETS: key => [permission suffix, method]. */
+    protected const EXTRA = [
+        'revenue_extended' => ['revenue_chart', 'revenueExtended'],
+        'source_roi'       => ['lead_charts', 'sourceRoi'],
+    ];
+
+    /** Permission suffix of a widget key (the same rule build() applies). */
+    protected function widgetPermission(string $key): string
+    {
+        return self::EXTRA[$key][0] ?? $key;
+    }
+
+    /** Tabs this user may open: at least one widget permission; Branches only for people who can read every branch. */
+    public function visibleTabs(): array
+    {
+        $tabs = [];
+        foreach (self::TABS as $name => [$label, $keys]) {
+            if ($name === 'branches' && !$this->branchChoices()) {
+                continue;
+            }
+            if (collect($keys)->contains(fn ($k) => DataScope::can('dashboard.' . $this->widgetPermission($k)))) {
+                $tabs[$name] = $label;
+            }
+        }
+
+        return $tabs;
+    }
+
+    /** Widget results for a tab (cached); a widget the user may not see is null, a failed one is ['error' => true]. */
+    public function tab(string $name): ?array
+    {
+        if (!isset($this->visibleTabs()[$name])) {
+            return null;
+        }
+        [, $keys, $ttl] = self::TABS[$name];
+
+        return Cache::remember($this->cacheKey('tab-' . $name), $ttl, function () use ($keys) {
+            $out = [];
+            foreach ($keys as $key) {
+                [$perm, $method] = self::EXTRA[$key] ?? [$key, self::WIDGETS[$key] ?? null];
+                $out[$key] = $method && DataScope::can('dashboard.' . $perm) ? $this->safe($key, fn () => $this->{$method}()) : null;
+            }
+
+            return $out;
+        });
+    }
+
+    // ==================================================================
     //  KPI tiles
     // ==================================================================
 

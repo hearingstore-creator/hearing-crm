@@ -108,4 +108,63 @@
             new Chart(canvas, cfg);
         }).catch(function () { box.innerHTML = '<div class="td-err">This chart could not be loaded.</div>'; });
     });
+    // ── Other tabs: each loads its HTML the first time it is opened ──
+    var charts = [];
+    var fmtNum = new Intl.NumberFormat('en-IN', {maximumFractionDigits: 1});
+    var base = ['#6366f1', '#10b981', '#f59e0b', '#0ea5e9', '#e11d48', '#8b5cf6', '#94a3b8'];
+
+    function initCharts(scope) {
+        if (typeof Chart === 'undefined') return;
+        scope.querySelectorAll('canvas.td-cv').forEach(function (canvas) {
+            if (canvas.dataset.ready) return;
+            canvas.dataset.ready = '1';
+            var d;
+            try { d = JSON.parse(canvas.dataset.cv); } catch (e) { return; }
+            var money = d.fmt === 'money';
+            var f = function (v) { return money ? fmt(v, 'money') : fmtNum.format(v); };
+            var round = d.kind === 'doughnut';
+            var sets = d.sets.map(function (s, i) {
+                var color = s.color || base[i % base.length];
+                if (round) return {label: s.label, data: s.data, backgroundColor: s.colors || base, borderWidth: 0};
+                if (d.kind === 'bar') return {label: s.label, data: s.data, backgroundColor: s.colors || color, borderRadius: 4};
+                return {label: s.label, data: s.data, borderColor: color, borderDash: s.dash ? [5, 4] : [], tension: .3, pointRadius: 0,
+                    fill: !!s.fill, backgroundColor: s.fill && /^#[0-9a-f]{6}$/i.test(color) ? color + '22' : undefined};
+            });
+            var opts = {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+                plugins: {legend: {display: round || sets.length > 1, position: round ? 'right' : 'bottom'},
+                    tooltip: {callbacks: {label: function (c) { return (c.dataset.label || c.label) + ': ' + f(round ? c.parsed : c.parsed.y); }}}}};
+            if (round) { opts.cutout = '62%'; opts.interaction = {}; }
+            else opts.scales = {y: {beginAtZero: true, ticks: {precision: 0, callback: function (v) { return f(v); }}}, x: {grid: {display: false}}};
+            charts.push(new Chart(canvas, {type: round ? 'doughnut' : d.kind, data: {labels: d.labels, datasets: sets}, options: opts}));
+        });
+    }
+
+    var loaded = {}, tabs = document.querySelectorAll('.td-tab[data-tab]');
+
+    function show(name) {
+        var known = false;
+        tabs.forEach(function (t) {
+            var on = t.dataset.tab === name;
+            known = known || on;
+            t.classList.toggle('active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        if (!known) name = 'today';
+        document.querySelectorAll('.td-panel').forEach(function (p) { p.hidden = p.id !== 'td-panel-' + name; });
+        if (name === 'today' || loaded[name]) { if (name !== 'today') initCharts(document.getElementById('td-panel-' + name)); return; }
+        loaded[name] = true;
+        var panel = document.getElementById('td-panel-' + name);
+        get(root.dataset.tab + '/' + name + query, true)
+            .then(function (html) { panel.innerHTML = html; initCharts(panel); })
+            .catch(function () { loaded[name] = false; panel.innerHTML = '<div class="td-err">This tab could not be loaded. Click it again to retry.</div>'; });
+    }
+
+    tabs.forEach(function (t) {
+        t.addEventListener('click', function (e) {
+            e.preventDefault();
+            history.replaceState(null, '', '#' + t.dataset.tab);
+            show(t.dataset.tab);
+        });
+    });
+    if (location.hash) show(location.hash.slice(1));
 })();

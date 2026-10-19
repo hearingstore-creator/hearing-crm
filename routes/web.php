@@ -53,6 +53,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('/dashboard/new', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'index'])->name('dashboard.new');
     Route::get('/dashboard/today/tiles', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'tiles'])->name('dashboard.today.tiles');
     Route::get('/dashboard/today/block/{block}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'block'])->name('dashboard.today.block');
+    Route::get('/dashboard/today/tab/{tab}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'tab'])->whereIn('tab', ['sales', 'care', 'pipeline', 'branches'])->name('dashboard.today.tab');
     Route::get('/dashboard/today/chart/{chart}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'chart'])->name('dashboard.today.chart');
     Route::get('/dashboard/audience/{segment}', [\App\Http\Controllers\Admin\DashboardAudienceController::class, 'export'])->name('dashboard.audience.export');
     Route::resource('leads', 'LeadController');
