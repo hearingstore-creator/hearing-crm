@@ -700,7 +700,7 @@
                 </div>
                 <div class="benefit-item">
                     <span class="benefit-label"><i class="fas fa-coins"></i> Point Valuation</span>
-                    <span class="benefit-value">1 pt = ৳{{ number_format($pointVal, 2) }}</span>
+                    <span class="benefit-value">1 pt = ৳{{ number_format((float) ($tier->point_value > 0 ? $tier->point_value : $pointVal), 2) }}</span>
                 </div>
                 <div class="benefit-item">
                     <span class="benefit-label"><i class="fas fa-user-friends"></i> Referral Bonus</span>
@@ -812,11 +812,12 @@
                             <table class="table table-bordered table-hover align-middle">
                                 <thead style="background: #f8fafc; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em;">
                                     <tr>
-                                        <th style="width: 22%;">Tier Name</th>
-                                        <th style="width: 20%;">Min Purchase (৳)</th>
-                                        <th style="width: 20%;">Max Purchase (৳)</th>
-                                        <th style="width: 18%;">Earn Rate (%)</th>
-                                        <th style="width: 20%;">Referral Reward (pts)</th>
+                                        <th style="width: 19%;">Tier Name</th>
+                                        <th style="width: 17%;">Lifetime Spend From (৳)</th>
+                                        <th style="width: 17%;">Up To (৳)</th>
+                                        <th style="width: 13%;">Earn Rate (%)</th>
+                                        <th style="width: 17%;">1 Point Is Worth (৳)</th>
+                                        <th style="width: 17%;">Referral Bonus (pts)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -852,6 +853,14 @@
                                                 <input type="number" step="0.01" min="0" max="100" name="tiers[{{ $tier->id }}][earn_percentage]" class="form-control text-right" value="{{ old('tiers.'.$tier->id.'.earn_percentage', $tier->earn_percentage) }}" required>
                                                 <div class="input-group-append">
                                                     <span class="input-group-text">%</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <input type="number" step="0.01" min="0.01" max="1000" name="tiers[{{ $tier->id }}][point_value]" class="form-control text-right" placeholder="{{ number_format($pointVal, 2) }}" title="Leave empty to use the loyalty setting ({{ number_format($pointVal, 2) }})" value="{{ old('tiers.'.$tier->id.'.point_value', $tier->point_value) }}">
+                                                <div class="input-group-append">
+                                                    <span class="input-group-text">৳/pt</span>
                                                 </div>
                                             </div>
                                         </td>

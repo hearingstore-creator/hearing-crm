@@ -26,6 +26,21 @@ class LoyaltySetting extends Model
     ];
 
     /**
+     * What one point is worth in taka for this customer: their tier's own point value when it has one,
+     * otherwise the loyalty setting's. Never zero, so a bad value cannot break a sale.
+     */
+    public static function pointValueFor(?\App\Models\Customer $customer): float
+    {
+        $tier = $customer?->membershipTier;
+        if ($tier && (float) $tier->point_value > 0) {
+            return (float) $tier->point_value;
+        }
+        $global = (float) static::current()->point_value;
+
+        return $global > 0 ? $global : 1.0;
+    }
+
+    /**
      * Get or create the single row of loyalty settings
      */
     public static function current(): self

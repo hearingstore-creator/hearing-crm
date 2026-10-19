@@ -15,6 +15,7 @@ class MembershipTier extends Model
         'min_purchase',
         'max_purchase',
         'earn_percentage',
+        'point_value',
         'referral_reward_points',
     ];
 
@@ -22,6 +23,7 @@ class MembershipTier extends Model
         'min_purchase' => 'decimal:2',
         'max_purchase' => 'decimal:2',
         'earn_percentage' => 'decimal:2',
+        'point_value' => 'decimal:2',
         'referral_reward_points' => 'integer',
     ];
 

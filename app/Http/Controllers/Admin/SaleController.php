@@ -280,7 +280,7 @@ class SaleController extends Controller
         return response()->json([
             'success'            => true,
             'available_points'   => $availablePoints,
-            'point_value'        => (float) $setting->point_value,
+            'point_value'        => LoyaltySetting::pointValueFor($customer),
             'min_redeem_points'  => (int) $setting->min_redeem_points,
             'max_redeem_percent' => (float) $setting->max_redeem_percent,
         ]);
@@ -340,7 +340,7 @@ class SaleController extends Controller
             $customer = Customer::find($request->customer_id);
             if ($customer) {
                 $setting = LoyaltySetting::current();
-                $pointValue = (float) $setting->point_value > 0 ? (float) $setting->point_value : 1.0;
+                $pointValue = LoyaltySetting::pointValueFor($customer);
                 $redeemPoints = (float) $request->redeem_points;
                 $invoiceGross = (float) $request->total_amount + ($redeemPoints * $pointValue);
                 $maxPoints = MembershipService::maxRedeemablePoints($customer, $invoiceGross);
@@ -876,7 +876,7 @@ class SaleController extends Controller
             $customer = Customer::find($request->customer_id);
             if ($customer) {
                 $setting = LoyaltySetting::current();
-                $pointValue = (float) $setting->point_value > 0 ? (float) $setting->point_value : 1.0;
+                $pointValue = LoyaltySetting::pointValueFor($customer);
                 $redeemPoints = (float) $request->redeem_points;
                 $invoiceGross = (float) $request->total_amount + ($redeemPoints * $pointValue);
                 $maxPoints = MembershipService::maxRedeemablePoints($customer, $invoiceGross, (int) $id);

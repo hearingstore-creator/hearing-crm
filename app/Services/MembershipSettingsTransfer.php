@@ -42,6 +42,7 @@ class MembershipSettingsTransfer
                 'min_purchase'           => (float) $t->min_purchase,
                 'max_purchase'           => $t->max_purchase === null ? null : (float) $t->max_purchase,
                 'earn_percentage'        => (float) $t->earn_percentage,
+                'point_value'            => $t->point_value === null ? null : (float) $t->point_value,
                 'referral_reward_points' => (int) $t->referral_reward_points,
             ])->all(),
             'milestones' => MembershipMilestone::orderBy('type')->orderBy('threshold')->get()->map(fn ($m) => [
@@ -79,7 +80,7 @@ class MembershipSettingsTransfer
         foreach ($data['tiers'] as $i => $t) {
             $row = $site[$i];
             $label = $row->name . ($row->name !== $t['name'] ? ' → ' . $t['name'] : '');
-            foreach (['name' => 'Name', 'min_purchase' => 'From purchase', 'max_purchase' => 'Up to purchase', 'earn_percentage' => 'Earn %', 'referral_reward_points' => 'Referral reward points'] as $key => $what) {
+            foreach (['name' => 'Name', 'min_purchase' => 'From purchase', 'max_purchase' => 'Up to purchase', 'earn_percentage' => 'Earn %', 'point_value' => '1 point is worth', 'referral_reward_points' => 'Referral reward points'] as $key => $what) {
                 $from = $row->$key;
                 if ($key === 'name' ? $from !== $t[$key] : $this->num($from) !== $this->num($t[$key])) {
                     $changes[] = ['area' => 'Tier ' . $label, 'what' => $what, 'from' => $this->num($from), 'to' => $this->num($t[$key])];
@@ -177,6 +178,7 @@ class MembershipSettingsTransfer
                 'min_purchase'           => $this->number($t['min_purchase'] ?? null, 0, 999999999, "Tier {$name} from purchase"),
                 'max_purchase'           => ($t['max_purchase'] ?? null) === null ? null : $this->number($t['max_purchase'], 0, 999999999, "Tier {$name} up to purchase"),
                 'earn_percentage'        => $this->number($t['earn_percentage'] ?? null, 0, 100, "Tier {$name} earn %"),
+                'point_value'            => ($t['point_value'] ?? null) === null ? null : $this->number($t['point_value'], 0.01, 1000, "Tier {$name} point value"),
                 'referral_reward_points' => (int) $this->number($t['referral_reward_points'] ?? null, 0, 100000000, "Tier {$name} referral points"),
             ];
         }

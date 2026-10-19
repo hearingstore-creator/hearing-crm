@@ -388,7 +388,7 @@ class MembershipService
             return 0;
         }
 
-        $pointValue = (float) $setting->point_value > 0 ? (float) $setting->point_value : 1.0;
+        $pointValue = LoyaltySetting::pointValueFor($customer);
         $maxAllowedByInvoice = (int) floor(($invoiceGross * ((float) $setting->max_redeem_percent / 100)) / $pointValue);
 
         return (int) max(0, min((int) floor($availablePoints), $maxAllowedByInvoice));

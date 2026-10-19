@@ -342,12 +342,14 @@ class MembershipController extends Controller
             'tiers.*.min_purchase'            => ['required', 'numeric', 'min:0'],
             'tiers.*.max_purchase'            => ['nullable', 'numeric'],
             'tiers.*.earn_percentage'         => ['required', 'numeric', 'min:0', 'max:100'],
+            'tiers.*.point_value'             => ['nullable', 'numeric', 'between:0.01,1000'],
             'tiers.*.referral_reward_points'  => ['required', 'integer', 'min:0'],
         ], [
             'tiers.*.earn_percentage.max'     => 'The earn percentage may not be greater than 100%.',
             'tiers.*.earn_percentage.min'     => 'The earn percentage must be at least 0%.',
             'tiers.*.referral_reward_points.min' => 'Referral points must be 0 or more.',
             'tiers.*.min_purchase.min'        => 'Minimum purchase must be 0 or more.',
+            'tiers.*.point_value.between'     => 'Point value must be between 0.01 and 1000 taka (leave it empty to use the loyalty setting).',
         ]);
 
         $submitted = array_values($request->tiers);
@@ -432,6 +434,7 @@ class MembershipController extends Controller
                     'min_purchase'           => $item['min_purchase'],
                     'max_purchase'           => ($item['max_purchase'] !== null && $item['max_purchase'] !== '') ? $item['max_purchase'] : null,
                     'earn_percentage'        => $item['earn_percentage'],
+                    'point_value'            => (isset($item['point_value']) && $item['point_value'] !== '') ? $item['point_value'] : null,
                     'referral_reward_points' => $item['referral_reward_points'],
                 ]);
             }
