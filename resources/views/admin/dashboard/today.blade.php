@@ -236,6 +236,7 @@
 .md-i.ic-deal { background:#eef2ff; color:#4f46e5; }
 .md-i.ic-appointment { background:#f5f3ff; color:#7c3aed; }
 .md-i.ic-care { background:#fffbeb; color:#d97706; }
+.md-i.ic-support { background:#ecfeff; color:#0891b2; }
 
 .md-t { flex:1; min-width:0; color:var(--page-text, #0f172a); text-decoration:none !important; }
 .md-t-row { display:flex; align-items:center; gap:8px; }

@@ -94,6 +94,32 @@
         }
     }
 
+    // My support tickets and tasks
+    foreach ($myDay['tickets'] ?? [] as $t) {
+        $state = $t->dueState();
+        $lead = $t->customer?->lead;
+        $rows->push([
+            'id' => $t->id, 'deal_id' => null, 'cat' => 'support', 'icon' => 'fas fa-ticket-alt',
+            'title' => $t->number . ' · ' . $t->subject,
+            'sub' => ($lead->full_name ?? 'Unknown patient') . ' · ' . $t->priority->value . ' · ' . $t->status->value,
+            'badge' => $state['label'], 'tone' => $state['tone'] === 'muted' ? '' : $state['tone'], 'over' => $state['state'] === 'overdue',
+            'url' => url('admin/ticket/' . $t->id), 'phone' => $lead?->phone_number, 'wa' => null,
+            'can_done' => false, 'action_type' => 'ticket', 'customer_id' => null, 'after_sales' => null,
+        ]);
+    }
+    foreach ($myDay['tasks'] ?? [] as $tk) {
+        $days = (int) today()->diffInDays($tk->due_date, false);
+        $lead = $tk->customer?->lead;
+        $rows->push([
+            'id' => $tk->id, 'deal_id' => null, 'cat' => 'support', 'icon' => 'fas fa-tasks',
+            'title' => $tk->subject,
+            'sub' => 'Task · ' . ($lead->full_name ?? 'No patient') . ' · due ' . $tk->due_date->format('d M'),
+            'badge' => $days < 0 ? 'Overdue ' . abs($days) . 'd' : ($days === 0 ? 'Due today' : 'Due tomorrow'), 'tone' => $days < 0 ? 'danger' : ($days === 0 ? 'warning' : ''), 'over' => $days < 0,
+            'url' => url('admin/task/' . $tk->id . '/edit'), 'phone' => $lead?->phone_number, 'wa' => null,
+            'can_done' => false, 'action_type' => 'task', 'customer_id' => null, 'after_sales' => null,
+        ]);
+    }
+
     $rows = $rows->sortByDesc('over')->values();
     $shown = $rows->take(16);
 
@@ -104,6 +130,7 @@
     $dealCount = $rows->where('cat', 'deal')->count();
     $apptCount = $rows->where('cat', 'appointment')->count();
     $careCount = $rows->where('cat', 'care')->count();
+    $supportCount = $rows->where('cat', 'support')->count();
 @endphp
 
 <div class="md-sum">
@@ -124,6 +151,9 @@
         @endif
         @if ($apptCount > 0)
             <button type="button" class="md-chip" data-cat="appointment"><i class="far fa-calendar-check"></i>Appointments <span class="chip-n">{{ $apptCount }}</span></button>
+        @endif
+        @if ($supportCount > 0)
+            <button type="button" class="md-chip" data-cat="support"><i class="fas fa-headset"></i>Tickets &amp; tasks <span class="chip-n">{{ $supportCount }}</span></button>
         @endif
         @if ($careCount > 0)
             <button type="button" class="md-chip" data-cat="care"><i class="fas fa-heart"></i>Care & Service <span class="chip-n">{{ $careCount }}</span></button>

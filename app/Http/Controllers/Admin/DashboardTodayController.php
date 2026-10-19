@@ -96,8 +96,40 @@ class DashboardTodayController extends Controller
         $statistics = ['daily_lookout' => app(DashboardService::class)->dailyLookout()];
         $analytics = app(DashboardAnalyticsService::class)->pick(['service_due', 'birthdays']);
         $myDay = app(HomeController::class)->myDay($statistics, $analytics);
+        $myDay = $this->withSupportWork($myDay, $request->user());
 
         return view('admin.dashboard.partials.my-day', ['myDay' => $myDay]);
+    }
+
+    /**
+     * My work also holds the support tickets and tasks that are mine, so one list says what needs me today:
+     * open tickets (most urgent first) and tasks due tomorrow or earlier. Each shows only with its menu permission.
+     */
+    protected function withSupportWork(array $myDay, $user): array
+    {
+        $tickets = collect();
+        $tasks = collect();
+
+        if ($user->hasAccess('ticket_list.index')) {
+            $tickets = \App\Models\Ticket::with('customer.lead')->where('assigned_to', $user->id)->whereNotIn('status', ['Solved', 'Closed'])
+                ->orderByRaw("CASE WHEN status IN ('Pending','On Hold') THEN 1 ELSE 0 END")
+                ->orderByRaw(\App\Models\Ticket::dueSql())
+                ->limit(15)->get();
+        }
+        if ($user->hasAccess('task_list.index')) {
+            $tasks = \App\Models\Task::with('customer.lead')->where('assigned_to', $user->id)->whereNotIn('status', ['completed', 'cancelled'])
+                ->whereNotNull('due_date')->whereDate('due_date', '<=', today()->addDay())
+                ->orderBy('due_date')->limit(10)->get();
+        }
+
+        $myDay['tickets'] = $tickets;
+        $myDay['tasks'] = $tasks;
+        $myDay['totalPersonal'] = ($myDay['totalPersonal'] ?? 0) + $tickets->count() + $tasks->count();
+        $myDay['overdue'] = ($myDay['overdue'] ?? 0)
+            + $tickets->filter(fn ($t) => $t->dueState()['state'] === 'overdue')->count()
+            + $tasks->filter(fn ($t) => $t->isOverdue())->count();
+
+        return $myDay;
     }
 
     protected function scoped(Request $request): DashboardTodayService

@@ -17,6 +17,9 @@ class Ticket extends Model
         'description',
         'vendor_id',
         'customer_id',
+        'sale_master_id',
+        'serial_no',
+        'repair_job_id',
         'assigned_to',
         'status',
         'priority',
@@ -89,6 +92,49 @@ class Ticket extends Model
     public function assignedTo()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function repairJob()
+    {
+        return $this->belongsTo(RepairJob::class, 'repair_job_id');
+    }
+
+    /**
+     * The invoice and device this ticket is about (optional): invoice number, product, serial, sale date and the
+     * customer warranty (valid / ended / none) worked out from the sale date, as everywhere else in the CRM.
+     */
+    public function linkedDevice(): ?array
+    {
+        if (!$this->sale_master_id) {
+            return null;
+        }
+
+        return \App\Classes\Helper::readAllBranches(function () {
+            $sale = SaleMaster::find($this->sale_master_id);
+            if (!$sale) {
+                return null;
+            }
+
+            $lines = SaleDetail::with('product.brand:id,brand_name')->where('sale_master_id', $sale->id)->get();
+            $line = $this->serial_no
+                ? $lines->first(fn ($l) => in_array(mb_strtoupper($this->serial_no), array_map('mb_strtoupper', \App\Services\StockGuard::serialList($l->serial_no)), true))
+                : null;
+            $line ??= $lines->first();
+
+            $product = $line?->product;
+            $sold = $sale->date ? $sale->date->copy()->startOfDay() : null;
+            $until = ($sold && $product?->warranty_sales_months) ? $sold->copy()->addMonths($product->warranty_sales_months) : null;
+
+            return [
+                'sale_id'        => $sale->id,
+                'invoice'        => $sale->sale_invoice_no,
+                'sold_on'        => $sold,
+                'product'        => trim(($product?->brand->brand_name ?? '') . ' ' . ($product->model ?? '')) ?: null,
+                'serial'         => $this->serial_no,
+                'warranty_until' => $until,
+                'warranty'       => !$until ? 'none' : ($until->isFuture() || $until->isToday() ? 'valid' : 'ended'),
+            ];
+        });
     }
 
     public function notes()

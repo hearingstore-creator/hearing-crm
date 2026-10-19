@@ -555,6 +555,15 @@ class RepairController extends Controller
                 $this->sendIntakeSms($job);
             }
 
+            // Opened from a support ticket: link the ticket to the job and say so in its timeline
+            if ($ticketId = (int) $request->input('ticket_id')) {
+                $ticket = \App\Models\Ticket::withoutGlobalScopes()->find($ticketId);
+                if ($ticket && !$ticket->repair_job_id) {
+                    $ticket->update(['repair_job_id' => $job->id]);
+                    $ticket->addNote('system', 'Repair job ' . $job->job_no . ' opened for this ticket');
+                }
+            }
+
             DB::commit();
 
             if ($request->boolean('print_after_save')) {
@@ -591,7 +600,11 @@ class RepairController extends Controller
         $suppliers = Supplier::orderBy('supplier_name')->get();
         $products = Product::with('brand')->take(100)->get();
 
-        return view('admin.repairs.show', compact('job', 'suppliers', 'products'));
+        // Support ticket this job was opened from (if any)
+        $linkedTicket = \App\Models\Ticket::withoutGlobalScopes()->where('repair_job_id', $job->id)->first();
+        $canSeeTicket = auth()->user()->hasAccess('ticket_list.index');
+
+        return view('admin.repairs.show', compact('job', 'suppliers', 'products', 'linkedTicket', 'canSeeTicket'));
     }
 
     /**

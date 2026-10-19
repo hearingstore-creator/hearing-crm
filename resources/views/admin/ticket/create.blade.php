@@ -61,6 +61,17 @@
                                         </div>
 
                                         <div class="form-group row">
+                                            <label for="device" class="col-sm-3 col-form-label">Invoice or device:</label>
+                                            <div class="col-sm-6">
+                                                <select class="form-control" name="device" id="device">
+                                                    <option value="">None</option>
+                                                    @if ($selectedDevice)<option value="{{ $selectedDevice['value'] }}" selected>{{ $selectedDevice['text'] }}</option>@endif
+                                                </select>
+                                                <small class="form-text text-muted">Optional. Pick what the patient bought, to link the invoice, serial and warranty.</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group row">
                                             <label for="assigned_to" class="col-sm-3 col-form-label">Assigned To:</label>
                                             <div class="col-sm-6">
                                                 <select class="form-control select" name="assigned_to">
@@ -126,6 +137,18 @@
     <script>
         $(document).ready(function() {
             $('.select').select2();
+            var devicesUrl = @json(route('ticket.devices'));
+            function loadDevices(customerId, keep) {
+                var $d = $('#device'), chosen = keep ? $d.val() : '';
+                $d.html('<option value="">None</option>');
+                if (!customerId) { return; }
+                $.getJSON(devicesUrl, {customer_id: customerId}).done(function (list) {
+                    list.forEach(function (o) { $d.append($('<option>').val(o.value).text(o.text)); });
+                    $d.val(chosen || '');
+                });
+            }
+            $('.patient-search').on('select2:select', function (e) { loadDevices(e.params.data.id, false); });
+            if ($('.patient-search').val()) { loadDevices($('.patient-search').val(), true); }
             $('.patient-search').select2({
                 width: '100%', placeholder: 'Search patient', minimumInputLength: 2,
                 ajax: {url: @json(route('ticket.patients')), dataType: 'json', delay: 300, data: function (p) { return {search: p.term}; }, processResults: function (r) { return {results: r}; }}

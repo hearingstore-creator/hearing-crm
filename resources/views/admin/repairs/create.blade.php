@@ -155,6 +155,7 @@
 
         {{-- Hidden State Fields populated by Warranty Verification --}}
         <input type="hidden" name="customer_id" id="hiddenCustomerId">
+        @if (request('ticket_id'))<input type="hidden" name="ticket_id" value="{{ (int) request('ticket_id') }}">@endif
         <input type="hidden" name="sale_master_id" id="hiddenSaleMasterId">
         <input type="hidden" name="sale_detail_id" id="hiddenSaleDetailId">
         <input type="hidden" name="product_id" id="hiddenProductId">

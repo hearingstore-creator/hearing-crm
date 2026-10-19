@@ -126,6 +126,28 @@
                 @endcan
             </div>
 
+            @if ($device || $repair || $canOpenRepair)
+            <div class="tk-card" id="linked-card">
+                <h3>Linked</h3>
+                @if ($device)
+                    <div class="tk-row"><span>Invoice</span><span>@can('permission', 'sale_list.view')<a href="{{ url('admin/sale/' . $device['sale_id']) }}" id="link-invoice">{{ $device['invoice'] }}</a>@else{{ $device['invoice'] }}@endcan{{ $device['sold_on'] ? ' · ' . $device['sold_on']->format('d M Y') : '' }}</span></div>
+                    @if ($device['product'])<div class="tk-row"><span>Device</span><span>{{ $device['product'] }}</span></div>@endif
+                    @if ($device['serial'])<div class="tk-row"><span>Serial</span><span>{{ $device['serial'] }}</span></div>@endif
+                    <div class="tk-row"><span>Warranty</span><span>
+                        @if ($device['warranty'] === 'valid')<b style="color:#059669">Valid to {{ $device['warranty_until']->format('d M Y') }}</b>
+                        @elseif ($device['warranty'] === 'ended')<b style="color:#be123c">Ended {{ $device['warranty_until']->format('d M Y') }}</b>
+                        @else No warranty on this product @endif
+                    </span></div>
+                @endif
+                @if ($repair)
+                    <div class="tk-row"><span>Repair job</span><span>@if ($canSeeRepair)<a href="{{ url('admin/repairs/' . $repair->id) }}" id="link-repair">{{ $repair->job_no }}</a>@else{{ $repair->job_no }}@endif · {{ ucwords(str_replace('_', ' ', $repair->current_status)) }}</span></div>
+                @endif
+                @if ($canOpenRepair)
+                    <a href="{{ url('admin/repairs/create') . '?' . http_build_query(array_filter(['customer_id' => $ticket->customer_id, 'serial' => $ticket->serial_no, 'ticket_id' => $ticket->id])) }}" class="btn btn-secondary btn-sm" style="margin-top:10px;" id="btn-open-repair"><i class="fas fa-tools mr-1"></i>Open repair job</a>
+                @endif
+            </div>
+            @endif
+
             <div class="tk-card">
                 <h3>Details</h3>
                 <div class="tk-row"><span>Patient</span><span>

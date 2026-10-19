@@ -9,6 +9,9 @@ use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\SaleDetail;
+use App\Models\SaleMaster;
+use App\Services\StockGuard;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -33,7 +36,7 @@ class TicketController extends Controller
         $this->middleware('permission:add_ticket.create')->only(['create', 'store']);
         $this->middleware('permission:ticket_list.edit')->only(['edit', 'update', 'updateStatus', 'assign', 'addNote']);
         $this->middleware('permission:ticket_list.delete')->only(['destroy']);
-        $this->middleware('permission:add_ticket.create|ticket_list.edit')->only(['patientSearch']);
+        $this->middleware('permission:add_ticket.create|ticket_list.edit')->only(['patientSearch', 'devices']);
     }
 
     /**
@@ -57,6 +60,101 @@ class TicketController extends Controller
         $c = Helper::readAllBranches(fn () => Customer::with('lead:id,full_name,phone_number')->find($customerId));
 
         return $c ? ['id' => $c->id, 'text' => ($c->lead->full_name ?? 'Unknown') . ($c->lead?->phone_number ? ' (' . $c->lead->phone_number . ')' : '')] : null;
+    }
+
+    /** Value of the device picker: sale id and serial, e.g. "57|SN-4821". */
+    private function deviceValue($saleId, ?string $serial): string
+    {
+        return $saleId . '|' . ($serial ?? '');
+    }
+
+    /**
+     * The invoice lines a patient has bought, one entry per serial (or per line without serials), newest first.
+     * Used by the device picker on the ticket forms. [['value' => '57|SN-1', 'text' => 'INV-… · Brand Model · SN-1 · warranty …']]
+     */
+    private function devicesFor(int $customerId): array
+    {
+        return Helper::readAllBranches(function () use ($customerId) {
+            $sales = SaleMaster::where('customer_id', $customerId)->orderByDesc('date')->orderByDesc('id')->limit(30)->get()->keyBy('id');
+            if ($sales->isEmpty()) {
+                return [];
+            }
+
+            $out = [];
+            foreach (SaleDetail::with('product.brand:id,brand_name')->whereIn('sale_master_id', $sales->keys())->orderBy('id')->get() as $line) {
+                $sale = $sales[$line->sale_master_id];
+                $product = $line->product;
+                $name = trim(($product?->brand->brand_name ?? '') . ' ' . ($product->model ?? 'Item'));
+                $sold = $sale->date ? $sale->date->copy()->startOfDay() : null;
+                $until = ($sold && $product?->warranty_sales_months) ? $sold->copy()->addMonths($product->warranty_sales_months) : null;
+                $warranty = !$until ? 'no warranty' : (($until->isFuture() || $until->isToday()) ? 'warranty to ' : 'warranty ended ') . $until->format('d M Y');
+
+                foreach (StockGuard::serialList($line->serial_no) ?: [null] as $serial) {
+                    $out[] = [
+                        'sort'  => ($sale->date?->timestamp ?? 0) . str_pad((string) $sale->id, 10, '0', STR_PAD_LEFT),
+                        'value' => $this->deviceValue($sale->id, $serial),
+                        'text'  => $sale->sale_invoice_no . ' · ' . $name . ($serial ? ' · ' . $serial : '') . ' · ' . $warranty,
+                    ];
+                }
+            }
+
+            usort($out, fn ($a, $b) => strcmp($b['sort'], $a['sort']));
+
+            return array_map(fn ($o) => ['value' => $o['value'], 'text' => $o['text']], $out);
+        });
+    }
+
+    /**
+     * Read the device picker: [sale_master_id, serial_no] for the patient's own invoice (and a serial on it), or nulls when none is chosen.
+     *
+     * @throws ValidationException
+     */
+    private function deviceFields(Request $request, int $customerId): array
+    {
+        $raw = trim((string) $request->input('device', ''));
+        if ($raw === '') {
+            return ['sale_master_id' => null, 'serial_no' => null];
+        }
+
+        [$saleId, $serial] = array_pad(explode('|', $raw, 2), 2, '');
+        $serial = trim($serial) !== '' ? trim($serial) : null;
+        $valid = Helper::readAllBranches(function () use ($saleId, $serial, $customerId) {
+            $sale = SaleMaster::where('id', (int) $saleId)->where('customer_id', $customerId)->first();
+            if (!$sale) {
+                return false;
+            }
+            if (!$serial) {
+                return true;
+            }
+
+            return SaleDetail::where('sale_master_id', $sale->id)->get()->contains(
+                fn ($l) => in_array(mb_strtoupper($serial), array_map('mb_strtoupper', StockGuard::serialList($l->serial_no)), true)
+            );
+        });
+        if (!$valid) {
+            throw ValidationException::withMessages(['device' => 'That invoice or device does not belong to this patient.']);
+        }
+
+        return ['sale_master_id' => (int) $saleId, 'serial_no' => $serial];
+    }
+
+    /** The option shown for a device that is already chosen: [value, text] or null. */
+    private function deviceOption(?int $customerId, $saleId, ?string $serial): ?array
+    {
+        if (!$customerId || !$saleId) {
+            return null;
+        }
+        $value = $this->deviceValue($saleId, $serial ?: null);
+
+        return collect($this->devicesFor($customerId))->firstWhere('value', $value);
+    }
+
+    /** Devices the patient has bought, for the picker on the ticket forms. */
+    public function devices(Request $request): JsonResponse
+    {
+        $customerId = (int) $request->input('customer_id');
+
+        return response()->json($customerId ? $this->devicesFor($customerId) : []);
     }
 
     /**
@@ -228,8 +326,14 @@ class TicketController extends Controller
         // Same reach as the list: head office users who may view all branches can open any branch's ticket
         $ticket = Helper::readAllBranches(fn () => Ticket::with(['customer.lead', 'assignedTo', 'notes.user'])->findOrFail($id));
 
+        $user = auth()->user();
+
         return view('admin.ticket.show', [
             'ticket'     => $ticket,
+            'device'     => $ticket->linkedDevice(),
+            'repair'     => $ticket->repair_job_id ? Helper::readAllBranches(fn () => \App\Models\RepairJob::find($ticket->repair_job_id)) : null,
+            'canOpenRepair' => $ticket->isOpen() && !$ticket->repair_job_id && $user->hasAccess('new_repair_intake.create'),
+            'canSeeRepair'  => $user->hasAccess('repair_jobs_board.view') || $user->hasAccess('repair_jobs_board.index'),
             'users'      => $this->assignableUsers(),
             'statuses'   => TicketStatus::cases(),
             'priorities' => TicketPriority::cases(),
@@ -245,6 +349,7 @@ class TicketController extends Controller
     {
         // The patient is chosen with a search box; one may arrive preselected (?customer_id=)
         $data['selectedCustomer'] = $this->patientOption(old('customer_id', request('customer_id')));
+        $data['selectedDevice'] = $this->deviceOption((int) old('customer_id', request('customer_id')), old('device') ? (int) explode('|', old('device'))[0] : request('sale_master_id'), old('device') ? (explode('|', old('device'))[1] ?? null) : request('serial'));
         $data['users'] = $this->assignableUsers();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
@@ -272,7 +377,7 @@ class TicketController extends Controller
         ]);
         $this->assertAssignable($request->assigned_to);
 
-        $ticket = new Ticket($request->only(self::FORM_FIELDS));
+        $ticket = new Ticket($request->only(self::FORM_FIELDS) + $this->deviceFields($request, (int) $request->customer_id));
 
         if ($ticket->save()) {
             // "Service Ticket Created" SMS (text managed in SMS Center → Automation)
@@ -304,6 +409,7 @@ class TicketController extends Controller
     {
         $data['ticket'] = Ticket::findOrFail($id);
         $data['selectedCustomer'] = $this->patientOption(old('customer_id', $data['ticket']->customer_id));
+        $data['selectedDevice'] = $this->deviceOption((int) $data['ticket']->customer_id, $data['ticket']->sale_master_id, $data['ticket']->serial_no);
         $data['users'] = $this->assignableUsers();
         $data['statuses'] = TicketStatus::cases();
         $data['priorities'] = TicketPriority::cases();
@@ -334,6 +440,10 @@ class TicketController extends Controller
         $ticket = Ticket::findOrFail($id);
         $this->assertAssignable($request->assigned_to, $ticket->assigned_to);
         $ticket->fill($request->only(self::FORM_FIELDS));
+        if ($request->has('device') || (int) $request->customer_id !== (int) $ticket->customer_id) {
+            // A different patient clears a link that belonged to the old one
+            $ticket->fill($this->deviceFields($request, (int) $request->customer_id));
+        }
 
         // The resolved time follows the status (see Ticket::booted); every change is added to the timeline
         if ($ticket->save()) {

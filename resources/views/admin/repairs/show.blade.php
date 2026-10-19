@@ -106,6 +106,9 @@
                 <h1 class="mr-3 mb-0">
                     <i class="fas fa-tools text-primary mr-2"></i>Job Card: {{ $job->job_no }}
                 </h1>
+                @if ($linkedTicket)
+                    <span class="mr-3" style="font-size:13px;"><i class="fas fa-ticket-alt mr-1"></i>Support ticket @if ($canSeeTicket)<a href="{{ url('admin/ticket/' . $linkedTicket->id) }}" id="link-ticket">{{ $linkedTicket->number }}</a>@else{{ $linkedTicket->number }}@endif</span>
+                @endif
                 @php
                     $wStatus = $job->warranty_status;
                     $badgeColor = match($wStatus) {
