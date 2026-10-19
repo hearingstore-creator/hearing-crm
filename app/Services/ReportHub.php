@@ -49,6 +49,7 @@ class ReportHub
         ]],
         'Accounts' => ['fa-balance-scale', [
             'admin/report/ledger'         => 'Income, expense and cash movements',
+            'admin/report/profit-statement' => 'Income, cost, referral, expenses and net profit per branch',
             'admin/report/vendor-monthly' => 'Month-by-month results per branch',
         ]],
         'Operations' => ['fa-tools', [

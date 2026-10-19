@@ -27,7 +27,7 @@ return [
         'Accounts'     => ['accounts', 'ledger', 'income_expense_head', 'expense'],
         'Membership'   => ['membership', 'membership_tiers', 'milestones', 'loyalty_settings', 'reward_wallets', 'reward_ledger', 'referrals', 'tier_upgrades'],
         'SMS'          => ['sms_centre', 'compose_&_send', 'templates', 'send_log', 'analytics', 'sms_automation'],
-        'Reports'      => ['report', 'reports_hub', 'stock', 'purchase_&_stock', 'purchase_report', 'vendor_monthly_report', 'warranty_expiry', 'battery_usage_expiry', 'sales_performance', 'membership_&_loyalty', 'lead_funnel', 'advances_report', 'services_status_report'],
+        'Reports'      => ['report', 'reports_hub', 'profit_statement', 'stock', 'purchase_&_stock', 'purchase_report', 'vendor_monthly_report', 'warranty_expiry', 'battery_usage_expiry', 'sales_performance', 'membership_&_loyalty', 'lead_funnel', 'advances_report', 'services_status_report'],
         'Branches'     => ['vendor', 'add_vendor', 'vendor_list'],
         'Administration' => ['utilities', 'settings_hub', 'setting', 'roles', 'users', 'activity_log', 'database_backup'],
     ],

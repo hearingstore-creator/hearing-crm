@@ -391,6 +391,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     // Business reports (statement style)
     Route::get('report/supplier-statement', [\App\Http\Controllers\Admin\BusinessReportController::class, 'supplierStatement'])->name('report.supplier-statement');
     Route::get('report/purchase-summary', [\App\Http\Controllers\Admin\BusinessReportController::class, 'purchaseReport'])->name('report.purchase-summary');
+    Route::get('report/profit-statement', [\App\Http\Controllers\Admin\ProfitStatementController::class, 'index'])->name('report.profit-statement');
     Route::get('report/vendor-monthly', [\App\Http\Controllers\Admin\BusinessReportController::class, 'vendorMonthly'])->name('report.vendor-monthly');
     Route::get('report/advances', [\App\Http\Controllers\Admin\ReportController::class, 'advancesReport'])->name('report.advances');
     Route::get('report/services-status', [\App\Http\Controllers\Admin\ReportController::class, 'servicesStatusReport'])->name('report.services-status');

@@ -674,6 +674,12 @@ return [
                     'actions' => ['index']
                 ],
                 [
+                    'name' => 'Profit Statement',
+                    'label' => 'Profit Statement',
+                    'route' => 'admin/report/profit-statement',
+                    'actions' => ['index']
+                ],
+                [
                     'name' => 'Stock',
                     'label' => 'Stock Report',
                     'route' => 'admin/report/stock',
