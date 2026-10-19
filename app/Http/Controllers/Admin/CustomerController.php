@@ -198,7 +198,18 @@ class CustomerController extends Controller
             'address'       => ['nullable', 'string', 'max:1000'],
             'gender'        => ['nullable', 'in:male,female,other'],
             'membership_id' => ['nullable', 'string', 'unique:customers,membership_id'],
+            'referred_by'   => ['nullable', 'string', 'max:100'],
         ]);
+
+        $referrer = null;
+        if ($request->filled('referred_by')) {
+            $referrer = app(\App\Services\MembershipService::class)->findReferrer($request->referred_by);
+            if (!$referrer) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'referred_by' => 'No member found with that referral code or phone number.',
+                ]);
+            }
+        }
 
         $normalized = Helper::normalizePhone($request->phone_number);
         $existingLead = null;
@@ -259,6 +270,9 @@ class CustomerController extends Controller
                     if (!$lead->vendor_id && auth()->user()->branchId()) {
                         $lead->vendor_id = auth()->user()->branchId();
                     }
+                    if ($referrer && !$lead->referrer_customer_id) {
+                        $lead->referrer_customer_id = $referrer->id;
+                    }
                     $lead->save();
                 } else {
                     $lead = new Lead();
@@ -275,6 +289,7 @@ class CustomerController extends Controller
                     $lead->address = $request->address;
                     $lead->vendor_id = auth()->user()->branchId() ?: null;
                     $lead->created_by = auth()->id();
+                    $lead->referrer_customer_id = $referrer?->id;
                     $lead->save();
                 }
 

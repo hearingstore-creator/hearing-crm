@@ -437,6 +437,13 @@ return [
                     'route' => 'admin/time-slots',
                     'actions' => ['index', 'create', 'edit', 'delete']
                 ],
+                [
+                    'name' => 'Sound Booths',
+                    'label' => 'Sound Booths',
+                    'route' => 'admin/sound-booths',
+                    'icon' => 'fa-door-closed',
+                    'actions' => ['index', 'create', 'edit', 'delete']
+                ],
             ]
         ],
         [

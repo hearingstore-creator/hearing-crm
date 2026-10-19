@@ -161,6 +161,58 @@ class MembershipService
         }
     }
 
+    /** Find the member a "referred by" entry points to: their referral code or phone number. */
+    public function findReferrer(?string $input): ?Customer
+    {
+        $input = trim((string) $input);
+        if ($input === '') {
+            return null;
+        }
+
+        $byCode = Customer::withoutGlobalScopes()->whereRaw('LOWER(referral_code) = ?', [mb_strtolower($input)])->first();
+        if ($byCode) {
+            return $byCode;
+        }
+
+        $phone = \App\Classes\Helper::normalizePhone($input);
+        if (!$phone) {
+            return null;
+        }
+        $leadId = \App\Models\Lead::withoutGlobalScopes()
+            ->where(fn ($q) => $q->where('normalized_phone', $phone)->orWhere('phone_number', $input))
+            ->whereIn('id', Customer::withoutGlobalScopes()->select('lead_id'))
+            ->value('id');
+
+        return $leadId ? Customer::withoutGlobalScopes()->where('lead_id', $leadId)->first() : null;
+    }
+
+    /** Pending referral for a new customer; ignores self-referral and customers already referred. */
+    public function recordReferral(Customer $customer, Customer $referrer, ?string $codeUsed = null): ?Referral
+    {
+        if ($referrer->id === $customer->id
+            || Referral::withTrashed()->where('referred_customer_id', $customer->id)->exists()) {
+            return null;
+        }
+
+        $referral = Referral::create([
+            'referrer_id'          => $referrer->id,
+            'referred_customer_id' => $customer->id,
+            'referral_code_used'   => $codeUsed ?: $referrer->referral_code,
+            'status'               => ReferralStatus::PENDING->value,
+        ]);
+        Customer::withoutGlobalScopes()->whereKey($customer->id)->update(['referred_by_customer_id' => $referrer->id]);
+
+        return $referral;
+    }
+
+    public function recordReferralFromLead(Customer $customer): ?Referral
+    {
+        $referrerId = \App\Models\Lead::withoutGlobalScopes()->whereKey($customer->lead_id)->value('referrer_customer_id');
+        $referrer = $referrerId ? Customer::withoutGlobalScopes()->find($referrerId) : null;
+
+        return $referrer ? $this->recordReferral($customer, $referrer) : null;
+    }
+
     /**
      * Process referral reward if customer was referred
      *

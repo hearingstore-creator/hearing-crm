@@ -65,6 +65,11 @@ class DoctorController extends Controller
             $query->where('status', request('status'));
         }
 
+        // Filter by referrer_type
+        if (request()->filled('referrer_type')) {
+            $query->where('referrer_type', request('referrer_type'));
+        }
+
         // Filter by date range
         if (request()->filled('start_date')) {
             $query->whereDate('created_at', '>=', request('start_date'));
@@ -137,6 +142,7 @@ class DoctorController extends Controller
             'product_commission_amount'  => 'nullable|numeric|min:0',
             'service_commission_percent' => 'nullable|numeric|min:0|max:100',
             'service_commission_amount'  => 'nullable|numeric|min:0',
+            'referrer_type'              => 'nullable|string|in:doctor,quack,agent',
             'status'                     => 'nullable|boolean',
 
             // Chambers validation
@@ -164,6 +170,7 @@ class DoctorController extends Controller
         try {
             $doctorData = $request->only([
                 'name',
+                'referrer_type',
                 'contact_number',
                 'email',
                 'qualification',
@@ -172,6 +179,7 @@ class DoctorController extends Controller
                 'service_commission_percent',
                 'service_commission_amount',
             ]);
+            $doctorData['referrer_type'] = $request->input('referrer_type') ?: Doctor::TYPE_DOCTOR;
 
             if (auth()->user()->branchId()) {
                 $doctorData['vendor_id'] = auth()->user()->branchId();
@@ -292,6 +300,7 @@ class DoctorController extends Controller
             'product_commission_amount'  => 'nullable|numeric|min:0',
             'service_commission_percent' => 'nullable|numeric|min:0|max:100',
             'service_commission_amount'  => 'nullable|numeric|min:0',
+            'referrer_type'              => 'nullable|string|in:doctor,quack,agent',
             'status'                     => 'nullable|boolean',
 
             // Chambers validation
@@ -321,6 +330,7 @@ class DoctorController extends Controller
         try {
             $doctorData = $request->only([
                 'name',
+                'referrer_type',
                 'contact_number',
                 'email',
                 'qualification',
@@ -329,6 +339,9 @@ class DoctorController extends Controller
                 'service_commission_percent',
                 'service_commission_amount',
             ]);
+            if ($request->filled('referrer_type')) {
+                $doctorData['referrer_type'] = $request->input('referrer_type');
+            }
 
             if (auth()->user()->branchId()) {
                 $doctorData['vendor_id'] = auth()->user()->branchId();

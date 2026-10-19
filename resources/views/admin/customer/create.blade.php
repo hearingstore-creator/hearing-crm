@@ -97,6 +97,14 @@
                             <label for="membership_id" class="crm-form-label">Membership ID</label>
                             <input type="text" class="form-control" id="membership_id" placeholder="Enter membership ID" name="membership_id" autocomplete="off">
                         </div>
+
+                        <div class="form-group">
+                            <label for="referred_by" class="crm-form-label">Referred by (member code or phone)</label>
+                            <input type="text" class="form-control @error('referred_by') is-invalid @enderror" id="referred_by" placeholder="Optional" name="referred_by" autocomplete="off" value="{{ old('referred_by') }}">
+                            @error('referred_by')
+                                <span class="invalid-feedback d-block">{{ $message }}</span>
+                            @enderror
+                        </div>
                     </div>
                 </div>
 

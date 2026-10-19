@@ -23,7 +23,7 @@ class DoctorPaymentController extends Controller
     public function __construct()
     {
         $this->middleware('permission:doctor_payment.index')->only(['index', 'slip']);
-        $this->middleware('permission:doctor_payment.create')->only(['create', 'store', 'getDoctorDue', 'getPeriodUnsettled']);
+        $this->middleware('permission:doctor_payment.create')->only(['create', 'store', 'getDoctorDue', 'getPeriodUnsettled', 'settleReferral']);
         $this->middleware('permission:doctor_payment.edit')->only(['edit', 'update']);
         $this->middleware('permission:doctor_payment.delete')->only(['destroy']);
     }
@@ -35,6 +35,12 @@ class DoctorPaymentController extends Controller
     {
         $query = DoctorLedger::with(['doctor'])
             ->where('type', 'Payment');
+
+        if ($request->filled('referrer_type')) {
+            $query->whereHas('doctor', function ($q) use ($request) {
+                $q->where('referrer_type', $request->referrer_type);
+            });
+        }
 
         if ($request->filled('doctor_id')) {
             $query->where('doctor_id', $request->doctor_id);
@@ -74,7 +80,18 @@ class DoctorPaymentController extends Controller
             }
         }
 
-        $doctors = Doctor::where('status', 1)->orderBy('name')->get(['id', 'name', 'qualification']);
+        $doctors = Doctor::where('status', 1)->orderBy('name')->get(['id', 'name', 'qualification', 'referrer_type']);
+
+        // Pending Referral Negotiations / Settlements
+        $pendingQuery = SaleMaster::with(['doctor', 'customer', 'customer.lead', 'vendor', 'saleDetails.product'])
+            ->pendingReferralSettlement();
+
+        if ($request->filled('pending_doctor_id')) {
+            $pendingQuery->where('reference_by', $request->pending_doctor_id);
+        }
+
+        $pendingSales = $pendingQuery->latest('date')->latest('id')->get();
+        $pendingCount = $pendingSales->count();
 
         return view('admin.doctor_payment.index', compact(
             'payments',
@@ -82,7 +99,9 @@ class DoctorPaymentController extends Controller
             'monthPaid',
             'totalPaid',
             'totalPayable',
-            'doctorsWithDue'
+            'doctorsWithDue',
+            'pendingSales',
+            'pendingCount'
         ));
     }
 
@@ -395,6 +414,130 @@ class DoctorPaymentController extends Controller
             DB::rollback();
             \Illuminate\Support\Facades\Log::error("Doctor payment cancel failed for #{$id}: " . $e->getMessage());
             return redirect()->back()->with('warning', 'The payment could not be cancelled. Nothing was changed.');
+        }
+    }
+
+    /**
+     * Settle a pending referral on a sale (negotiated amount, pay cash now or add to due).
+     */
+    public function settleReferral(Request $request, int $saleId)
+    {
+        $request->validate([
+            'reference_amount' => ['required', 'numeric', 'min:0.01'],
+            'action'           => ['required', 'in:pay_now,add_to_due'],
+            'payment_method'   => ['required_if:action,pay_now', 'nullable', 'string', 'max:50'],
+            'bank_name'        => ['nullable', 'string', 'max:100'],
+            'transaction_no'   => ['nullable', 'string', 'max:100'],
+            'details'          => ['nullable', 'string', 'max:500'],
+            'date'             => ['nullable', 'date'],
+        ]);
+
+        $sale = SaleMaster::with('doctor')->findOrFail($saleId);
+        if (!$sale->reference_by) {
+            return back()->with('warning', 'This sale does not have a referrer tagged.');
+        }
+
+        $doctor = $sale->doctor;
+        $amount = round((float) $request->reference_amount, 2);
+        $date = $request->date ?: now()->toDateString();
+
+        DB::beginTransaction();
+        try {
+            // 1. Update SaleMaster
+            $sale->reference_amount = $amount;
+            $sale->referral_settlement_status = 'settled';
+            $sale->save();
+
+            // 2. Remove any previous non-payment doctor ledger credit for this invoice (if re-settling)
+            DoctorLedger::where('ref_invoice_no', $sale->sale_invoice_no)
+                ->where('type', '!=', 'Payment')
+                ->delete();
+
+            // 3. Post Credit to Doctor Ledger (Clinic owes Referrer)
+            $doctorLedgerCredit = new DoctorLedger();
+            $doctorLedgerCredit->doctor_id = $sale->reference_by;
+            $doctorLedgerCredit->vendor_id = $sale->vendor_id ?? auth()->user()->branchId();
+            $doctorLedgerCredit->date = $date;
+            $doctorLedgerCredit->details = "Sale invoice no - {$sale->sale_invoice_no}" . ($request->filled('details') ? ' (' . trim($request->details) . ')' : '');
+            $doctorLedgerCredit->debit = 0;
+            $doctorLedgerCredit->credit = $amount;
+            $doctorLedgerCredit->type = Helper::$sales; // 'Sales'
+            $doctorLedgerCredit->ref_invoice_no = $sale->sale_invoice_no;
+            $doctorLedgerCredit->save();
+
+            $voucherId = null;
+
+            // 4. If Pay Cash Now, immediately disburse payment and record in company accounts
+            if ($request->action === 'pay_now') {
+                $voucherNo = 'DP-' . date('Ymd') . '-' . str_pad((string) (DoctorLedger::where('type', 'Payment')->count() + 1), 4, '0', STR_PAD_LEFT);
+                $docName = $doctor ? $doctor->name : 'Referrer';
+                $payDetails = "Negotiated referral for {$sale->sale_invoice_no} to {$docName} [{$request->payment_method}]" . ($request->transaction_no ? " (Ref: {$request->transaction_no})" : "") . " · Voucher #{$voucherNo}";
+
+                $doctorLedgerDebit = new DoctorLedger();
+                $doctorLedgerDebit->doctor_id = $sale->reference_by;
+                $doctorLedgerDebit->vendor_id = $sale->vendor_id ?? auth()->user()->branchId();
+                $doctorLedgerDebit->date = $date;
+                $doctorLedgerDebit->details = $payDetails;
+                $doctorLedgerDebit->debit = $amount;
+                $doctorLedgerDebit->credit = 0;
+                $doctorLedgerDebit->type = 'Payment';
+                $doctorLedgerDebit->ref_invoice_no = $voucherNo;
+                $doctorLedgerDebit->payment_method = $request->payment_method;
+                $doctorLedgerDebit->bank_name = $request->bank_name;
+                $doctorLedgerDebit->transaction_no = $request->transaction_no;
+                $doctorLedgerDebit->settlement_type = 'custom';
+                $doctorLedgerDebit->save();
+
+                $voucherId = $doctorLedgerDebit->id;
+
+                // Company cash drawer outflow
+                $head = IncomeExpenseHead::where('head_type', Helper::$expense)
+                    ->where(function ($q) {
+                        $q->where('head_name', 'like', '%Doctor%')
+                          ->orWhere('head_name', 'like', '%Referral%')
+                          ->orWhere('id', 1);
+                    })->first();
+
+                $companyLedger = new Ledger();
+                $companyLedger->income_expense_head_id = $head ? $head->id : 1;
+                $companyLedger->vendor_id = $sale->vendor_id ?? auth()->user()->branchId();
+                $companyLedger->invoice_no = Helper::freeLedgerInvoiceNo(date('ymdhis') . rand(10, 99));
+                $companyLedger->date = $date;
+                $companyLedger->details = "Doctor/Referral Commission Paid to {$docName} for {$sale->sale_invoice_no} [{$request->payment_method}]";
+                $companyLedger->expense_amount = $amount;
+                $companyLedger->income_amount = 0;
+                $companyLedger->amount_type = Helper::$expense;
+                $companyLedger->type = 'Doctor Payment';
+                $companyLedger->ref_invoice_no = $voucherNo;
+                $companyLedger->save();
+            }
+
+            DB::commit();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Referral for invoice {$sale->sale_invoice_no} settled for ৳" . number_format($amount, 2) . ($request->action === 'pay_now' ? ' and disbursed!' : ' (added to due)!'),
+                    'voucher_id' => $voucherId,
+                ]);
+            }
+
+            if ($request->action === 'pay_now' && $voucherId) {
+                return redirect()->route('doctors.payment.slip', $voucherId)
+                    ->with('success', "Referral for invoice {$sale->sale_invoice_no} settled for ৳" . number_format($amount, 2) . " and disbursed via {$request->payment_method}!");
+            }
+
+            return redirect()->route('doctors.payment.index')
+                ->with('success', "Referral for invoice {$sale->sale_invoice_no} settled for ৳" . number_format($amount, 2) . " and added to referrer's due balance!");
+        } catch (\Throwable $e) {
+            DB::rollback();
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to settle referral: ' . Helper::userMessage($e),
+                ], 422);
+            }
+            return back()->withInput()->with('warning', 'Failed to settle referral: ' . Helper::userMessage($e));
         }
     }
 }

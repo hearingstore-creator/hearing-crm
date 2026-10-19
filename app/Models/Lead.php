@@ -21,6 +21,7 @@ class Lead extends Model
         // Lead identifiers
         'lead_uid',
         'vendor_id',
+        'referrer_customer_id',
 
         // Personal Information
         'full_name',

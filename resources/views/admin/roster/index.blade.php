@@ -140,6 +140,15 @@
 
     @include('admin.alert_message')
 
+    @if (empty($branchHasBooth))
+        <div class="alert alert-warning m-2">
+            <i class="fas fa-door-closed mr-1"></i>This branch has no active sound booth, so hearing tests (Pure Tone Audiometry and similar) cannot be booked here.
+            @can('permission', 'sound_booths.index')
+                <a href="{{ url('admin/sound-booths') }}" style="font-weight: 600;">Add a sound booth</a>
+            @endcan
+        </div>
+    @endif
+
     {{-- Section 0: Branch Operating Hours & 7-Day Office Status --}}
     <div class="roster-card crm-animate-in" style="margin-bottom: 20px;">
         <div class="roster-header" style="padding: 12px 20px;">

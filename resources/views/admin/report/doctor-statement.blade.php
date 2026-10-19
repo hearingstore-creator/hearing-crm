@@ -87,13 +87,32 @@
     <div class="rpt-filter crm-animate-in delay-1">
         <form method="GET" action="{{ url('admin/report/doctor-statement') }}">
             <input type="hidden" name="format" value="{{ $currentFormat }}" id="input-format">
+            <div class="f-group" style="min-width: 170px;">
+                <label for="f-category"><i class="fas fa-tags mr-1"></i>Referrer Category</label>
+                <select name="referrer_type" id="f-category" class="select">
+                    <option value="">-- All Categories --</option>
+                    <option value="doctor" {{ ($referrerType ?? '') === 'doctor' ? 'selected' : '' }}>Qualified Doctor</option>
+                    <option value="quack" {{ ($referrerType ?? '') === 'quack' ? 'selected' : '' }}>Village Doctor / Quack / RMP</option>
+                    <option value="agent" {{ ($referrerType ?? '') === 'agent' ? 'selected' : '' }}>RF / Referral Agent</option>
+                </select>
+            </div>
             <div class="f-group wide">
-                <label for="f-doctor">Doctor / Referrer</label>
+                <label for="f-doctor"><i class="fas fa-user-md mr-1"></i>Doctor / Referrer Name</label>
                 <select name="doctor_id" id="f-doctor" class="select">
-                    <option value="">-- All Doctors (Summary) --</option>
+                    <option value="" data-category="">-- All Referrers (Summary) --</option>
                     @foreach ($doctors as $d)
-                        <option value="{{ $d->id }}" {{ $doctor && $doctor->id === $d->id ? 'selected' : '' }}>
-                            {{ $d->doctor_name }} ({{ $d->qualification ?? 'MBBS' }})
+                        @php
+                            $dType = $d->referrer_type ?? 'doctor';
+                            $prefix = match($dType) {
+                                'quack' => '[Quack/RMP] ',
+                                'agent' => '[RF Agent] ',
+                                default => '[Doctor] ',
+                            };
+                        @endphp
+                        <option value="{{ $d->id }}"
+                                data-category="{{ $dType }}"
+                                {{ $doctor && $doctor->id === $d->id ? 'selected' : '' }}>
+                            {{ $prefix }}{{ $d->doctor_name }} ({{ $d->qualification ?? 'N/A' }})
                         </option>
                     @endforeach
                 </select>
@@ -287,7 +306,23 @@
 
                 <div class="stmt-info">
                     <div>
-                        <div class="i-lbl">Referral Doctor Information</div>
+                        <div class="i-lbl">
+                            Referral Information ·
+                            @php
+                                $dCatType = $doctor->referrer_type ?? 'doctor';
+                                $catBadge = match($dCatType) {
+                                    'quack' => 'badge-info',
+                                    'agent' => 'badge-warning',
+                                    default => 'badge-primary',
+                                };
+                                $catText = match($dCatType) {
+                                    'quack' => 'Village Doctor / Quack / RMP',
+                                    'agent' => 'RF / Referral Agent',
+                                    default => 'Qualified Doctor / ENT',
+                                };
+                            @endphp
+                            <span class="badge {{ $catBadge }}" style="font-size: 10px; font-weight: 600;">{{ $catText }}</span>
+                        </div>
                         <div class="i-name">{{ $doctor->doctor_name }}</div>
                         <div class="i-line">
                             @if ($doctor->qualification)<strong>{{ $doctor->qualification }}</strong><br>@endif
@@ -483,7 +518,15 @@
     {{-- ══════════════════════════════════════════════════════════════ --}}
     @else
         <div class="kpi-row crm-animate-in">
-            @include('admin.partials.kpi-card', ['color' => 'indigo', 'icon' => 'fas fa-user-md', 'label' => 'Active Doctors', 'value' => number_format($summary->count()), 'sub' => 'with activity or balance'])
+            @php
+                $catKpiLabel = match($referrerType ?? null) {
+                    'quack' => 'Active Quacks / RMPs',
+                    'agent' => 'Active RF Agents',
+                    'doctor' => 'Active Doctors',
+                    default => 'Active Referrers',
+                };
+            @endphp
+            @include('admin.partials.kpi-card', ['color' => 'indigo', 'icon' => 'fas fa-user-md', 'label' => $catKpiLabel, 'value' => number_format($summary->count()), 'sub' => 'with activity or balance'])
             @include('admin.partials.kpi-card', ['color' => 'blue', 'icon' => 'fas fa-shopping-bag', 'label' => 'Referred Sales', 'value' => $money($sumSales), 'sub' => $periods[$period]])
             @include('admin.partials.kpi-card', ['color' => 'orange', 'icon' => 'fas fa-hand-holding-usd', 'label' => 'Commission Earned', 'value' => $money($sumCommission), 'sub' => $periods[$period]])
             @include('admin.partials.kpi-card', ['color' => 'green', 'icon' => 'fas fa-money-bill-wave', 'label' => 'Total Paid', 'value' => $money($sumPaid), 'sub' => $periods[$period]])
@@ -491,8 +534,16 @@
         </div>
 
         <div class="stmt crm-animate-in delay-2" id="print-area">
+            @php
+                $sumTitle = match($referrerType ?? null) {
+                    'quack' => 'Village Doctor & Quack Referral Summary',
+                    'agent' => 'RF & Referral Agent Summary',
+                    'doctor' => 'Qualified Doctor Referral Summary',
+                    default => 'Doctor & Referral Commission Summary',
+                };
+            @endphp
             @include('admin.report.partials.statement-header', [
-                'title' => 'Doctor & Referral Commission Summary',
+                'title' => $sumTitle,
                 'subtitle' => 'Period: <b>' . $periodText . '</b> · Branch: <b>' . (auth()->user()->isVendor() ? auth()->user()->name : 'All Branches') . '</b>'
             ])
 
@@ -501,7 +552,8 @@
                     <thead>
                         <tr>
                             <th style="width:40px;">#</th>
-                            <th>Doctor Name</th>
+                            <th>Doctor / Referrer</th>
+                            <th>Category</th>
                             <th>Branch</th>
                             <th class="num">Referred Sales</th>
                             <th class="num">Opening Due</th>
@@ -525,6 +577,22 @@
                                     @if ($d->qualification)
                                         <small class="text-muted d-block" style="font-size: 11px;">{{ $d->qualification }}</small>
                                     @endif
+                                </td>
+                                <td>
+                                    @php
+                                        $dType = $d->referrer_type ?? 'doctor';
+                                        $catBadge = match($dType) {
+                                            'quack' => 'badge-info',
+                                            'agent' => 'badge-warning',
+                                            default => 'badge-primary',
+                                        };
+                                        $catLabel = match($dType) {
+                                            'quack' => 'Quack / RMP',
+                                            'agent' => 'RF Agent',
+                                            default => 'Doctor',
+                                        };
+                                    @endphp
+                                    <span class="badge {{ $catBadge }}" style="font-size: 10.5px; font-weight: 600; padding: 3px 6px;">{{ $catLabel }}</span>
                                 </td>
                                 <td class="muted">{{ $d->vendor_name ?? 'Head Office' }}</td>
                                 <td class="num font-weight-bold" style="color: #1e293b;">{{ $money($d->sales_value) }}</td>
@@ -553,9 +621,9 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="stmt-empty">
-                                    <i class="far fa-folder-open text-muted"></i>No doctor activity in this period.
-                                    <a href="{{ url('admin/report/doctor-statement') . '?' . http_build_query(array_merge($query, ['show_all' => 1])) }}">Show all doctors</a>
+                                <td colspan="10" class="stmt-empty">
+                                    <i class="far fa-folder-open text-muted"></i>No doctor/referrer activity in this period.
+                                    <a href="{{ url('admin/report/doctor-statement') . '?' . http_build_query(array_merge($query, ['show_all' => 1])) }}">Show all</a>
                                 </td>
                             </tr>
                         @endforelse
@@ -563,13 +631,13 @@
                     @if ($summary->isNotEmpty())
                         <tfoot>
                             <tr>
-                                <td colspan="3">Total · {{ $summary->count() }} Doctors</td>
+                                <td colspan="4">Total · {{ $summary->count() }} Referrers</td>
                                 <td class="num">{{ $money($sumSales) }}</td>
                                 <td class="num">{{ $money($sumOpening) }}</td>
                                 <td class="num">{{ $money($sumCommission) }}</td>
                                 <td class="num">{{ $money($sumPaid) }}</td>
-                                <td class="num">{{ $money($sumClosing) }}</td>
-                                <td class="no-print"></td>
+                                <td class="num font-weight-bold">{{ $money(abs($sumClosing)) }}</td>
+                                <td></td>
                             </tr>
                         </tfoot>
                     @endif
@@ -593,6 +661,68 @@
 <script src="{{ asset('assets/plugins/select2/js/select2.min.js') }}"></script>
 <script>
 $(document).ready(function() {
+    var $catSelect = $('#f-category');
+    var $docSelect = $('#f-doctor');
+
+    // Collect all initial option elements
+    var allDocOptions = [];
+    $docSelect.find('option').each(function() {
+        allDocOptions.push({
+            value: $(this).val(),
+            text: $(this).text(),
+            category: $(this).attr('data-category') || '',
+            selected: $(this).is(':selected')
+        });
+    });
+
+    function filterDoctors(chosenCat, keepSelectedId) {
+        var currentVal = keepSelectedId !== undefined ? keepSelectedId : $docSelect.val();
+        $docSelect.empty();
+
+        var summaryText = '-- All Referrers (Summary) --';
+        if (chosenCat === 'doctor') summaryText = '-- All Qualified Doctors (Summary) --';
+        else if (chosenCat === 'quack') summaryText = '-- All Village Doctors / Quacks (Summary) --';
+        else if (chosenCat === 'agent') summaryText = '-- All RF / Referral Agents (Summary) --';
+
+        $docSelect.append($('<option>', {
+            value: '',
+            text: summaryText,
+            'data-category': ''
+        }));
+
+        var foundMatch = false;
+        allDocOptions.forEach(function(opt) {
+            if (!opt.value) return;
+            if (!chosenCat || opt.category === chosenCat) {
+                var isSel = (opt.value == currentVal);
+                if (isSel) foundMatch = true;
+                $docSelect.append($('<option>', {
+                    value: opt.value,
+                    text: opt.text,
+                    'data-category': opt.category,
+                    selected: isSel
+                }));
+            }
+        });
+
+        if (!foundMatch && currentVal) {
+            $docSelect.val('');
+        }
+
+        if ($docSelect.data('select2')) {
+            $docSelect.trigger('change.select2');
+        }
+    }
+
+    $catSelect.on('change', function() {
+        filterDoctors($(this).val());
+    });
+
+    // If category is preselected on page load, filter options while preserving doctor selection
+    if ($catSelect.val()) {
+        filterDoctors($catSelect.val(), $docSelect.val());
+    }
+
     $('.select').select2({ width: '100%' });
 
     var itemsCollapsed = false;

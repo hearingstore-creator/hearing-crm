@@ -39,7 +39,7 @@ class ActivityLogController extends Controller
             ]);
         }
 
-        $query = $this->changes($request)->with(['user', 'subject']);
+        $query = $this->changes($request)->with('user');
 
         $data['activityLogs'] = $query->paginate(15);
         $data['users'] = User::all();

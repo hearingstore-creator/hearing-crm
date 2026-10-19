@@ -59,6 +59,15 @@
                     <div><label style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Name</label><input type="text" name="name" class="form-control" placeholder="Name" value="{{ request('name') }}"></div>
                     <div><label style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Contact</label><input type="text" name="contact_number" class="form-control" placeholder="Contact Number" value="{{ request('contact_number') }}"></div>
                     <div><label style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Email</label><input type="text" name="email" class="form-control" placeholder="Email" value="{{ request('email') }}"></div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Type</label>
+                        <select class="form-control" name="referrer_type">
+                            <option value="">All Types</option>
+                            <option value="doctor" {{ request('referrer_type') === 'doctor' ? 'selected' : '' }}>Doctor</option>
+                            <option value="quack" {{ request('referrer_type') === 'quack' ? 'selected' : '' }}>Quack / RMP</option>
+                            <option value="agent" {{ request('referrer_type') === 'agent' ? 'selected' : '' }}>RF Agent</option>
+                        </select>
+                    </div>
                     <div><label style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Status</label><select class="form-control" name="status"><option value="">All</option><option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Active</option><option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Inactive</option></select></div>
                     <div><label style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">From</label><input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}"></div>
                     <div><label style="font-size: 11px; color: var(--page-text-muted); text-transform: uppercase; letter-spacing: 0.5px;">To</label><input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}"></div>
@@ -75,14 +84,14 @@
 
     <div class="crm-table-card crm-animate-in delay-2">
         <div class="crm-table-header">
-            <div class="table-title"><i class="fas fa-list" style="color: var(--page-text-muted);"></i> All Doctors</div>
+            <div class="table-title"><i class="fas fa-list" style="color: var(--page-text-muted);"></i> Doctors & Referrers</div>
         </div>
         <div style="overflow-x: auto;">
             <table class="crm-table">
                 <thead>
                     <tr>
                         <th style="width: 50px;">#</th>
-                        <th>Doctor</th>
+                        <th>Doctor / Referrer</th>
                         <th>Chambers & Locations</th>
                         <th>Product Comm.</th>
                         <th>Service Comm.</th>
@@ -96,6 +105,16 @@
                     @php
                         $primaryChamber = $item->primaryChamber ?? $item->chambers->first();
                         $totalChambers = $item->chambers->count();
+                        $typeBadgeClass = match($item->referrer_type ?? 'doctor') {
+                            'quack' => 'badge-info',
+                            'agent' => 'badge-warning',
+                            default => 'badge-primary'
+                        };
+                        $typeLabel = match($item->referrer_type ?? 'doctor') {
+                            'quack' => 'Quack / RMP',
+                            'agent' => 'RF Agent',
+                            default => 'Doctor'
+                        };
                     @endphp
                     <tr>
                         <td style="color: var(--page-text-muted); font-size: 12px;">{{ ++$key }}</td>
@@ -103,7 +122,10 @@
                             <div class="crm-name-cell">
                                 <div class="crm-avatar" style="background: var(--info-50); color: var(--info-600);">{{ strtoupper(substr($item->name, 0, 1)) }}</div>
                                 <div class="crm-name-text">
-                                    <span class="name">{{ $item->name }}</span>
+                                    <div class="d-flex align-items-center">
+                                        <span class="name font-weight-bold">{{ $item->name }}</span>
+                                        <span class="badge {{ $typeBadgeClass }} ml-1" style="font-size: 10px; font-weight: 600;">{{ $typeLabel }}</span>
+                                    </div>
                                     <span class="uid">{{ $item->qualification ?? ($item->contact_number ?? $item->email) }}</span>
                                 </div>
                             </div>

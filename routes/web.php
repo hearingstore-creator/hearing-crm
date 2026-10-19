@@ -162,6 +162,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::resource('professionals', 'ProfessionalController');
     Route::resource('appointment-services', 'AppointmentServiceController');
     Route::resource('time-slots', 'TimeSlotController');
+    Route::resource('sound-booths', 'SoundBoothController')->only(['index', 'store', 'update', 'destroy']);
     Route::patch('ticket/{id}/status', [\App\Http\Controllers\Admin\TicketController::class, 'updateStatus']);
     Route::get('support-settings', [\App\Http\Controllers\Admin\SupportSettingsController::class, 'index'])->name('support.settings');
     Route::post('support-settings', [\App\Http\Controllers\Admin\SupportSettingsController::class, 'update'])->name('support.settings.update');
@@ -251,6 +252,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::delete('doctors-payment/{id}', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'destroy'])->name('doctors.payment.destroy');
     Route::get('doctors-due/{id}', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'getDoctorDue'])->name('doctors.due');
     Route::get('doctors-period-unsettled', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'getPeriodUnsettled'])->name('doctors.period-unsettled');
+    Route::post('doctors-payment/settle/{saleId}', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'settleReferral'])->name('doctors.payment.settle');
     Route::resource('manufacturer-return', 'ManufacturerReturnController');
 
     Route::resource('customer-return', 'CustomerReturnController');

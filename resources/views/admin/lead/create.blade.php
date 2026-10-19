@@ -197,6 +197,15 @@
                             @enderror
                         </div>
                     </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="referred_by">Referred by member (code or phone)</label>
+                            <input type="text" class="form-control @error('referred_by') is-invalid @enderror" id="referred_by" name="referred_by" placeholder="Member referral code or phone" autocomplete="off" value="{{ old('referred_by') }}">
+                            @error('referred_by')
+                                <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
+                            @enderror
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

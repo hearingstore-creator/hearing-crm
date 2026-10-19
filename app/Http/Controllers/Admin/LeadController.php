@@ -185,6 +185,7 @@ class LeadController extends Controller
             'hearing_loss.left.type' => ['nullable', new Enum(HearingType::class)],
             'approx_budget' => ['nullable', 'numeric', 'min:0', 'max:9999999.99'],
             'ref_by' => ['nullable', 'string', 'max:255'],
+            'referred_by' => ['nullable', 'string', 'max:100'],
             'loss_to_whom' => ['nullable', 'string', 'max:255'],
             'loss_reason' => ['nullable', 'string', 'max:255'],
             // Source and Type
@@ -210,11 +211,22 @@ class LeadController extends Controller
         }
         $gate = \App\Services\StageGate::validate($request, $stage);
 
-        return DB::transaction(function () use ($request, $stage, $gate) {
+        $referrer = null;
+        if ($request->filled('referred_by')) {
+            $referrer = app(\App\Services\MembershipService::class)->findReferrer($request->referred_by);
+            if (!$referrer) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'referred_by' => 'No member found with that referral code or phone number.',
+                ]);
+            }
+        }
+
+        return DB::transaction(function () use ($request, $stage, $gate, $referrer) {
             $leads = $request->except([
                 'activity_type', 'due_at', 'activity_note', 'assigned_user', 'stage_id', 'loss_reason', 'loss_to_whom',
-                'note', 'walk_in', 'appointment_at', 'trial_product', 'trial_return_date', 'value', '_token',
+                'note', 'walk_in', 'appointment_at', 'trial_product', 'trial_return_date', 'value', '_token', 'referred_by',
             ]);
+            $leads['referrer_customer_id'] = $referrer?->id;
             $leads['lead_uid'] = Lead::generateUid();
             $leads['lead_status'] = LeadStatus::NEW->value; // mirrored from the deal below
             $leads['vendor_id'] = auth()->user()->branchId() ?: $request->vendor_id;

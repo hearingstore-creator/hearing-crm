@@ -93,6 +93,11 @@ class Customer extends Model
             }
         });
 
+        // A lead that came with a referrer becomes a pending referral the moment it is a customer
+        static::created(function ($customer) {
+            rescue(fn () => app(\App\Services\MembershipService::class)->recordReferralFromLead($customer));
+        });
+
         static::creating(function ($customer) {
             if (empty($customer->customer_uid)) {
                 $customer->customer_uid = static::generateCustomerUID();

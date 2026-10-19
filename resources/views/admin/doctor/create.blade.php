@@ -98,16 +98,26 @@
             </div>
             <div class="crm-form-section-body">
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-5">
                         <div class="form-group">
-                            <label for="name">Doctor Name <span style="color: var(--danger-500);">*</span></label>
-                            <input type="text" class="form-control" id="name" placeholder="e.g. Prof. Dr. Md. Rafiqul Islam" name="name" required value="{{ old('name') }}">
+                            <label for="name">Full Name <span style="color: var(--danger-500);">*</span></label>
+                            <input type="text" class="form-control" id="name" placeholder="e.g. Prof. Dr. Md. Rafiqul Islam / Quack Motin" name="name" required value="{{ old('name') }}">
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <div class="form-group">
-                            <label for="qualification">Degree / Qualification & Speciality</label>
-                            <input type="text" class="form-control" id="qualification" placeholder="e.g. MBBS, FCPS (ENT), Audiology Consultant" name="qualification" value="{{ old('qualification') }}">
+                            <label for="referrer_type">Referrer Type <span style="color: var(--danger-500);">*</span></label>
+                            <select class="form-control select2" id="referrer_type" name="referrer_type" required>
+                                <option value="doctor" {{ old('referrer_type', 'doctor') === 'doctor' ? 'selected' : '' }}>🩺 Qualified Doctor / ENT</option>
+                                <option value="quack" {{ old('referrer_type') === 'quack' ? 'selected' : '' }}>🌿 Village Doctor / Quack / RMP</option>
+                                <option value="agent" {{ old('referrer_type') === 'agent' ? 'selected' : '' }}>🤝 RF / Referral Agent</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="qualification">Degree / Qualification / Role</label>
+                            <input type="text" class="form-control" id="qualification" placeholder="e.g. MBBS, FCPS / RMP / Local Broker" name="qualification" value="{{ old('qualification') }}">
                         </div>
                     </div>
                 </div>

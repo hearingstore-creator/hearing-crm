@@ -72,4 +72,20 @@ class SettingsHubTest extends TestCase
 
         $this->actingAs($this->userWithPermissions(['users.index']))->get('/admin/activity-log/export')->assertForbidden();
     }
+
+    public function test_activity_log_renders_when_custom_subject_type_like_database_exists(): void
+    {
+        ActivityLog::create([
+            'user_id' => $this->admin->id,
+            'subject_type' => 'database',
+            'subject_id' => 0,
+            'action' => 'database_backup_downloaded',
+            'created_at' => now()->addMinute(),
+        ]);
+
+        $this->actingAs($this->admin)->get('/admin/activity-log?action=database_backup_downloaded')
+            ->assertSuccessful()
+            ->assertSee('database_backup_downloaded')
+            ->assertSee('database');
+    }
 }

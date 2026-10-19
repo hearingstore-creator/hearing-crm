@@ -8,6 +8,7 @@ use App\Enums\AppointmentStatus;
 use App\Models\Appointment;
 use App\Models\AppointmentHistory;
 use App\Models\BranchSchedule;
+use App\Models\Resource;
 use App\Models\StaffBreak;
 use App\Models\StaffLeave;
 use App\Models\StaffSchedule;
@@ -45,6 +46,8 @@ class RosterController extends Controller
         $data['branches'] = Helper::branchOptions();
         $data['currentBranchId'] = $branchId;
         $data['canViewAllBranches'] = auth()->check() ? auth()->user()->canViewAllBranches() : false;
+
+        $data['branchHasBooth'] = Resource::where('vendor_id', $branchId)->where('type', 'sound_booth')->where('is_active', true)->exists();
 
         // Specialists
         $data['professionals'] = User::where('type', 'professional')

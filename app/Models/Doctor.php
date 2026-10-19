@@ -22,8 +22,36 @@ class Doctor extends Model
         'product_commission_amount',
         'service_commission_percent',
         'service_commission_amount',
+        'referrer_type',
         'status',
     ];
+
+    public const TYPE_DOCTOR = 'doctor';
+    public const TYPE_QUACK  = 'quack';
+    public const TYPE_AGENT  = 'agent';
+
+    public static function referrerTypeLabels(): array
+    {
+        return [
+            self::TYPE_DOCTOR => 'Qualified Doctor / ENT',
+            self::TYPE_QUACK  => 'Village Doctor / Quack / RMP',
+            self::TYPE_AGENT  => 'RF / Referral Agent',
+        ];
+    }
+
+    public function getReferrerTypeLabelAttribute(): string
+    {
+        return self::referrerTypeLabels()[$this->referrer_type ?? self::TYPE_DOCTOR] ?? 'Doctor';
+    }
+
+    public function getReferrerBadgeClassAttribute(): string
+    {
+        return match ($this->referrer_type ?? self::TYPE_DOCTOR) {
+            self::TYPE_QUACK => 'badge-info',
+            self::TYPE_AGENT => 'badge-warning',
+            default => 'badge-primary',
+        };
+    }
 
     /**
      * Get the chambers for the doctor.

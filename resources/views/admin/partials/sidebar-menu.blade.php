@@ -67,6 +67,7 @@
         'admin/roster'                          => 'fa-user-clock',
         'admin/professionals'                   => 'fa-user-md',
         'admin/appointment-services'            => 'fa-stethoscope',
+        'admin/sound-booths'                    => 'fa-door-closed',
 
         // Support
         'admin/customer-lookup'                 => 'fa-search',

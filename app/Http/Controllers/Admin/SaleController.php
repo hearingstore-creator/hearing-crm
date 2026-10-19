@@ -455,10 +455,12 @@ class SaleController extends Controller
                 $saleMaster->reference_amount = $refAmount;
                 $saleMaster->reference_by = $request->reference_by;
                 $saleMaster->doctor_chamber_id = $request->doctor_chamber_id ?: null;
+                $saleMaster->referral_settlement_status = ($refAmount > 0.001) ? 'settled' : 'pending';
             } else {
                 $saleMaster->reference_amount = 0;
                 $saleMaster->reference_by = null;
                 $saleMaster->doctor_chamber_id = null;
+                $saleMaster->referral_settlement_status = 'none';
             }
 
             if ($saleMaster->save()) {
@@ -1003,10 +1005,12 @@ class SaleController extends Controller
                 $saleMaster->reference_amount = $refAmount;
                 $saleMaster->reference_by = $request->reference_by;
                 $saleMaster->doctor_chamber_id = $request->doctor_chamber_id ?: null;
+                $saleMaster->referral_settlement_status = ($refAmount > 0.001) ? 'settled' : 'pending';
             } else {
                 $saleMaster->reference_amount = 0;
                 $saleMaster->reference_by = null;
                 $saleMaster->doctor_chamber_id = null;
+                $saleMaster->referral_settlement_status = 'none';
             }
 
             if ($saleMaster->update()) {

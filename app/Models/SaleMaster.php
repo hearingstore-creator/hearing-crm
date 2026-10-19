@@ -35,6 +35,7 @@ class SaleMaster extends Model
         'is_percent_service_commission',
         'applied_advance_id',
         'applied_advance_amount',
+        'referral_settlement_status',
     ];
 
     protected $casts = [
@@ -111,6 +112,25 @@ class SaleMaster extends Model
             return $this->serviceDetails->isNotEmpty() && $this->saleDetails->isEmpty();
         }
         return $this->serviceDetails()->exists() && !$this->saleDetails()->exists();
+    }
+
+    /**
+     * Scope sales where a referrer was tagged but the commission negotiation is pending.
+     */
+    public function scopePendingReferralSettlement($query)
+    {
+        return $query->whereNotNull('reference_by')
+            ->where(function ($q) {
+                $q->where('referral_settlement_status', 'pending')
+                  ->orWhere(function ($sq) {
+                      $sq->where(function ($ssq) {
+                          $ssq->whereNull('referral_settlement_status')
+                              ->orWhere('referral_settlement_status', '!=', 'settled');
+                      })->where(function ($ssq2) {
+                          $ssq2->whereNull('reference_amount')->orWhere('reference_amount', '<=', 0);
+                      });
+                  });
+            });
     }
 
     /**

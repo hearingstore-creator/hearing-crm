@@ -115,15 +115,23 @@
                             <div class="sale-field sale-col-4">
                                 <label for="reference_by">Referred By</label>
                                 <select class="form-control doctor-select" name="reference_by" id="reference_by">
-                                    <option value="">Select Doctor (Optional)</option>
+                                    <option value="">Select Doctor / Referrer (Optional)</option>
                                     @foreach ($doctors ?? [] as $doctor)
+                                        @php
+                                            $typePrefix = match($doctor->referrer_type ?? 'doctor') {
+                                                'quack' => '[Quack/RMP] ',
+                                                'agent' => '[RF Agent] ',
+                                                default => '[Doctor] '
+                                            };
+                                        @endphp
                                         <option value="{{ $doctor->id }}"
                                             {{ (isset($fromProposal) && $fromProposal->doctor_id == $doctor->id) ? 'selected' : '' }}
+                                            data-referrer-type="{{ $doctor->referrer_type ?? 'doctor' }}"
                                             data-product-commission-percent="{{ $doctor->product_commission_percent }}"
                                             data-product-commission-amount="{{ $doctor->product_commission_amount }}"
                                             data-service-commission-percent="{{ $doctor->service_commission_percent }}"
                                             data-service-commission-amount="{{ $doctor->service_commission_amount }}">
-                                            {{ $doctor->name }} ({{ $doctor->qualification ?? 'N/A' }})
+                                            {{ $typePrefix }}{{ $doctor->name }} ({{ $doctor->qualification ?? 'N/A' }})
                                         </option>
                                     @endforeach
                                 </select>

@@ -127,7 +127,7 @@ class BusinessReportController extends Controller
         $q = DB::table('doctors as d')
             ->leftJoin('users as v', 'v.id', '=', 'd.vendor_id')
             ->whereNull('d.deleted_at')
-            ->select('d.id', 'd.name as doctor_name', 'd.qualification', 'd.contact_number', 'd.email', 'd.address', 'd.vendor_id', 'd.status', 'v.name as vendor_name')
+            ->select('d.id', 'd.name as doctor_name', 'd.qualification', 'd.contact_number', 'd.email', 'd.address', 'd.vendor_id', 'd.status', 'v.name as vendor_name', DB::raw("COALESCE(d.referrer_type, 'doctor') as referrer_type"))
             ->orderBy('d.name');
 
         return $this->scopeVendor($q, 'd.vendor_id')->get();
@@ -544,7 +544,16 @@ class BusinessReportController extends Controller
             $itemType = 'all';
         }
 
-        $data = compact('doctors', 'doctor', 'period', 'start', 'end', 'format', 'itemType') + [
+        $referrerType = $request->input('referrer_type') ?: $request->input('category');
+        if (!in_array($referrerType, ['doctor', 'quack', 'agent'], true)) {
+            $referrerType = null;
+        }
+
+        if ($doctor && !$referrerType) {
+            $referrerType = $doctor->referrer_type ?? 'doctor';
+        }
+
+        $data = compact('doctors', 'doctor', 'referrerType', 'period', 'start', 'end', 'format', 'itemType') + [
             'periods' => self::PERIODS,
             'company' => $this->companyInfo(),
         ];
@@ -847,6 +856,10 @@ class BusinessReportController extends Controller
         } else {
             // ── ALL DOCTORS REFERRAL & COMMISSION SUMMARY ──────────────────
             $allDoctors = $doctors;
+            if ($referrerType) {
+                $allDoctors = $allDoctors->where('referrer_type', $referrerType)->values();
+            }
+
             $summary = $allDoctors->map(function ($d) use ($s, $e) {
                 $base = fn () => DB::table('doctor_ledgers')->where('doctor_id', $d->id)->whereNull('deleted_at');
                 $op = (float) $base()->where('date', '<', $s)->sum(DB::raw('credit - debit'));
@@ -876,10 +889,18 @@ class BusinessReportController extends Controller
             ];
 
             if ($request->input('export') === 'csv') {
+                $typePrefix = $referrerType ? "{$referrerType}-" : "doctor-";
                 return $this->csv(
-                    "doctor-referral-summary-{$s}-to-{$e}.csv",
-                    ['Doctor', 'Branch', 'Referred Sales (৳)', 'Opening Due (৳)', 'Commission Earned (৳)', 'Paid (৳)', 'Closing Payable (৳)'],
-                    $summary->map(fn ($x) => [$x->doctor_name, $x->vendor_name ?? 'Head Office', round($x->sales_value, 2), round($x->opening, 2), round($x->commission, 2), round($x->paid, 2), round($x->closing, 2)])
+                    "{$typePrefix}referral-summary-{$s}-to-{$e}.csv",
+                    ['Doctor / Referrer', 'Category', 'Branch', 'Referred Sales (৳)', 'Opening Due (৳)', 'Commission Earned (৳)', 'Paid (৳)', 'Closing Payable (৳)'],
+                    $summary->map(function ($x) {
+                        $catName = match($x->referrer_type ?? 'doctor') {
+                            'quack' => 'Village Doctor / Quack / RMP',
+                            'agent' => 'RF / Referral Agent',
+                            default => 'Qualified Doctor',
+                        };
+                        return [$x->doctor_name, $catName, $x->vendor_name ?? 'Head Office', round($x->sales_value, 2), round($x->opening, 2), round($x->commission, 2), round($x->paid, 2), round($x->closing, 2)];
+                    })
                 );
             }
         }

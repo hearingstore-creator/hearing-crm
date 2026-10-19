@@ -78,15 +78,23 @@
                         <div class="col-md-4">
                            <div class="">
                               <select class="form-control doctor-select" name="reference_by" id="reference_by">
-                                 <option value="">Select Doctor (Optional)</option>
+                                 <option value="">Select Doctor / Referrer (Optional)</option>
                                  @foreach ($doctors ?? [] as $doctor)
+                                    @php
+                                       $typePrefix = match($doctor->referrer_type ?? 'doctor') {
+                                          'quack' => '[Quack/RMP] ',
+                                          'agent' => '[RF Agent] ',
+                                          default => '[Doctor] '
+                                       };
+                                    @endphp
                                     <option value="{{ $doctor->id }}"
                                             {{ $saleMaster->reference_by == $doctor->id ? 'selected' : '' }}
+                                            data-referrer-type="{{ $doctor->referrer_type ?? 'doctor' }}"
                                             data-product-commission-percent="{{ $doctor->product_commission_percent }}"
                                             data-product-commission-amount="{{ $doctor->product_commission_amount }}"
                                             data-service-commission-percent="{{ $doctor->service_commission_percent }}"
                                             data-service-commission-amount="{{ $doctor->service_commission_amount }}">
-                                       {{ $doctor->name }} ({{ $doctor->qualification ?? 'N/A' }})
+                                       {{ $typePrefix }}{{ $doctor->name }} ({{ $doctor->qualification ?? 'N/A' }})
                                     </option>
                                  @endforeach
                               </select>
@@ -386,10 +394,20 @@
                                  <td></td>
                               </tr>
                               <tr>
-                                 <td class="text-right" colspan="8"><b>Reference Amount (Doctor Commission):</b></td>
+                                 <td class="text-right" colspan="8">
+                                    <b>Referral Commission:</b>
+                                    @if($saleMaster->reference_by && $saleMaster->referral_settlement_status === 'pending')
+                                       <span class="badge badge-warning ml-1"><i class="fas fa-clock mr-1"></i>Negotiation Pending</span>
+                                    @elseif($saleMaster->reference_by && $saleMaster->referral_settlement_status === 'settled')
+                                       <span class="badge badge-success ml-1"><i class="fas fa-check-circle mr-1"></i>Settled</span>
+                                    @endif
+                                 </td>
                                  <td class="text-right">
-                                    <input type="text" class="text-right form-control reference-amount" name="reference_amount" value="{{ number_format($saleMaster->reference_amount, 2) }}" placeholder="0.00">
+                                    <input type="text" class="text-right form-control reference-amount" name="reference_amount" value="{{ number_format($saleMaster->reference_amount, 2, '.', '') }}" placeholder="0.00">
                                     <div id="doc-comm-breakdown" style="display:none; font-size:11px; color:#4338ca; background:#eef2ff; border-radius:4px; padding:3px 6px; margin-top:4px;"></div>
+                                    @if($saleMaster->reference_by && $saleMaster->referral_settlement_status === 'pending')
+                                       <small class="text-muted d-block mt-1">Leave 0 if commission will be negotiated later at closing time.</small>
+                                    @endif
                                  </td>
                                  <td></td>
                               </tr>
