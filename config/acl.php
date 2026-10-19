@@ -677,7 +677,7 @@ return [
                     'name' => 'Profit Statement',
                     'label' => 'Profit Statement',
                     'route' => 'admin/report/profit-statement',
-                    'actions' => ['index']
+                    'actions' => ['index', 'budget']
                 ],
                 [
                     'name' => 'Stock',

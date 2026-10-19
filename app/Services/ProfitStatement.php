@@ -34,6 +34,17 @@ class ProfitStatement
         $this->columns = $this->resolveColumns();
     }
 
+    /** The branch scope as a budget key: all | hq | a branch id. */
+    public function scopeKey(): string
+    {
+        if ($forced = \App\Classes\Helper::reportBranchId()) {
+            return (string) $forced;
+        }
+        $keys = array_keys($this->columns);
+
+        return $this->branchFilter === 'all' || count($keys) !== 1 ? 'all' : (string) $keys[0];
+    }
+
     /** @return array<string, string> */
     public function columns(): array
     {
@@ -43,9 +54,9 @@ class ProfitStatement
     public function build(): array
     {
         $rows = [];
-        $add = function (string $kind, string $label, array $vals = [], int $indent = 0) use (&$rows) {
+        $add = function (string $kind, string $label, array $vals = [], int $indent = 0, ?array $drill = null) use (&$rows) {
             $vals = array_replace(array_fill_keys(array_keys($this->columns), 0.0), $vals);
-            $rows[] = ['kind' => $kind, 'label' => $label, 'vals' => $vals, 'total' => array_sum($vals), 'indent' => $indent];
+            $rows[] = ['kind' => $kind, 'label' => $label, 'vals' => $vals, 'total' => array_sum($vals), 'indent' => $indent, 'drill' => $drill];
 
             return $vals;
         };
@@ -60,10 +71,10 @@ class ProfitStatement
         $adjustment = $this->invoiceAdjustment($productIncome, $serviceIncome);
 
         foreach ($productIncome as $label => $vals) {
-            $add('line', $label, $vals, 1);
+            $add('line', $label, $vals, 1, ['kind' => 'product', 'label' => $label]);
         }
         foreach ($serviceIncome as $label => $vals) {
-            $add('line', $label . ' (service)', $vals, 1);
+            $add('line', $label . ' (service)', $vals, 1, ['kind' => 'service', 'label' => $label]);
         }
         if (array_sum($repairIncome)) {
             $add('line', 'Repair jobs delivered', $repairIncome, 1);
@@ -82,7 +93,7 @@ class ProfitStatement
         $returnedCost = $this->returnedCost();
         $repairCost = $this->repairs('rj.total_supplier_cost');
         foreach ($productCost as $label => $vals) {
-            $add('line', $label, $vals, 1);
+            $add('line', $label, $vals, 1, ['kind' => 'product', 'label' => $label]);
         }
         if (array_sum($returnedCost)) {
             $add('line', 'Less: cost of goods returned', $this->neg($returnedCost), 1);
@@ -108,7 +119,7 @@ class ProfitStatement
         $add('head', 'Operating expenses');
         $expenses = $this->ledgerByLabel('Expense');
         foreach ($expenses as $label => $vals) {
-            $add('line', $label, $vals, 1);
+            $add('line', $label, $vals, 1, ['kind' => 'expense', 'label' => $label]);
         }
         $totalExpenses = $add('total', 'Total operating expenses', $sum(array_values($expenses)));
 
@@ -116,7 +127,7 @@ class ProfitStatement
         $add('head', 'Other income');
         $other = $this->ledgerByLabel('Income');
         foreach ($other as $label => $vals) {
-            $add('line', $label, $vals, 1);
+            $add('line', $label, $vals, 1, ['kind' => 'income', 'label' => $label]);
         }
         $totalOther = $add('total', 'Total other income', $sum(array_values($other)));
 
@@ -126,9 +137,13 @@ class ProfitStatement
             'columns' => $this->columns,
             'rows'    => $rows,
             'summary' => [
-                'net_sales'    => array_sum($netSales),
-                'gross_profit' => array_sum($gross),
-                'net_profit'   => array_sum($net),
+                'net_sales'          => array_sum($netSales),
+                'cost'               => array_sum($totalCost),
+                'gross_profit'       => array_sum($gross),
+                'referral'           => array_sum($netReferral),
+                'operating_expenses' => array_sum($totalExpenses),
+                'other_income'       => array_sum($totalOther),
+                'net_profit'         => array_sum($net),
                 'margin'       => array_sum($netSales) > 0 ? round(array_sum($net) / array_sum($netSales) * 100, 1) : null,
             ],
             'checks' => $this->checks(),
@@ -227,22 +242,29 @@ class ProfitStatement
     /** Manual expenses / other income, grouped by their head (reversals net out because both rows are kept). */
     private function ledgerByLabel(string $amountType): array
     {
-        $isExpense = $amountType === 'Expense';
-        $bases = $isExpense ? self::EXPENSE_BASES : self::INCOME_BASES;
-        $col = $isExpense ? 'lg.expense_amount' : 'lg.income_amount';
-        $label = "CASE WHEN {$this->baseType()} IN ('', '$amountType') THEN COALESCE(h.head_name, 'No category')
+        $col = $amountType === 'Expense' ? 'lg.expense_amount' : 'lg.income_amount';
+
+        return $this->grouped($this->ledgerQuery($amountType), 'lg.vendor_id', $this->ledgerLabelSql($amountType), "SUM($col)");
+    }
+
+    private function ledgerQuery(string $amountType): Builder
+    {
+        $bases = $amountType === 'Expense' ? self::EXPENSE_BASES : self::INCOME_BASES;
+
+        return DB::table('ledgers as lg')->leftJoin('income_expense_heads as h', 'h.id', '=', 'lg.income_expense_head_id')
+            ->whereNull('lg.deleted_at')->where('lg.amount_type', $amountType)
+            ->whereBetween('lg.date', $this->dates())
+            ->whereRaw("{$this->baseType()} IN (" . implode(',', array_map(fn ($b) => DB::getPdo()->quote($b), $bases)) . ')');
+    }
+
+    private function ledgerLabelSql(string $amountType): string
+    {
+        return "CASE WHEN {$this->baseType()} IN ('', '$amountType') THEN COALESCE(h.head_name, 'No category')
                        WHEN {$this->baseType()} = 'SalaryPayment' THEN 'Salaries'
                        WHEN {$this->baseType()} = 'Purchase Return Loss' THEN 'Purchase return loss'
                        WHEN {$this->baseType()} = 'RMA Credit' THEN 'Supplier RMA credits'
                        WHEN {$this->baseType()} = 'Cancellation Fee' THEN 'Cancellation fees'
                        ELSE {$this->baseType()} END";
-
-        $q = DB::table('ledgers as lg')->leftJoin('income_expense_heads as h', 'h.id', '=', 'lg.income_expense_head_id')
-            ->whereNull('lg.deleted_at')->where('lg.amount_type', $amountType)
-            ->whereBetween('lg.date', $this->dates())
-            ->whereRaw("{$this->baseType()} IN (" . implode(',', array_map(fn ($b) => DB::getPdo()->quote($b), $bases)) . ')');
-
-        return $this->grouped($q, 'lg.vendor_id', $label, "SUM($col)");
     }
 
     private function baseType(): string
@@ -265,6 +287,96 @@ class ProfitStatement
         $bases = implode(',', array_map(fn ($b) => DB::getPdo()->quote($b), self::EXPENSE_BASES));
 
         return $query->whereRaw(self::typeBase($typeColumn) . " IN ($bases)");
+    }
+
+    // ------------------------------------------------------------------ drill-down and trend
+
+    public const DETAIL_LIMIT = 500;
+
+    /**
+     * The records behind one line of the statement, for the same period and branches.
+     *
+     * @return array{columns: string[], rows: array<int, array<string, mixed>>, total: float, truncated: bool}|null
+     */
+    public function detail(string $kind, string $label): ?array
+    {
+        $limit = self::DETAIL_LIMIT + 1;
+
+        if ($kind === 'product') {
+            $q = DB::table('sale_details as sd')
+                ->join('sale_masters as sm', 'sm.id', '=', 'sd.sale_master_id')
+                ->leftJoin('products as p', 'p.id', '=', 'sd.product_id')
+                ->leftJoin('categories as c', 'c.id', '=', 'p.category_id')
+                ->whereNull('sd.deleted_at')->whereNull('sm.deleted_at')->whereBetween('sm.date', $this->dates())
+                ->whereRaw("COALESCE(c.category_name, 'Uncategorised products') = ?", [$label]);
+            $this->scope($q, 'sm.vendor_id');
+            $rows = $q->orderBy('sm.date')->orderBy('sm.id')->limit($limit)
+                ->selectRaw('sm.id as sale_id, sm.date, sm.sale_invoice_no as ref, p.model as what, sd.qty, sd.qty * sd.mrp_price * (1 - COALESCE(sd.discount,0) / 100) as amount, sd.qty * sd.purchase_price as cost')->get();
+
+            return $this->detailResult(['Date', 'Invoice', 'Product', 'Qty', 'Income', 'Cost'], $rows, fn ($r) => [
+                'date' => $r->date, 'ref' => $r->ref, 'link' => 'admin/sale/' . $r->sale_id, 'what' => $r->what, 'qty' => (float) $r->qty, 'amount' => round((float) $r->amount, 2), 'cost' => round((float) $r->cost, 2),
+            ]);
+        }
+
+        if ($kind === 'service') {
+            $q = DB::table('service_details as sv')
+                ->join('sale_masters as sm', 'sm.id', '=', 'sv.sale_master_id')
+                ->leftJoin('service_types as st', 'st.id', '=', 'sv.service_type_id')
+                ->whereNull('sv.deleted_at')->whereNull('sm.deleted_at')->whereBetween('sm.date', $this->dates())
+                ->whereRaw("COALESCE(st.service_type_name, 'Other service') = ?", [$label]);
+            $this->scope($q, 'sm.vendor_id');
+            $rows = $q->orderBy('sm.date')->orderBy('sm.id')->limit($limit)
+                ->selectRaw('sm.id as sale_id, sm.date, sm.sale_invoice_no as ref, st.service_type_name as what, sv.qty, sv.qty * sv.service_price * (1 - COALESCE(sv.discount,0) / 100) as amount')->get();
+
+            return $this->detailResult(['Date', 'Invoice', 'Service', 'Qty', 'Income'], $rows, fn ($r) => [
+                'date' => $r->date, 'ref' => $r->ref, 'link' => 'admin/sale/' . $r->sale_id, 'what' => $r->what ?? 'Other service', 'qty' => (float) $r->qty, 'amount' => round((float) $r->amount, 2),
+            ]);
+        }
+
+        if (in_array($kind, ['expense', 'income'], true)) {
+            $type = $kind === 'expense' ? 'Expense' : 'Income';
+            $q = $this->ledgerQuery($type)->whereRaw('(' . $this->ledgerLabelSql($type) . ') = ?', [$label]);
+            $this->scope($q, 'lg.vendor_id');
+            $col = $kind === 'expense' ? 'lg.expense_amount' : 'lg.income_amount';
+            $rows = $q->orderBy('lg.date')->orderBy('lg.id')->limit($limit)
+                ->selectRaw("lg.date, lg.invoice_no as ref, lg.details as what, $col as amount, lg.vendor_id")->get();
+
+            return $this->detailResult(['Date', 'Entry', 'Details', 'Amount'], $rows, fn ($r) => [
+                'date' => $r->date, 'ref' => $r->ref, 'link' => null, 'what' => $r->what, 'amount' => round((float) $r->amount, 2),
+            ]);
+        }
+
+        return null;
+    }
+
+    private function detailResult(array $columns, $rows, callable $map): array
+    {
+        $truncated = $rows->count() > self::DETAIL_LIMIT;
+        $mapped = $rows->take(self::DETAIL_LIMIT)->map($map)->values()->all();
+
+        return [
+            'columns'   => $columns,
+            'rows'      => $mapped,
+            'total'     => round(array_sum(array_column($mapped, 'amount')), 2),
+            'truncated' => $truncated,
+        ];
+    }
+
+    /**
+     * Month-by-month summary ending in the month of $end (oldest first).
+     *
+     * @return array<int, array{month: string, key: string, summary: array}>
+     */
+    public static function trend(Carbon $end, string $branchFilter, int $months = 12): array
+    {
+        $out = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $start = $end->copy()->startOfMonth()->subMonthsNoOverflow($i);
+            $summary = (new self($start, $start->copy()->endOfMonth(), $branchFilter))->build()['summary'];
+            $out[] = ['month' => $start->format('M Y'), 'key' => $start->format('Y-m'), 'summary' => $summary];
+        }
+
+        return $out;
     }
 
     // ------------------------------------------------------------------ audit trail

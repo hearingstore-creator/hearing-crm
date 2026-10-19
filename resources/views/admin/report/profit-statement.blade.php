@@ -24,6 +24,15 @@
     .ps-grand td { font-weight:700; font-size:15px; background:var(--accent-50); }
     .ps-neg { color:#be123c; }
     .ps-note { font-size:12.5px; color:var(--page-text-muted); padding:12px 14px; }
+    .ps-tabs { display:flex; gap:4px; border-bottom:1px solid var(--card-border); margin:0 0 14px; }
+    .ps-tabs a { padding:8px 14px; text-decoration:none; color:var(--page-text-muted); }
+    .ps-tabs a.on { border-bottom:2px solid var(--accent-500); color:var(--accent-600); font-weight:600; }
+    .ps-budget { background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:12px 14px; margin:0 0 14px; font-size:13.5px; }
+    .ps-budget table { width:100%; margin-top:6px; }
+    .ps-budget th { font-size:12px; color:var(--page-text-muted); text-align:right; font-weight:600; }
+    .ps-budget td { text-align:right; padding:3px 0; font-variant-numeric:tabular-nums; }
+    .ps-budget th:first-child, .ps-budget td:first-child { text-align:left; }
+    .ps-link { color:inherit; border-bottom:1px dotted var(--page-text-muted); text-decoration:none; }
 </style>
 @endpush
 
@@ -63,6 +72,53 @@
         <div class="ps-kpi"><small>Net margin</small><b>{{ $s['margin'] === null ? '—' : $s['margin'] . '%' }}</b></div>
     </div>
 
+    <div class="ps-tabs" id="ps-tabs">
+        <a href="{{ request()->fullUrlWithQuery(['view' => 'statement']) }}" class="{{ $view === 'statement' ? 'on' : '' }}">Statement</a>
+        <a href="{{ request()->fullUrlWithQuery(['view' => 'trend']) }}" class="{{ $view === 'trend' ? 'on' : '' }}" id="tab-trend">12-month trend</a>
+        @if ($canBudget)<a href="{{ route('report.profit-budget', ['month' => $start->format('Y-m'), 'vendor_id' => $scopeKey]) }}" id="link-budget">Set budget</a>@endif
+    </div>
+
+    @if ($budget)
+        <div class="ps-budget" id="ps-budget">
+            <b>Budget vs actual · {{ $budget['month'] }}</b>
+            <table>
+                <thead><tr><th></th><th>Budget</th><th>Actual</th><th>Difference</th><th>% of budget</th></tr></thead>
+                <tbody>
+                    @foreach ($budget['rows'] as $b)
+                        <tr data-metric="{{ $b['metric'] }}">
+                            <td>{{ $b['label'] }}</td>
+                            <td>{{ $fmt($b['budget']) }}</td>
+                            <td>{{ $fmt($b['actual']) }}</td>
+                            <td class="{{ $b['good'] ? 'ps-up' : 'ps-down' }}">{{ $fmt($b['diff']) }}</td>
+                            <td>{{ $b['pct'] === null ? '—' : $b['pct'] . '%' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+    @if ($view === 'trend')
+    <div class="crm-table-card crm-animate-in delay-1" id="ps-trend">
+        <div class="ps-note" style="padding-bottom:0;">Last 12 months ending {{ $end->format('F Y') }} · {{ $branch === 'all' ? 'all branches' : ($branch === 'hq' ? 'head office' : ($branches[$branch] ?? 'this branch')) }}</div>
+        <div style="height:260px; padding:10px 14px;"><canvas id="trendChart"></canvas></div>
+        <div style="overflow-x:auto;">
+            <table class="ps-table" id="trend-table">
+                <thead><tr><th>Month</th><th>Net sales</th><th>Cost of goods</th><th>Gross profit</th><th>Referral</th><th>Expenses</th><th>Other income</th><th>Net profit</th></tr></thead>
+                <tbody>
+                    @foreach ($trend as $t)
+                        @php $x = $t['summary']; @endphp
+                        <tr data-month="{{ $t['key'] }}">
+                            <td><a href="{{ url('admin/report/profit-statement') }}?period=custom&start_date={{ $t['key'] }}-01&end_date={{ \Carbon\Carbon::parse($t['key'] . '-01')->endOfMonth()->toDateString() }}{{ $branch !== 'all' ? '&vendor_id=' . $branch : '' }}">{{ $t['month'] }}</a></td>
+                            <td>{{ $fmt($x['net_sales']) }}</td><td>{{ $fmt($x['cost']) }}</td><td>{{ $fmt($x['gross_profit']) }}</td>
+                            <td>{{ $fmt($x['referral']) }}</td><td>{{ $fmt($x['operating_expenses']) }}</td><td>{{ $fmt($x['other_income']) }}</td>
+                            <td class="{{ $x['net_profit'] < 0 ? 'ps-neg' : '' }}"><b>{{ $fmt($x['net_profit']) }}</b></td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @else
     <div class="crm-table-card crm-animate-in delay-1">
         <form method="GET" action="{{ url('admin/report/profit-statement') }}" class="ps-bar" id="ps-filters">
             <select name="period" class="form-control form-control-sm" onchange="this.form.submit()">
@@ -97,7 +153,13 @@
                             <tr class="ps-head"><td colspan="{{ count($cols) + (count($cols) > 1 ? 2 : 1) }}">{{ $r['label'] }}</td></tr>
                         @else
                             <tr class="{{ $r['kind'] === 'total' ? 'ps-total' : ($r['kind'] === 'grand' ? 'ps-grand' : '') }}" data-line="{{ \Illuminate\Support\Str::slug($r['label']) }}">
-                                <td style="padding-left:{{ 12 + $r['indent'] * 18 }}px;">{{ $r['label'] }}</td>
+                                <td style="padding-left:{{ 12 + $r['indent'] * 18 }}px;">
+                                    @if ($r['drill'])
+                                        <a class="ps-link" href="{{ url('admin/report/profit-statement/detail') }}?{{ http_build_query(['kind' => $r['drill']['kind'], 'label' => $r['drill']['label'], 'period' => 'custom', 'start_date' => $start->toDateString(), 'end_date' => $end->toDateString(), 'vendor_id' => $branch]) }}">{{ $r['label'] }}</a>
+                                    @else
+                                        {{ $r['label'] }}
+                                    @endif
+                                </td>
                                 @foreach ($r['vals'] as $v)<td class="{{ $v < 0 && $r['kind'] !== 'line' ? 'ps-neg' : '' }}">{{ $fmt($v) }}</td>@endforeach
                                 @if (count($cols) > 1)<td class="{{ $r['total'] < 0 && $r['kind'] !== 'line' ? 'ps-neg' : '' }}"><b>{{ $fmt($r['total']) }}</b></td>@endif
                             </tr>
@@ -122,5 +184,32 @@
             @endif
         </div>
     </div>
+    @endif
 </div>
 @endsection
+
+@push('scripts')
+@if ($view === 'trend')
+@php
+    $chartData = [];
+    foreach ($trend as $x) { $chartData[] = ['m' => $x['month'], 's' => $x['summary']['net_sales'], 'g' => $x['summary']['gross_profit'], 'n' => $x['summary']['net_profit']]; }
+@endphp
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const el = document.getElementById('trendChart');
+    if (!el || typeof Chart === 'undefined') return;
+    const t = @json($chartData);
+    new Chart(el.getContext('2d'), {
+        type: 'bar',
+        data: { labels: t.map(r => r.m), datasets: [
+            { label: 'Net sales', data: t.map(r => r.s), backgroundColor: 'rgba(99,102,241,.7)', borderRadius: 6, maxBarThickness: 26 },
+            { label: 'Gross profit', data: t.map(r => r.g), backgroundColor: 'rgba(16,185,129,.7)', borderRadius: 6, maxBarThickness: 26 },
+            { label: 'Net profit', data: t.map(r => r.n), type: 'line', borderColor: '#be123c', backgroundColor: '#be123c', tension: .3, pointRadius: 3, borderWidth: 2 }
+        ] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { x: { grid: { display: false } } } }
+    });
+});
+</script>
+@endif
+@endpush
