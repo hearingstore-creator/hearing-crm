@@ -15,6 +15,14 @@ trait HelperTrait
      */
     public function initializeHelperTrait()
     {
+        // A model that protects itself with its own $guarded list (and has no $fillable) already accepts every
+        // column except the guarded ones. Adding a $fillable list here would flip it to "only these columns",
+        // and mass assignment (fill / update / create) would silently drop everything else. That is what stopped
+        // General Settings from ever saving.
+        if (empty($this->fillable) && $this->guarded !== ['*']) {
+            return;
+        }
+
         // Ensure fillable includes these tracking fields
         $this->fillable = array_unique(array_merge($this->fillable, [
             'created_by',

@@ -298,7 +298,7 @@ class DoctorPaymentController extends Controller
             $companyLedger = new Ledger();
             $companyLedger->income_expense_head_id = $headId;
             $companyLedger->vendor_id = auth()->user()->branchId() ?? $doctor->vendor_id;
-            $companyLedger->invoice_no = date('ymdhis') . rand(10, 99);
+            $companyLedger->invoice_no = \App\Classes\Helper::freeLedgerInvoiceNo(date('ymdhis') . rand(10, 99));
             $companyLedger->date = $request->date;
             $companyLedger->details = "Doctor Commission Paid to {$doctor->name}" . ($periodText ? " ({$periodText})" : "") . " [{$request->payment_method}]";
             $companyLedger->expense_amount = $request->debit;

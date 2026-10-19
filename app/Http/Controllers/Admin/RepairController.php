@@ -530,7 +530,7 @@ class RepairController extends Controller
                 // General Ledger Income
                 $ledger = new Ledger();
                 $ledger->vendor_id = $vendorId;
-                $ledger->invoice_no = 'REP-' . date('ymdHis') . rand(10, 99);
+                $ledger->invoice_no = \App\Classes\Helper::freeLedgerInvoiceNo('REP-' . date('ymdHis') . rand(10, 99));
                 $ledger->date = date('Y-m-d');
                 $ledger->details = "Advance Income from Repair Job #{$job->job_no}";
                 $ledger->expense_amount = 0;
@@ -695,7 +695,7 @@ class RepairController extends Controller
                     // General Ledger Income
                     $ledger = new Ledger();
                     $ledger->vendor_id = $job->vendor_id;
-                    $ledger->invoice_no = 'REP-' . date('ymdHis') . rand(10, 99);
+                    $ledger->invoice_no = \App\Classes\Helper::freeLedgerInvoiceNo('REP-' . date('ymdHis') . rand(10, 99));
                     $ledger->date = date('Y-m-d');
                     $ledger->details = "Delivery settlement for Job #{$job->job_no}";
                     $ledger->expense_amount = 0;
@@ -939,7 +939,7 @@ class RepairController extends Controller
             // General Ledger Income
             $ledger = new Ledger();
             $ledger->vendor_id = $job->vendor_id;
-            $ledger->invoice_no = 'REP-' . date('ymdHis') . rand(10, 99);
+            $ledger->invoice_no = \App\Classes\Helper::freeLedgerInvoiceNo('REP-' . date('ymdHis') . rand(10, 99));
             $ledger->date = date('Y-m-d');
             $ledger->details = "Repair & Service Payment ({$method}) for Job #{$job->job_no}";
             $ledger->expense_amount = 0;

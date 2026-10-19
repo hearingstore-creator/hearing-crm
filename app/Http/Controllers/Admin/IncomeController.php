@@ -111,10 +111,20 @@ class IncomeController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $this->validate($request, [
-            'income_expense_head_id' => 'required',
+            'income_expense_head_id' => [
+                'required',
+                \Illuminate\Validation\Rule::exists('income_expense_heads', 'id')->where('head_type', Helper::$income)->whereNull('deleted_at'),
+            ],
             'date' => 'required|date',
-            'paid_amount' => 'required',
+            'paid_amount' => 'required|numeric|gt:0|max:99999999',
+        ], [
+            'income_expense_head_id.exists' => 'Choose an income head from the list.',
+            'paid_amount.gt' => 'The amount must be more than 0.',
         ]);
+
+        // The form posts the amount as paid_amount; the ledger helper reads it as paid.
+        // Without this the entry was saved with no amount at all.
+        $request->merge(['paid' => $request->paid_amount]);
 
         $incomeInvoiceNo = date('ymdhis');
         Helper::incomeLedger($request, $incomeInvoiceNo, null, null);

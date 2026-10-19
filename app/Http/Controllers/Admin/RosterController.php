@@ -222,7 +222,7 @@ class RosterController extends Controller
         if (!empty($validated['break_id'])) {
             StaffBreak::where('id', $validated['break_id'])->update([
                 'vendor_id'   => $validated['vendor_id'],
-                'user_id'     => $validated['user_id'] ?: null,
+                'user_id'     => ($validated['user_id'] ?? null) ?: null,
                 'day_of_week' => $dayOfWeek,
                 'name'        => $validated['name'],
                 'start_time'  => $validated['start_time'],
@@ -232,7 +232,7 @@ class RosterController extends Controller
         } else {
             StaffBreak::create([
                 'vendor_id'   => $validated['vendor_id'],
-                'user_id'     => $validated['user_id'] ?: null,
+                'user_id'     => ($validated['user_id'] ?? null) ?: null,
                 'day_of_week' => $dayOfWeek,
                 'name'        => $validated['name'],
                 'start_time'  => $validated['start_time'],

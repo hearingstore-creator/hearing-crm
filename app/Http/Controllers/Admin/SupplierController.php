@@ -400,7 +400,7 @@ class SupplierController extends Controller
             // 2. Financial Accounting Ledger entry (Cash/Bank Outflow)
             $branchId = auth()->check() ? auth()->user()->branchId() : null;
             $accLedger = new Ledger();
-            $accLedger->invoice_no = 'EX-' . date('ymdhis');
+            $accLedger->invoice_no = \App\Classes\Helper::freeLedgerInvoiceNo('EX-' . date('ymdhis'));
             $accLedger->vendor_id = $branchId;
             $accLedger->date = $request->date;
             $accLedger->details = "Supplier Payment: {$supplier->supplier_name} via {$request->payment_method}" . ($request->transaction_no ? " (Ref: {$request->transaction_no})" : '') . ($request->details ? " - {$request->details}" : '');
@@ -583,7 +583,7 @@ class SupplierController extends Controller
             } else {
                 $branchId = auth()->check() ? auth()->user()->branchId() : null;
                 $accLedger = new Ledger();
-                $accLedger->invoice_no = 'EX-' . date('ymdhis');
+                $accLedger->invoice_no = \App\Classes\Helper::freeLedgerInvoiceNo('EX-' . date('ymdhis'));
                 $accLedger->vendor_id = $branchId;
                 $accLedger->date = $request->date;
                 $accLedger->details = "Supplier Payment: {$supplier->supplier_name} via {$request->payment_method}" . ($request->transaction_no ? " (Ref: {$request->transaction_no})" : '') . ($request->details ? " - {$request->details}" : '');
