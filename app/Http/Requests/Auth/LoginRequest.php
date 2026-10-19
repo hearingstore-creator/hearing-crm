@@ -70,7 +70,11 @@ class LoginRequest extends FormRequest
         RateLimiter::clear($this->throttleKey());
 
         $user = Auth::user();
-        $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $this->ip()])->saveQuietly();
+        try {
+            $user->forceFill(['last_login_at' => now(), 'last_login_ip' => $this->ip()])->saveQuietly();
+        } catch (\Throwable $e) {
+            report($e); // noting the sign-in time must never stop someone signing in (e.g. migration not run yet)
+        }
         LoginEvent::record('login', $user->email, $user->id, $this);
     }
 
