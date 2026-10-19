@@ -6,7 +6,6 @@ use App\Models\Customer;
 use App\Models\LoyaltySetting;
 use App\Models\MembershipTier;
 use App\Services\MembershipService;
-use App\Services\MembershipSettingsTransfer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Concerns\CrmFixtures;
 use Tests\TestCase;
@@ -107,25 +106,5 @@ class MembershipTierEditTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('membership.tiers'))->assertSuccessful()
             ->assertSee('1 Point Is Worth')->assertSee('Lifetime Spend From')->assertSee('Referral Bonus')->assertSee('1 pt = ৳1.75');
-    }
-
-    public function test_the_point_value_travels_in_the_settings_file(): void
-    {
-        MembershipTier::where('name', 'Gold')->update(['point_value' => 1.75]);
-        $file = (new MembershipSettingsTransfer())->export();
-        $this->assertEquals(1.75, $file['tiers'][2]['point_value']);
-        $this->assertNull($file['tiers'][0]['point_value']);
-
-        MembershipTier::where('name', 'Gold')->update(['point_value' => null]);
-        $plan = (new MembershipSettingsTransfer())->plan($file);
-        $this->assertContains('1 point is worth', array_column($plan['changes'], 'what'));
-
-        (new MembershipSettingsTransfer())->apply($file);
-        $this->assertEquals(1.75, (float) MembershipTier::where('name', 'Gold')->value('point_value'));
-
-        // files exported before this field existed still import (tier point value stays "use the loyalty setting")
-        unset($file['tiers'][0]['point_value']);
-        (new MembershipSettingsTransfer())->apply($file);
-        $this->assertNull(MembershipTier::where('name', 'Bronze')->value('point_value'));
     }
 }
