@@ -22,6 +22,9 @@ return [
     // 'server' saves the cost found in the purchase records (the form value is only a fallback).
     'sale_cost_mode' => env('CRM_SALE_COST_MODE', 'shadow') === 'server' ? 'server' : 'shadow',
 
+    // Stock adjustment screens (damaged, lost, found, count correction, opening stock). Off until switched on.
+    'stock_adjustment' => (bool) env('CRM_STOCK_ADJUSTMENT', false),
+
     // Activity log rows older than this many months are deleted by the monthly clean-up
     'activity_log_keep_months' => (int) env('ACTIVITY_LOG_KEEP_MONTHS', 24),
 ];

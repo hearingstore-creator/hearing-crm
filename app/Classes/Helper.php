@@ -3,6 +3,7 @@
 namespace App\Classes;
 
 use App\Models\Batch;
+use App\Services\StockGuard;
 use App\Models\CustomerLedger;
 use App\Models\DoctorLedger;
 use App\Models\Ledger;
@@ -956,7 +957,19 @@ class Helper
 
         $purchases = $query->get(['id', 'serial_no', 'mrp_price', 'purchase_price', 'purchase_master_id']);
 
-        if ($purchases->isEmpty()) {
+        // Stock adjustments at this location: units added by 'found' / opening stock, units written off
+        $guard = app(\App\Services\StockGuard::class);
+        $adjustAnywhere = self::isAllBranchesMode();
+        $adjustVendor = self::currentBranchId();
+        $adjustedOut = $guard->adjustedSerials($productId, $adjustVendor, 'out', $adjustAnywhere);
+        $adjustedInLines = \Illuminate\Support\Facades\DB::table('stock_adjustment_details as d')
+            ->join('stock_adjustments as a', 'a.id', '=', 'd.stock_adjustment_id')
+            ->where('d.product_id', $productId)->where('d.direction', 'in')->where('a.status', 'completed')
+            ->whereNotNull('d.serial_no')->whereNull('d.deleted_at')->whereNull('a.deleted_at')
+            ->when(!$adjustAnywhere, fn ($q) => $adjustVendor ? $q->where('a.vendor_id', $adjustVendor) : $q->whereNull('a.vendor_id'))
+            ->get(['d.id', 'd.serial_no', 'd.unit_cost', 'd.mrp_price', 'd.warranty_start_date']);
+
+        if ($purchases->isEmpty() && $adjustedInLines->isEmpty()) {
             return $result;
         }
 
@@ -1014,8 +1027,8 @@ class Helper
             }
 
             foreach ($serialNumbers as $serialNumber) {
-                // Skip already active-sold or supplier-returned serial
-                if (in_array($serialNumber, $activeSoldSerials) || in_array($serialNumber, $returnedSerials)) {
+                // Skip already active-sold, supplier-returned or written-off serial
+                if (in_array($serialNumber, $activeSoldSerials) || in_array($serialNumber, $returnedSerials) || isset($adjustedOut[StockGuard::key((string) $serialNumber)])) {
                     continue;
                 }
 
@@ -1025,6 +1038,26 @@ class Helper
                     'mrp_price' => $purchase->mrp_price,
                     'purchase_price' => $purchase->purchase_price,
                     'purchase_master_id' => $purchase->purchase_master_id,
+                ];
+            }
+        }
+
+        // Units that entered stock through an adjustment have no purchase line
+        $productMrp = null;
+        foreach ($adjustedInLines as $line) {
+            foreach (StockGuard::serialList($line->serial_no) as $serialNumber) {
+                if (in_array($serialNumber, $activeSoldSerials) || isset($adjustedOut[StockGuard::key($serialNumber)])) {
+                    continue;
+                }
+                $productMrp ??= (float) (\App\Models\Product::find($productId)?->latest_mrp ?? 0);
+                $result[] = [
+                    'purchase_detail_id' => null,
+                    'serial_number' => $serialNumber,
+                    'mrp_price' => $line->mrp_price ?? $productMrp,
+                    'purchase_price' => $line->unit_cost,
+                    'purchase_master_id' => null,
+                    'adjustment_detail_id' => $line->id,
+                    'warranty_start_date' => $line->warranty_start_date,
                 ];
             }
         }

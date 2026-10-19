@@ -75,6 +75,18 @@ class SaleCost
             }
         }
 
+        // Units added by a stock adjustment carry the cost entered on the adjustment line
+        $adjusted = DB::table('stock_adjustment_details as d')->join('stock_adjustments as a', 'a.id', '=', 'd.stock_adjustment_id')
+            ->where('d.product_id', $productId)->where('d.direction', 'in')->where('a.status', 'completed')
+            ->whereNotNull('d.serial_no')->whereNull('d.deleted_at')->whereNull('a.deleted_at')
+            ->orderBy('d.id')->get(['d.serial_no', 'd.unit_cost']);
+
+        foreach ($adjusted as $row) {
+            foreach (StockGuard::serialList($row->serial_no) as $serial) {
+                $out[StockGuard::key($serial)] = (float) $row->unit_cost;
+            }
+        }
+
         return $out;
     }
 }

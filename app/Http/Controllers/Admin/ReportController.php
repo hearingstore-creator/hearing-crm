@@ -148,11 +148,21 @@ class ReportController extends Controller
 
             foreach ($unsoldBatches as $batch) {
                 $purchaseDetail = PurchaseDetail::where('batch_id', $batch->id)->first();
-                if ((!$purchaseDetail && !$batch->stock > 0) || (!$purchaseDetail->purchaseMaster && !$batch->stock > 0)) {
+                if (!($batch->stock > 0)) {
                     continue;
                 }
 
-                $purchaseDate = $purchaseDetail->purchaseMaster->date;
+                if ($purchaseDetail && $purchaseDetail->purchaseMaster) {
+                    $purchaseDate = $purchaseDetail->purchaseMaster->date;
+                } else {
+                    // Batch created by a stock adjustment: use its optional warranty start date, otherwise leave it out
+                    $adjustedLine = \App\Models\StockAdjustmentDetail::where('batch_id', $batch->id)->where('direction', 'in')->whereNotNull('warranty_start_date')->first();
+                    if (!$adjustedLine) {
+                        continue;
+                    }
+                    $purchaseDate = $adjustedLine->warranty_start_date;
+                }
+
                 $warrantyExpiryDate = $purchaseDate->copy()->addMonths($inventoryWarrantyMonths);
 
                 // Calculate alert date: month difference before warranty expiry - 10 days
@@ -185,6 +195,26 @@ class ReportController extends Controller
             // Group available serials by purchase_detail_id to avoid loading purchase master multiple times
             $groupedSerials = [];
             foreach ($availableSerials as $serial) {
+                // Unit added by a stock adjustment: it has no purchase date, so the optional warranty start date is used
+                if (empty($serial['purchase_detail_id'])) {
+                    if (!empty($serial['warranty_start_date'])) {
+                        $startDate = \Illuminate\Support\Carbon::parse($serial['warranty_start_date']);
+                        $expiry = $startDate->copy()->addMonths($inventoryWarrantyMonths);
+                        $alertAt = $expiry->copy()->subMonths($monthDifference)->subDays($alertDaysBefore);
+                        $daysTo = $today->diffInDays($alertAt, false);
+                        if ($daysTo <= 30 && $daysTo >= -30) {
+                            $alertProducts[] = [
+                                'type' => 'serial', 'identifier' => $serial['serial_number'], 'serial_number' => $serial['serial_number'],
+                                'product' => $product, 'purchase_date' => $startDate,
+                                'inventory_warranty_months' => $inventoryWarrantyMonths, 'sales_warranty_months' => $salesWarrantyMonths,
+                                'month_difference' => $monthDifference, 'warranty_expiry_date' => $expiry, 'alert_date' => $alertAt,
+                                'days_until_alert' => $daysTo, 'status' => $daysTo < 0 ? 'Alert Expired' : 'Approaching',
+                                'remaining_stock' => 1, 'purchase_price' => $serial['purchase_price'],
+                            ];
+                        }
+                    }
+                    continue;
+                }
                 $purchaseDetailId = $serial['purchase_detail_id'];
                 if (!isset($groupedSerials[$purchaseDetailId])) {
                     $groupedSerials[$purchaseDetailId] = [

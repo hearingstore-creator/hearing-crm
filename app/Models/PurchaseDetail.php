@@ -48,7 +48,7 @@ class PurchaseDetail extends Model
         // ->value(DB::raw("SUM(in_qty - out_qty)"));
         // return $data;
         $data = Batch::where('id', $this->batch_id)
-        ->value(DB::raw("coalesce(SUM(purchase_qty),0) + coalesce(SUM(sale_return_qty),0) - coalesce(SUM(sale_qty),0) - coalesce(SUM(purchase_return_qty),0)"));
+        ->value(DB::raw("coalesce(SUM(purchase_qty),0) + coalesce(SUM(sale_return_qty),0) + coalesce(SUM(adjust_qty),0) - coalesce(SUM(sale_qty),0) - coalesce(SUM(purchase_return_qty),0)"));
         return $data;
 
     }

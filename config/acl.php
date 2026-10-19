@@ -365,6 +365,12 @@ return [
                     'route' => 'admin/brand',
                     'actions' => ['index', 'create', 'edit', 'delete']
                 ],
+                [
+                    'name' => 'Stock Adjustment',
+                    'label' => 'Stock Adjustments',
+                    'route' => 'admin/stock-adjustments',
+                    'actions' => ['index', 'create', 'view', 'cancel']
+                ],
             ]
         ],
         [

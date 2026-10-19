@@ -249,6 +249,14 @@ class PurchaseReturnController extends Controller
             ], 422);
         }
 
+        // Written off by a stock adjustment (damaged / lost): it is no longer in stock to return
+        if (isset(app(\App\Services\StockGuard::class)->adjustedSerials((int) $detail->product_id, null, 'out', true)[\App\Services\StockGuard::key($serial)])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Serial '{$serial}' was written off by a stock adjustment and is not in stock."
+            ], 422);
+        }
+
         return response()->json([
             'success' => true,
             'item' => [
@@ -332,7 +340,11 @@ class PurchaseReturnController extends Controller
                 ->map(fn ($s) => trim((string) $s))
                 ->toArray();
 
-            $availableSerials = array_values(array_diff($serials, $soldSerials, $alreadyReturnedSerials));
+            $writtenOff = app(\App\Services\StockGuard::class)->adjustedSerials((int) $d->product_id, null, 'out', true);
+            $availableSerials = array_values(array_filter(
+                array_diff($serials, $soldSerials, $alreadyReturnedSerials),
+                fn ($s) => !isset($writtenOff[\App\Services\StockGuard::key((string) $s)])
+            ));
 
             $items[] = [
                 'purchase_master_id' => $purchase->id,

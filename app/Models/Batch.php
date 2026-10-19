@@ -23,6 +23,7 @@ class Batch extends Model
         'sale_qty',
         'purchase_return_qty',
         'sale_return_qty',
+        'adjust_qty',
     ];
     protected $appends = ['stock'];
 
@@ -40,7 +41,7 @@ class Batch extends Model
     {
         $query = Batch::where('id', $this->id);
         
-        return $query->value(DB::raw("coalesce(SUM(purchase_qty),0) + coalesce(SUM(sale_return_qty),0) - coalesce(SUM(sale_qty),0) - coalesce(SUM(purchase_return_qty),0)"));
+        return $query->value(DB::raw("coalesce(SUM(purchase_qty),0) + coalesce(SUM(sale_return_qty),0) + coalesce(SUM(adjust_qty),0) - coalesce(SUM(sale_qty),0) - coalesce(SUM(purchase_return_qty),0)"));
     }
 
     protected static function booted(): void

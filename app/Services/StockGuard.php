@@ -123,7 +123,7 @@ class StockGuard
             }
 
             $available = (float) $batch->purchase_qty - (float) $batch->sale_qty
-                - (float) $batch->purchase_return_qty + (float) $batch->sale_return_qty + $held;
+                - (float) $batch->purchase_return_qty + (float) $batch->sale_return_qty + (float) ($batch->adjust_qty ?? 0) + $held;
             if ($need['qty'] > $available + 0.0001) {
                 $problems[] = "{$label} batch {$batch->batch_no}: only " . self::fmt(max(0, $available))
                     . ' in stock, ' . self::fmt($need['qty']) . ' requested.';
@@ -193,9 +193,15 @@ class StockGuard
             $vendorId
         )->pluck('d.serial_no'));
 
+        // Units added or written off by a stock adjustment at this location (completed adjustments only)
+        foreach ($this->adjustedSerials($productId, $vendorId, 'in') as $key => $n) {
+            $purchased[$key] = ($purchased[$key] ?? 0) + $n;
+        }
+        $adjustedOut = $this->adjustedSerials($productId, $vendorId, 'out');
+
         $balance = [];
         foreach ($purchased as $key => $n) {
-            $balance[$key] = $n - ($toSupplier[$key] ?? 0) - ($sold[$key] ?? 0) + ($fromPatients[$key] ?? 0);
+            $balance[$key] = $n - ($toSupplier[$key] ?? 0) - ($sold[$key] ?? 0) + ($fromPatients[$key] ?? 0) - ($adjustedOut[$key] ?? 0);
         }
 
         return ['purchased' => $purchased, 'balance' => $balance];
@@ -287,12 +293,12 @@ class StockGuard
 
             if (!$kept) {
                 if ($isUsed) {
-                    $problems[] = "{$label}: this line cannot be removed because its stock was already sold or returned.";
+                    $problems[] = "{$label}: this line cannot be removed because its stock was already sold, returned or adjusted out.";
                 }
                 continue;
             }
             if ($isUsed && (int) $kept['product_id'] !== $usage['product_id']) {
-                $problems[] = "{$label}: the product cannot be changed because its stock was already sold or returned.";
+                $problems[] = "{$label}: the product cannot be changed because its stock was already sold, returned or adjusted out.";
                 continue;
             }
             if ($usage['used_serials']) {
@@ -349,10 +355,10 @@ class StockGuard
         if ($usedSerials) {
             $problems[] = 'Serial(s) ' . implode(', ', array_slice($usedSerials, 0, 3))
                 . (count($usedSerials) > 3 ? ' and ' . (count($usedSerials) - 3) . ' more' : '')
-                . ' from this purchase were already sold or returned.';
+                . ' from this purchase were already sold, returned or adjusted out.';
         }
         if ($usedBatch) {
-            $problems[] = 'Stock from its batch(es) was already sold or returned.';
+            $problems[] = 'Stock from its batch(es) was already sold, returned or adjusted out.';
         }
 
         return $problems;
@@ -398,9 +404,10 @@ class StockGuard
                         ->whereNull('r.deleted_at')
                         ->pluck('rd.serial_no')
                 );
+                $writtenOff = $this->adjustedSerials((int) $d->product_id, null, 'out', true);
                 foreach ($serials as $serial) {
                     $key = self::key($serial);
-                    if (isset($sold[$key]) || isset($returned[$key])) {
+                    if (isset($sold[$key]) || isset($returned[$key]) || isset($writtenOff[$key])) {
                         $row['used_serials'][$key] = $serial;
                     }
                 }
@@ -409,7 +416,7 @@ class StockGuard
             if ($d->batch_id) {
                 $batch = DB::table('batches')->where('id', $d->batch_id)->whereNull('deleted_at')->first();
                 if ($batch) {
-                    $row['batch_used'] = max(0, (float) $batch->sale_qty + (float) $batch->purchase_return_qty - (float) $batch->sale_return_qty);
+                    $row['batch_used'] = max(0, (float) $batch->sale_qty + (float) $batch->purchase_return_qty - (float) $batch->sale_return_qty - (float) ($batch->adjust_qty ?? 0));
                 }
             }
 
@@ -424,7 +431,7 @@ class StockGuard
      * keyed by serial key, value = purchase invoice no. Sold units also count: a sold serial
      * cannot be bought again either.
      */
-    protected function serialsInStockEverywhere(?int $excludePurchaseMasterId): array
+    public function serialsInStockEverywhere(?int $excludePurchaseMasterId): array
     {
         $query = DB::table('purchase_details as d')
             ->join('purchase_masters as m', 'm.id', '=', 'd.purchase_master_id')
@@ -455,9 +462,22 @@ class StockGuard
                 ->pluck('d.serial_no')
         );
 
+        // Stock adjustments: units added count as in stock, units written off leave stock
+        $adjIn = DB::table('stock_adjustment_details as d')->join('stock_adjustments as a', 'a.id', '=', 'd.stock_adjustment_id')
+            ->where('d.direction', 'in')->where('a.status', 'completed')->whereNotNull('d.serial_no')
+            ->whereNull('d.deleted_at')->whereNull('a.deleted_at')->get(['d.serial_no', 'a.adjustment_no']);
+        foreach ($adjIn as $row) {
+            foreach (self::serialList($row->serial_no) as $s) {
+                $key = self::key($s);
+                $purchased[$key] = ($purchased[$key] ?? 0) + 1;
+                $invoice[$key] = $row->adjustment_no;
+            }
+        }
+        $adjOut = $this->adjustedSerials(null, null, 'out', true);
+
         $result = [];
         foreach ($purchased as $key => $n) {
-            if ($n - ($returned[$key] ?? 0) > 0) {
+            if ($n - ($returned[$key] ?? 0) - ($adjOut[$key] ?? 0) > 0) {
                 $result[$key] = $invoice[$key];
             }
         }
@@ -510,7 +530,67 @@ class StockGuard
         return $counts;
     }
 
-    protected function lockProducts(array $productIds): void
+    /** Serials in stock at one location as [key => serial as entered], for pick lists. */
+    public function serialsInStock(int $productId, ?int $vendorId): array
+    {
+        $balance = $this->serialBalances($productId, $vendorId)['balance'];
+        $names = [];
+
+        $purchased = $this->vendorWhere(
+            DB::table('purchase_details as d')->join('purchase_masters as m', 'm.id', '=', 'd.purchase_master_id')
+                ->where('d.product_id', $productId)->whereNotNull('d.serial_no')->whereNull('d.deleted_at')->whereNull('m.deleted_at'),
+            'm.vendor_id',
+            $vendorId
+        )->pluck('d.serial_no');
+        $added = $this->vendorWhere(
+            DB::table('stock_adjustment_details as d')->join('stock_adjustments as a', 'a.id', '=', 'd.stock_adjustment_id')
+                ->where('d.product_id', $productId)->where('d.direction', 'in')->where('a.status', 'completed')
+                ->whereNotNull('d.serial_no')->whereNull('d.deleted_at')->whereNull('a.deleted_at'),
+            'a.vendor_id',
+            $vendorId
+        )->pluck('d.serial_no');
+
+        foreach ($purchased->merge($added) as $raw) {
+            foreach (self::serialList($raw) as $serial) {
+                $names[self::key($serial)] = $serial;
+            }
+        }
+
+        $out = [];
+        foreach ($balance as $key => $n) {
+            if ($n >= 1 && isset($names[$key])) {
+                $out[$key] = $names[$key];
+            }
+        }
+        asort($out);
+
+        return $out;
+    }
+
+    /**
+     * Serial keys added ('in') or written off ('out') by COMPLETED stock adjustments, as [key => count].
+     * $anyVendor ignores the location (used for the "in stock anywhere" checks).
+     */
+    public function adjustedSerials(?int $productId, ?int $vendorId, string $direction, bool $anyVendor = false): array
+    {
+        $query = DB::table('stock_adjustment_details as d')
+            ->join('stock_adjustments as a', 'a.id', '=', 'd.stock_adjustment_id')
+            ->where('d.direction', $direction)
+            ->where('a.status', 'completed')
+            ->whereNotNull('d.serial_no')
+            ->whereNull('d.deleted_at')
+            ->whereNull('a.deleted_at');
+        if ($productId) {
+            $query->where('d.product_id', $productId);
+        }
+        if (!$anyVendor) {
+            $query = $this->vendorWhere($query, 'a.vendor_id', $vendorId);
+        }
+
+        return $this->countSerials($query->pluck('d.serial_no'));
+    }
+
+    public function lockProducts(array $productIds): void
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $productIds))));
         if ($ids) {

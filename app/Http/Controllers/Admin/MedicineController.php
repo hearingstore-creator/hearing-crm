@@ -239,7 +239,7 @@ class MedicineController extends Controller
     public function batchWiseMedicineInfo(int $id)
     {
         $batch = Batch::where('id', $id)
-            ->select('id', 'ref_invoice_no', DB::raw("coalesce(SUM(purchase_qty),0) + coalesce(SUM(sale_return_qty),0) - coalesce(SUM(sale_qty),0) - coalesce(SUM(purchase_return_qty),0) as stock"))
+            ->select('id', 'ref_invoice_no', DB::raw("coalesce(SUM(purchase_qty),0) + coalesce(SUM(sale_return_qty),0) + coalesce(SUM(adjust_qty),0) - coalesce(SUM(sale_qty),0) - coalesce(SUM(purchase_return_qty),0) as stock"))
             ->first();
 
         $purchaseDetails = PurchaseDetail::select('id', 'purchase_price', 'mrp_price')->where('purchase_invoice_no', $batch->ref_invoice_no)

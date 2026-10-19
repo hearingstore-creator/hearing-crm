@@ -38,7 +38,7 @@ class InventoryCheck extends Command
         $batches = DB::table('batches')->whereNull('deleted_at')
             ->when($only, fn ($q) => $q->where('product_id', $only))
             ->groupBy('vendor_id', 'product_id')
-            ->selectRaw('vendor_id, product_id, SUM(COALESCE(purchase_qty,0) + COALESCE(sale_return_qty,0) - COALESCE(sale_qty,0) - COALESCE(purchase_return_qty,0)) as qty')->get();
+            ->selectRaw('vendor_id, product_id, SUM(COALESCE(purchase_qty,0) + COALESCE(sale_return_qty,0) + COALESCE(adjust_qty,0) - COALESCE(sale_qty,0) - COALESCE(purchase_return_qty,0)) as qty')->get();
 
         $cells = [];
         foreach ($ledger as $r) {
@@ -49,7 +49,11 @@ class InventoryCheck extends Command
         }
 
         $serialProducts = DB::table('purchase_details')->whereNull('deleted_at')->whereNotNull('serial_no')
-            ->when($only, fn ($q) => $q->where('product_id', $only))->distinct()->pluck('product_id');
+            ->when($only, fn ($q) => $q->where('product_id', $only))->distinct()->pluck('product_id')
+            // Products whose serial units entered stock through an adjustment (opening stock, found) have no purchase line
+            ->merge(DB::table('stock_adjustment_details')->whereNull('deleted_at')->whereNotNull('serial_no')
+                ->when($only, fn ($q) => $q->where('product_id', $only))->distinct()->pluck('product_id'))
+            ->unique()->values();
         $serialPlaces = collect([null])->merge(array_keys($places));
         $negativeSerials = [];
 
@@ -93,7 +97,7 @@ class InventoryCheck extends Command
         // 2. Negative batches
         $negBatches = DB::table('batches')->whereNull('deleted_at')
             ->when($only, fn ($q) => $q->where('product_id', $only))
-            ->whereRaw('(COALESCE(purchase_qty,0) + COALESCE(sale_return_qty,0) - COALESCE(sale_qty,0) - COALESCE(purchase_return_qty,0)) < -0.001')
+            ->whereRaw('(COALESCE(purchase_qty,0) + COALESCE(sale_return_qty,0) + COALESCE(adjust_qty,0) - COALESCE(sale_qty,0) - COALESCE(purchase_return_qty,0)) < -0.001')
             ->get(['id', 'product_id', 'vendor_id', 'batch_no', 'purchase_qty', 'sale_qty'])
             ->map(fn ($b) => [$names[$b->product_id] ?? "#{$b->product_id}", $where($key($b->vendor_id)), $b->batch_no, $this->n($b->purchase_qty), $this->n($b->sale_qty)])->all();
         $problems += $this->section('Batches sold below zero', ['Product', 'Location', 'Batch', 'Bought', 'Sold'], $negBatches, $limit);

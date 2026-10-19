@@ -51,6 +51,12 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('/dashboard', [HomeController::class, 'dashboard']);
     Route::get('reports', [\App\Http\Controllers\Admin\ReportHubController::class, 'index'])->name('reports.hub');
     Route::post('reports/star', [\App\Http\Controllers\Admin\ReportHubController::class, 'star'])->name('reports.star');
+    Route::get('stock-adjustments/product-stock', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'productStock'])->name('stock-adjustments.product-stock');
+    Route::get('stock-adjustments', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'index'])->name('stock-adjustments.index');
+    Route::get('stock-adjustments/create', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'create'])->name('stock-adjustments.create');
+    Route::post('stock-adjustments', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'store'])->name('stock-adjustments.store');
+    Route::get('stock-adjustments/{id}', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'show'])->whereNumber('id')->name('stock-adjustments.show');
+    Route::post('stock-adjustments/{id}/cancel', [\App\Http\Controllers\Admin\StockAdjustmentController::class, 'cancel'])->whereNumber('id')->name('stock-adjustments.cancel');
     Route::get('/dashboard/legacy',[HomeController::class, 'legacyDashboard'])->name('dashboard.legacy');
     Route::get('/dashboard/new', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'index'])->name('dashboard.new');
     Route::post('/dashboard/today/pin', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'pin'])->name('dashboard.today.pin');
