@@ -35,7 +35,9 @@ each daily dump to Tencent COS (object storage).
 
    Choose: `n` (new remote) → name `cos` → storage `s3` → provider `TencentCOS` → enter the
    SecretId / SecretKey → endpoint for your region (e.g. `cos.ap-singapore.myqcloud.com`) → ACL `private`.
-3. Create `/etc/crm-backup.env` (readable by root only):
+3. Create `/etc/crm-backup.env` (readable by root only). `BACKUP_PASSPHRASE` is a long phrase of your choice that
+   encrypts the copy of `.env`; **write it down somewhere safe outside the server** (a password manager), because the
+   encrypted copy cannot be opened without it.
 
    ```bash
    sudo tee /etc/crm-backup.env >/dev/null <<'EOF'
@@ -43,9 +45,15 @@ each daily dump to Tencent COS (object storage).
    RCLONE_REMOTE=cos:YOUR-BUCKET-NAME/crm-backups
    KEEP_DAYS=14
    REMOTE_KEEP_DAYS=60
+   BACKUP_PASSPHRASE=put-a-long-private-phrase-here
    EOF
    sudo chmod 600 /etc/crm-backup.env
    ```
+
+   The nightly run now saves, in the bucket: the database dump (`crm-backups/daily-DATE.sql.gz`), the uploaded files
+   (`crm-backups/files/storage-app`, `crm-backups/files/public-file`: device photos, logos, attachments) and the
+   encrypted `.env` (`crm-backups/env/env-DATE.enc`, it holds `APP_KEY`). Files are copied incrementally and never
+   deleted from the bucket. To back up other folders, set `FILES_DIRS="storage/app public/file other/folder"`.
 
 4. Run it once by hand and check that it ends with `off-server copy ok`:
 
@@ -58,6 +66,22 @@ each daily dump to Tencent COS (object storage).
    ```bash
    (sudo crontab -l 2>/dev/null; echo '30 2 * * * bash /var/www/crm/deploy/backup-offsite.sh >> /var/log/crm-backup.log 2>&1') | sudo crontab -
    ```
+
+### The CRM watches the backup
+
+After every run the script writes `/var/backups/crm/status.json` (success or failure). The CRM reads it every morning at
+07:00 and puts a red **Backup problem** notification in the bell of every Super Admin when the last run failed, the last
+success is older than 30 hours, or no status file exists. Check it by hand any time:
+
+```bash
+cd /var/www/crm && php artisan crm:backup-check
+cat /var/backups/crm/status.json
+```
+
+The pre-deploy backup in `deploy/server-update.sh` now stops the deploy if the dump fails or is under 20 KB.
+
+The **Download database backup** button (Administration) gives a consistent, restorable copy at the moment you press it,
+but the nightly job above is the one to rely on for recovery.
 
 ## 3. Test a restore (every few months)
 
@@ -74,3 +98,12 @@ sudo mysql -e 'DROP DATABASE crm_restore_test'
 
 The live `/var/www/crm/.env` must have `APP_ENV=production` and `APP_DEBUG=false`. With debug on,
 error pages show code and settings to anyone. The deploy script warns when this is wrong.
+
+Restore the uploaded files and `.env` after a rebuild:
+
+```bash
+sudo rclone copy cos:YOUR-BUCKET-NAME/crm-backups/files/storage-app /var/www/crm/storage/app
+sudo rclone copy cos:YOUR-BUCKET-NAME/crm-backups/files/public-file /var/www/crm/public/file
+sudo rclone copy cos:YOUR-BUCKET-NAME/crm-backups/env /tmp/env-restore
+openssl enc -d -aes-256-cbc -pbkdf2 -pass pass:YOUR-PASSPHRASE -in /tmp/env-restore/env-DATE.enc -out /var/www/crm/.env
+```

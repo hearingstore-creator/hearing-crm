@@ -30,5 +30,8 @@ Illuminate\Support\Facades\Artisan::command('crm:prune-activity-log', function (
 })->purpose('Delete activity log rows older than the retention period');
 Schedule::command('crm:prune-activity-log')->monthlyOn(1, '03:00')->withoutOverlapping();
 
+// Backup watch: tell the owner if the nightly backup failed or stopped (only on the live server; local copies have no backup job)
+Schedule::command('crm:backup-check')->dailyAt('07:00')->environments(['production']);
+
 // Dashboard: warm the heavy widgets before the working day (prints timings; see DashboardSnapshots)
 Schedule::command('crm:dashboard-snapshots')->dailyAt('02:00')->withoutOverlapping();

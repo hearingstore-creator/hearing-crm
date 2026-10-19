@@ -34,4 +34,9 @@ return [
 
     // Activity log rows older than this many months are deleted by the monthly clean-up
     'activity_log_keep_months' => (int) env('ACTIVITY_LOG_KEEP_MONTHS', 24),
+
+    // Written by deploy/backup-offsite.sh after every nightly run; read by crm:backup-check to alert the owner
+    'backup_status_file' => env('CRM_BACKUP_STATUS_FILE', '/var/backups/crm/status.json'),
+    // A backup older than this many hours counts as stopped (the job runs nightly, so 30 allows for a late run)
+    'backup_max_age_hours' => (int) env('CRM_BACKUP_MAX_AGE_HOURS', 30),
 ];

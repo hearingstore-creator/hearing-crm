@@ -7,9 +7,17 @@ BUNDLE=/tmp/crm-release.tgz
 cd "$APP"
 
 STAMP=$(date +%F-%H%M)
+PREDEPLOY=/var/backups/crm/pre-deploy-$STAMP.sql.gz
 sudo mkdir -p /var/backups/crm
-sudo sh -c "mysqldump --single-transaction crm | gzip > /var/backups/crm/pre-deploy-$STAMP.sql.gz"
-echo "Backup: /var/backups/crm/pre-deploy-$STAMP.sql.gz"
+# bash + pipefail: a failed mysqldump must stop the deploy, not leave an empty file behind
+sudo bash -c "set -o pipefail; mysqldump --single-transaction --routines --triggers --events crm | gzip > $PREDEPLOY"
+sudo gzip -t "$PREDEPLOY"
+PREDEPLOY_BYTES=$(sudo stat -c %s "$PREDEPLOY")
+if [ "$PREDEPLOY_BYTES" -lt 20480 ]; then
+    echo "ERROR: the pre-deploy backup is only $PREDEPLOY_BYTES bytes, so it cannot be trusted. Deploy stopped; nothing was changed." >&2
+    exit 1
+fi
+echo "Backup: $PREDEPLOY ($PREDEPLOY_BYTES bytes, checked)"
 
 php artisan down --retry=30 || true
 trap 'php artisan up >/dev/null 2>&1 || true' EXIT
