@@ -142,8 +142,9 @@ class SupportInboxTest extends TestCase
         $this->assertStringContainsString('Overdue 2h', $page);
         $this->assertStringContainsString('Waiting on patient', $page);
 
-        // The hours come from config, so a stricter rule turns the same ticket overdue
-        config(['crm.ticket_sla_hours' => ['Critical' => 1, 'High' => 1, 'Medium' => 1, 'Low' => 1]]);
+        // The hours come from Support Settings, so a stricter rule turns the same ticket overdue
+        \App\Models\SupportSetting::current()->update(['sla_critical_hours' => 1, 'sla_high_hours' => 1, 'sla_medium_hours' => 1, 'sla_low_hours' => 1]);
+        \App\Models\SupportSetting::forget();
         $this->assertSame('overdue', $this->t['B']->fresh()->dueState()['state']);
         $this->assertEqualsCanonicalizing(['A', 'B'], $this->subjectsOnPage('/admin/ticket?view=overdue'));
     }

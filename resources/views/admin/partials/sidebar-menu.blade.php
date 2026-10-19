@@ -74,6 +74,7 @@
         'admin/ticket'                          => 'fa-ticket-alt',
         'admin/task/create'                     => 'fa-plus-circle',
         'admin/task'                            => 'fa-tasks',
+        'admin/support-settings'                => 'fa-sliders-h',
 
         // Accounts
         'admin/report/ledger'                   => 'fa-book',

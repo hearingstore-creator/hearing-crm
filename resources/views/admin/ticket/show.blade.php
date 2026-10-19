@@ -133,6 +133,8 @@
                 </span></div>
                 <div class="tk-row"><span>Phone</span><span>{{ $ticket->customer->lead->phone_number ?? '—' }}</span></div>
                 <div class="tk-row"><span>Priority</span><span>{{ $ticket->priority->value }}</span></div>
+                @php $due = $ticket->dueState(); @endphp
+                <div class="tk-row"><span>Deadline</span><span title="{{ $ticket->priority->value }}: {{ \App\Models\Ticket::slaHoursFor($ticket->priority->value) }} hours from opening">{{ $ticket->due_at->format('d M, h:i A') }}@if ($due['state'] !== 'done') · <b style="color:{{ $due['tone'] === 'danger' ? '#be123c' : ($due['tone'] === 'warning' ? '#b45309' : 'inherit') }}">{{ $due['label'] }}</b>@endif</span></div>
                 <div class="tk-row"><span>Opened</span><span>{{ $ticket->created_at->format('d M Y') }}</span></div>
                 <div class="tk-row"><span>Resolved</span><span>{{ $ticket->resolved_at ? $ticket->resolved_at->format('d M Y, h:i A') : '—' }}</span></div>
                 @if ($ticket->resolved_at)

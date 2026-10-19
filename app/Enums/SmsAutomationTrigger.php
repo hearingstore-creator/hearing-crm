@@ -11,6 +11,7 @@ enum SmsAutomationTrigger: string
     case APPOINTMENT_RESCHEDULED = 'appointment_rescheduled';
     case APPOINTMENT_REMINDER = 'appointment_reminder';
     case TICKET_CREATED = 'ticket_created';
+    case TICKET_SOLVED = 'ticket_solved';
     case WARRANTY_EXPIRING = 'warranty_expiring';
     case MEMBERSHIP_UPGRADE = 'membership_upgrade';
     case POINTS_EXPIRING = 'points_expiring';
@@ -27,6 +28,7 @@ enum SmsAutomationTrigger: string
             self::APPOINTMENT_RESCHEDULED => 'Appointment Rescheduled',
             self::APPOINTMENT_REMINDER => 'Appointment Reminder (1 day before)',
             self::TICKET_CREATED => 'Service Ticket Created',
+            self::TICKET_SOLVED => 'Service Ticket Solved',
             self::WARRANTY_EXPIRING => 'Warranty Expiring (30 days before)',
             self::POINTS_MILESTONE => 'Points Milestone (not used)',
             self::MEMBERSHIP_UPGRADE => 'Membership Upgrade',

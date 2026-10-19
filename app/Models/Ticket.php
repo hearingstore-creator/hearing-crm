@@ -46,6 +46,7 @@ class Ticket extends Model
 
         static::created(function (Ticket $ticket) {
             $ticket->addNote('created', 'Ticket created' . ($ticket->assigned_to ? ' and assigned to ' . self::personName($ticket->assigned_to) : ''));
+            self::automate(fn ($automation) => $automation->created($ticket));
         });
 
         // Every change of status, owner or priority leaves a line in the timeline, whoever (or whatever) made it
@@ -63,6 +64,19 @@ class Ticket extends Model
             }
             if ($ticket->wasChanged('priority')) {
                 $ticket->addNote('priority', 'Priority changed from ' . $ticket->getRawOriginal('priority') . ' to ' . $ticket->priority->value);
+            }
+
+            // Automation: tell the new owner, tell the owner of a reopened ticket, ask the patient to confirm a solved one
+            if ($ticket->wasChanged('assigned_to') && $ticket->assigned_to) {
+                self::automate(fn ($automation) => $automation->assigned($ticket));
+            }
+            if ($ticket->wasChanged('status')) {
+                $was = $ticket->getRawOriginal('status');
+                if (in_array($was, ['Solved', 'Closed'], true) && $ticket->isOpen()) {
+                    self::automate(fn ($automation) => $automation->reopened($ticket));
+                } elseif ($ticket->status === TicketStatus::SOLVED) {
+                    self::automate(fn ($automation) => $automation->solved($ticket));
+                }
             }
         });
     }
@@ -105,12 +119,10 @@ class Ticket extends Model
     /** Statuses where the ticket is waiting on the patient: the SLA clock is paused. */
     public const WAITING = ['Pending', 'On Hold'];
 
-    /** Hours allowed for a priority (config crm.ticket_sla_hours). */
+    /** Hours allowed for a priority (Support Settings; config crm.ticket_sla_hours only seeds the defaults). */
     public static function slaHoursFor(string $priority): int
     {
-        $hours = config('crm.ticket_sla_hours', []);
-
-        return (int) ($hours[$priority] ?? $hours['Medium'] ?? 72);
+        return SupportSetting::current()->hoursFor($priority);
     }
 
     /** When the ticket is due: opened time plus the hours for its priority. */
@@ -146,7 +158,7 @@ class Ticket extends Model
     public static function dueSql(string $table = 'tickets'): string
     {
         $cases = '';
-        foreach (config('crm.ticket_sla_hours', []) as $priority => $hours) {
+        foreach (SupportSetting::current()->slaHours() as $priority => $hours) {
             $cases .= " WHEN '" . addslashes($priority) . "' THEN " . (int) $hours;
         }
 
@@ -156,6 +168,16 @@ class Ticket extends Model
     public function isOpen(): bool
     {
         return !in_array($this->status, [TicketStatus::SOLVED, TicketStatus::CLOSED], true);
+    }
+
+    /** Run an automation hook. A failure is logged and never stops the ticket from saving. */
+    private static function automate(callable $fn): void
+    {
+        try {
+            $fn(app(\App\Services\TicketAutomation::class));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Ticket automation failed', ['error' => $e->getMessage()]);
+        }
     }
 
     protected static function personName($id): string

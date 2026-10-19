@@ -469,6 +469,12 @@ return [
                     'route' => 'admin/task',
                     'actions' => ['index', 'edit', 'delete']
                 ],
+                [
+                    'name' => 'Support Settings',
+                    'label' => 'Support Settings',
+                    'route' => 'admin/support-settings',
+                    'actions' => ['index', 'edit']
+                ],
             ]
         ],
         [

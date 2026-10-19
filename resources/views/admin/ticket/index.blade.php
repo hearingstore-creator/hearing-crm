@@ -45,7 +45,7 @@
     <div class="crm-page-header crm-animate-in">
         <div class="page-title-group">
             <h1><i class="fas fa-headset" style="color: var(--accent-500); margin-right: 8px;"></i>Support</h1>
-            <p>Tickets that need you first. Time left follows the priority: {{ collect(config('crm.ticket_sla_hours'))->map(fn ($h, $p) => $p . ' ' . $h . 'h')->implode(' · ') }}.</p>
+            <p>Tickets that need you first. Time left follows the priority: {{ collect(\App\Models\SupportSetting::current()->slaHours())->map(fn ($h, $p) => $p . ' ' . $h . 'h')->implode(' · ') }}.</p>
         </div>
         <div class="header-actions">
             @can('permission','add_ticket.create')

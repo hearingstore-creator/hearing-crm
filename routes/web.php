@@ -161,6 +161,8 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::resource('appointment-services', 'AppointmentServiceController');
     Route::resource('time-slots', 'TimeSlotController');
     Route::patch('ticket/{id}/status', [\App\Http\Controllers\Admin\TicketController::class, 'updateStatus']);
+    Route::get('support-settings', [\App\Http\Controllers\Admin\SupportSettingsController::class, 'index'])->name('support.settings');
+    Route::post('support-settings', [\App\Http\Controllers\Admin\SupportSettingsController::class, 'update'])->name('support.settings.update');
     Route::get('ticket-patients', [\App\Http\Controllers\Admin\TicketController::class, 'patientSearch'])->name('ticket.patients');
     Route::post('ticket/{id}/assign', [\App\Http\Controllers\Admin\TicketController::class, 'assign'])->whereNumber('id')->name('ticket.assign');
     Route::post('ticket/{id}/notes', [\App\Http\Controllers\Admin\TicketController::class, 'addNote'])->whereNumber('id')->name('ticket.notes');

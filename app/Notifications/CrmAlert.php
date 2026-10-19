@@ -13,6 +13,13 @@ class CrmAlert extends Notification
         'web_lead_sla'  => ['Website lead not called', 'A website lead is still waiting for the first call.', 'fa-globe'],
         'daily_digest'  => ['Good morning summary', 'Your activities for the day, every morning.', 'fa-sun'],
         'company_daily' => ['Yesterday at a glance', 'Company numbers for yesterday (owners).', 'fa-chart-line'],
+        'ticket_assigned' => ['Tickets given to me', 'A support ticket is created for you or given to you.', 'fa-user-check'],
+        'ticket_new'      => ['New tickets without an owner', 'A new support ticket has nobody to handle it yet (support managers).', 'fa-ticket-alt'],
+        'ticket_overdue'  => ['Ticket overdue', 'A support ticket is past its deadline.', 'fa-stopwatch'],
+        'ticket_stale'    => ['Ticket with no update', 'A support ticket has had no update for a few days.', 'fa-hourglass-half'],
+        'ticket_reopened' => ['Ticket reopened', 'A solved or closed ticket was reopened.', 'fa-undo'],
+        'task_due'        => ['Tasks due', 'A task is due tomorrow or overdue.', 'fa-tasks'],
+        'support_digest'  => ['Support work today', 'Your tickets and tasks due, every morning.', 'fa-headset'],
     ];
 
     public function __construct(

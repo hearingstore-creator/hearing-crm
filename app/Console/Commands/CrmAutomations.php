@@ -25,13 +25,15 @@ use Illuminate\Support\Facades\DB;
  *   php artisan crm:automations reengage     – "Not ready" lost 90+ days ago → new deal + call
  *   php artisan crm:automations points       – SMS 7 days before membership points expire
  *   php artisan crm:automations warranty     – SMS 30 days before a product warranty ends
- *   php artisan crm:automations digest       – 8 AM summary in the bell (per owner + Super Admin)
+ *   php artisan crm:automations digest       – 8 AM summary in the bell (per owner + Super Admin), plus each person's tickets and tasks
+ *   php artisan crm:automations tickets      – overdue tickets, tickets with no update, Solved tickets that close by themselves
+ *   php artisan crm:automations tasks        – tasks due tomorrow or overdue
  */
 class CrmAutomations extends Command
 {
-    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest'];
+    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks'];
 
-    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest} {--dry : show what would happen, change nothing}';
+    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks} {--dry : show what would happen, change nothing}';
     protected $description = 'Run one lead automation';
 
     public function __construct(private CrmNotifier $notifier, private DealService $deals, private SmsAutomationService $sms)
@@ -281,10 +283,28 @@ class CrmAutomations extends Command
         ]);
         $this->notifier->send($this->notifier->superAdmins(), new CrmAlert('Yesterday at a glance', implode(' · ', $company), url('admin/deal-reports'), 'fa-chart-line', 'info', 'company_daily'));
 
+        // Each person's tickets and tasks (own line, own once-a-day key)
+        $n += app(\App\Services\TicketAutomation::class)->digest((bool) $this->option('dry'));
+
         return $n + 1;
     }
 
     // ------------------------------------------------------------------
+
+    /** Tickets: overdue alerts, no-update reminders, auto-close of Solved tickets. */
+    private function tickets(): int
+    {
+        $support = app(\App\Services\TicketAutomation::class);
+        $dry = (bool) $this->option('dry');
+
+        return $support->overdue($dry) + $support->stale($dry) + $support->autoClose($dry);
+    }
+
+    /** Tasks due tomorrow / overdue. */
+    private function tasks(): int
+    {
+        return app(\App\Services\TicketAutomation::class)->tasks((bool) $this->option('dry'));
+    }
 
     private function claim(string $key, string $automation): bool
     {

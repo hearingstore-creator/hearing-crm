@@ -28,6 +28,7 @@
                 'customer_created'    => ['color' => 'var(--primary-500)','bg' => 'var(--primary-50)',  'icon' => 'fas fa-id-card',       'label_color' => 'var(--primary-700)'],
                 'appointment_booked'  => ['color' => 'var(--warning-600)','bg' => 'var(--warning-50)',  'icon' => 'fas fa-calendar-check','label_color' => 'var(--warning-700)'],
                 'ticket_created'      => ['color' => 'var(--info-500)',   'bg' => 'var(--info-50)',     'icon' => 'fas fa-tools',         'label_color' => 'var(--info-700)'],
+                'ticket_solved'       => ['color' => 'var(--success-500)', 'bg' => 'var(--success-50)',  'icon' => 'fas fa-check-circle',  'label_color' => 'var(--success-700)'],
             ];
             $t = $trigMap[$automation->trigger_type] ?? ['color' => 'var(--gray-500)', 'bg' => 'var(--gray-50)', 'icon' => 'fas fa-bolt', 'label_color' => 'var(--gray-700)'];
         @endphp

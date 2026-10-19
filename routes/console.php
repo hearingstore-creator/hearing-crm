@@ -14,6 +14,8 @@ Schedule::command('crm:automations appointments')->dailyAt('09:00')->withoutOver
 Schedule::command('crm:automations warranty')->dailyAt('10:30')->withoutOverlapping();
 Schedule::command('crm:automations points')->dailyAt('11:00')->withoutOverlapping();
 Schedule::command('appointment:prune-holds')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('crm:automations tickets')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('crm:automations tasks')->dailyAt('08:15')->withoutOverlapping();
 
 // Activity log retention: keep the last N months (config crm.activity_log_keep_months, default 24)
 Illuminate\Support\Facades\Artisan::command('crm:prune-activity-log', function () {
