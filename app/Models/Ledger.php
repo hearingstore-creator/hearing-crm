@@ -24,6 +24,16 @@ class Ledger extends Model
         'ref_invoice_no',
     ];
 
+    public function head()
+    {
+        return $this->belongsTo(IncomeExpenseHead::class, 'income_expense_head_id');
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(User::class, 'vendor_id');
+    }
+
     protected static function booted(): void
     {
         static::addGlobalScope('vendor_filter', function ($builder) {

@@ -31,6 +31,8 @@
         </div>
     </div>
 
+    @include('admin.partials.finance-quick-actions')
+
     {{-- Top KPI Cards --}}
     <div class="kpi-row crm-animate-in">
         @include('admin.partials.kpi-card', [

@@ -22,6 +22,7 @@
     </div>
 
     @include('admin.alert_message')
+    @include('admin.partials.finance-quick-actions')
 
     <div class="crm-table-card crm-animate-in delay-1">
         <div class="crm-table-header d-flex justify-content-between align-items-center flex-wrap" style="gap: 10px; padding: 12px 16px;">

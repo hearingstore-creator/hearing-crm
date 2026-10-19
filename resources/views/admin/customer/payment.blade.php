@@ -59,6 +59,7 @@
     </div>
 
     @include('admin.alert_message')
+    @include('admin.partials.finance-quick-actions')
 
     <div class="crm-table-card crm-animate-in delay-1" style="padding: 0;">
         <div class="crm-table-header">

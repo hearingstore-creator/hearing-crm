@@ -70,13 +70,9 @@ class ReportController extends Controller
      *
      * @return \Illuminate\Contracts\View\View
      */
-    public function ledgerCreate(): View
+    public function ledgerCreate(Request $request = null): View
     {
-        $data['ledgerFilterTypes'] = Helper::ledgerFilterTypes();
-        $data['startDate'] = now()->startOfMonth()->toDateString();
-        $data['endDate'] = now()->toDateString();
-        $data['branches'] = auth()->user()->canViewAllBranches() ? Helper::branchOptions() : [];
-        return view('admin.report.ledger', $data);
+        return $this->ledgerReport($request ?: request());
     }
 
     /**
@@ -94,16 +90,16 @@ class ReportController extends Controller
         // Default: this month so far
         $startDate = $request->start_date ?: now()->startOfMonth()->toDateString();
         $endDate = $request->end_date ?: now()->toDateString();
-        $type = $request->type;
+        $type = $request->type ?: 'Both';
         $branch = $request->input('branch');
         $ledgerFilterTypes = Helper::ledgerFilterTypes();
         $branches = auth()->user()->canViewAllBranches() ? Helper::branchOptions() : [];
 
         // Head office sees every branch (narrowed by the branch filter); branch users keep their own branch
         $rows = fn (string $amountType) => Helper::readAllBranches(fn () => Helper::applyBranchFilter(
-            Ledger::where('amount_type', $amountType)->whereBetween('date', [$startDate, $endDate]),
+            Ledger::with(['head', 'vendor'])->where('amount_type', $amountType)->whereBetween('date', [$startDate, $endDate]),
             $branch
-        )->orderBy('id', 'desc')->get());
+        )->orderBy('date', 'desc')->orderBy('id', 'desc')->get());
 
         $data = compact('startDate', 'endDate', 'type', 'ledgerFilterTypes', 'branch', 'branches');
         if (Helper::$expense == $type) {

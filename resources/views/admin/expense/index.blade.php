@@ -27,6 +27,7 @@
     </div>
 
     @include('admin.alert_message')
+    @include('admin.partials.finance-quick-actions')
 
     {{-- Data Table --}}
     <div class="crm-table-card crm-animate-in delay-1">

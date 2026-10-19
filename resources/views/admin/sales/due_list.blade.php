@@ -136,6 +136,8 @@
         </div>
     </div>
 
+    @include('admin.partials.finance-quick-actions')
+
     {{-- Summary / KPI Cards --}}
     @php
         $st = $stats ?? [];
