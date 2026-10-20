@@ -9,6 +9,7 @@ use App\Models\DoctorLedger;
 use App\Models\IncomeExpenseHead;
 use App\Models\Ledger;
 use App\Models\SaleMaster;
+use App\Models\SaleReferral;
 use App\Models\Setting;
 use App\Services\LedgerReversal;
 use Carbon\Carbon;
@@ -82,15 +83,20 @@ class DoctorPaymentController extends Controller
 
         $doctors = Doctor::where('status', 1)->orderBy('name')->get(['id', 'name', 'qualification', 'referrer_type']);
 
-        // Pending Referral Negotiations / Settlements
-        $pendingQuery = SaleMaster::with(['doctor', 'customer', 'customer.lead', 'vendor', 'saleDetails.product'])
-            ->pendingReferralSettlement();
+        // Pending Referral Negotiations / Settlements (individual referral items)
+        $pendingQuery = SaleReferral::with([
+            'saleMaster.customer.lead',
+            'saleMaster.vendor',
+            'saleMaster.saleDetails.product',
+            'doctor',
+            'doctorChamber'
+        ])->pending();
 
         if ($request->filled('pending_doctor_id')) {
-            $pendingQuery->where('reference_by', $request->pending_doctor_id);
+            $pendingQuery->where('doctor_id', $request->pending_doctor_id);
         }
 
-        $pendingSales = $pendingQuery->latest('date')->latest('id')->get();
+        $pendingSales = $pendingQuery->latest('id')->get();
         $pendingCount = $pendingSales->count();
 
         return view('admin.doctor_payment.index', compact(
@@ -423,6 +429,7 @@ class DoctorPaymentController extends Controller
     public function settleReferral(Request $request, int $saleId)
     {
         $request->validate([
+            'sale_referral_id' => ['nullable', 'integer'],
             'reference_amount' => ['required', 'numeric', 'min:0.01'],
             'action'           => ['required', 'in:pay_now,add_to_due'],
             'payment_method'   => ['required_if:action,pay_now', 'nullable', 'string', 'max:50'],
@@ -432,33 +439,62 @@ class DoctorPaymentController extends Controller
             'date'             => ['nullable', 'date'],
         ]);
 
-        $sale = SaleMaster::with('doctor')->findOrFail($saleId);
-        if (!$sale->reference_by) {
+        $sale = SaleMaster::with(['doctor', 'referrals.doctor'])->findOrFail($saleId);
+
+        $referral = null;
+        if ($request->filled('sale_referral_id')) {
+            $referral = SaleReferral::with('doctor')->where('sale_master_id', $sale->id)->where('id', $request->sale_referral_id)->first();
+        }
+        if (!$referral && $sale->reference_by) {
+            $referral = SaleReferral::with('doctor')->where('sale_master_id', $sale->id)->where('doctor_id', $sale->reference_by)->first();
+        }
+
+        $targetDoctorId = $referral ? $referral->doctor_id : $sale->reference_by;
+        if (!$targetDoctorId) {
             return back()->with('warning', 'This sale does not have a referrer tagged.');
         }
 
-        $doctor = $sale->doctor;
+        $doctor = $referral ? $referral->doctor : $sale->doctor;
+        $roleLabel = $referral ? $referral->role_label : ($doctor ? $doctor->referrer_type_label : 'Referrer');
         $amount = round((float) $request->reference_amount, 2);
         $date = $request->date ?: now()->toDateString();
 
         DB::beginTransaction();
         try {
-            // 1. Update SaleMaster
-            $sale->reference_amount = $amount;
-            $sale->referral_settlement_status = 'settled';
-            $sale->save();
+            // 1. Update or create SaleReferral record
+            if ($referral) {
+                $referral->commission_amount = $amount;
+                $referral->settlement_status = 'settled';
+                $referral->settled_at = now();
+                if ($request->filled('details')) {
+                    $referral->notes = trim($request->details);
+                }
+                $referral->save();
+            } else {
+                $referral = SaleReferral::create([
+                    'sale_master_id'    => $sale->id,
+                    'doctor_id'         => $targetDoctorId,
+                    'doctor_chamber_id' => $sale->doctor_chamber_id,
+                    'role'              => $doctor->referrer_type ?? 'doctor',
+                    'commission_amount' => $amount,
+                    'settlement_status' => 'settled',
+                    'settled_at'        => now(),
+                    'notes'             => $request->filled('details') ? trim($request->details) : null,
+                ]);
+            }
 
-            // 2. Remove any previous non-payment doctor ledger credit for this invoice (if re-settling)
+            // 2. Remove any previous non-payment doctor ledger credit for this specific doctor and invoice
             DoctorLedger::where('ref_invoice_no', $sale->sale_invoice_no)
+                ->where('doctor_id', $targetDoctorId)
                 ->where('type', '!=', 'Payment')
                 ->delete();
 
             // 3. Post Credit to Doctor Ledger (Clinic owes Referrer)
             $doctorLedgerCredit = new DoctorLedger();
-            $doctorLedgerCredit->doctor_id = $sale->reference_by;
+            $doctorLedgerCredit->doctor_id = $targetDoctorId;
             $doctorLedgerCredit->vendor_id = $sale->vendor_id ?? auth()->user()->branchId();
             $doctorLedgerCredit->date = $date;
-            $doctorLedgerCredit->details = "Sale invoice no - {$sale->sale_invoice_no}" . ($request->filled('details') ? ' (' . trim($request->details) . ')' : '');
+            $doctorLedgerCredit->details = "Sale invoice no - {$sale->sale_invoice_no} [{$roleLabel}]" . ($request->filled('details') ? ' (' . trim($request->details) . ')' : '');
             $doctorLedgerCredit->debit = 0;
             $doctorLedgerCredit->credit = $amount;
             $doctorLedgerCredit->type = Helper::$sales; // 'Sales'
@@ -471,10 +507,10 @@ class DoctorPaymentController extends Controller
             if ($request->action === 'pay_now') {
                 $voucherNo = 'DP-' . date('Ymd') . '-' . str_pad((string) (DoctorLedger::where('type', 'Payment')->count() + 1), 4, '0', STR_PAD_LEFT);
                 $docName = $doctor ? $doctor->name : 'Referrer';
-                $payDetails = "Negotiated referral for {$sale->sale_invoice_no} to {$docName} [{$request->payment_method}]" . ($request->transaction_no ? " (Ref: {$request->transaction_no})" : "") . " · Voucher #{$voucherNo}";
+                $payDetails = "Negotiated referral for {$sale->sale_invoice_no} to {$docName} ({$roleLabel}) [{$request->payment_method}]" . ($request->transaction_no ? " (Ref: {$request->transaction_no})" : "") . " · Voucher #{$voucherNo}";
 
                 $doctorLedgerDebit = new DoctorLedger();
-                $doctorLedgerDebit->doctor_id = $sale->reference_by;
+                $doctorLedgerDebit->doctor_id = $targetDoctorId;
                 $doctorLedgerDebit->vendor_id = $sale->vendor_id ?? auth()->user()->branchId();
                 $doctorLedgerDebit->date = $date;
                 $doctorLedgerDebit->details = $payDetails;
@@ -490,6 +526,9 @@ class DoctorPaymentController extends Controller
 
                 $voucherId = $doctorLedgerDebit->id;
 
+                $referral->doctor_payment_id = $voucherId;
+                $referral->save();
+
                 // Company cash drawer outflow
                 $head = IncomeExpenseHead::where('head_type', Helper::$expense)
                     ->where(function ($q) {
@@ -503,7 +542,7 @@ class DoctorPaymentController extends Controller
                 $companyLedger->vendor_id = $sale->vendor_id ?? auth()->user()->branchId();
                 $companyLedger->invoice_no = Helper::freeLedgerInvoiceNo(date('ymdhis') . rand(10, 99));
                 $companyLedger->date = $date;
-                $companyLedger->details = "Doctor/Referral Commission Paid to {$docName} for {$sale->sale_invoice_no} [{$request->payment_method}]";
+                $companyLedger->details = "Doctor/Referral Commission Paid to {$docName} ({$roleLabel}) for {$sale->sale_invoice_no} [{$request->payment_method}]";
                 $companyLedger->expense_amount = $amount;
                 $companyLedger->income_amount = 0;
                 $companyLedger->amount_type = Helper::$expense;
@@ -512,23 +551,32 @@ class DoctorPaymentController extends Controller
                 $companyLedger->save();
             }
 
+            // 5. Update SaleMaster combined reference_amount and overall referral_settlement_status
+            $sale->reference_amount = (float) $sale->referrals()->sum('commission_amount');
+            $hasPending = $sale->referrals()->where('settlement_status', 'pending')->exists();
+            $sale->referral_settlement_status = $hasPending ? 'pending' : 'settled';
+            $sale->saveQuietly();
+
             DB::commit();
+
+            $docDisplayName = $doctor ? $doctor->name : 'Referrer';
+            $successMsg = "Referral commission for {$docDisplayName} ({$roleLabel}) on invoice {$sale->sale_invoice_no} settled for ৳" . number_format($amount, 2) . ($request->action === 'pay_now' ? ' and disbursed!' : ' (added to due)!');
 
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => "Referral for invoice {$sale->sale_invoice_no} settled for ৳" . number_format($amount, 2) . ($request->action === 'pay_now' ? ' and disbursed!' : ' (added to due)!'),
+                    'message' => $successMsg,
                     'voucher_id' => $voucherId,
                 ]);
             }
 
             if ($request->action === 'pay_now' && $voucherId) {
                 return redirect()->route('doctors.payment.slip', $voucherId)
-                    ->with('success', "Referral for invoice {$sale->sale_invoice_no} settled for ৳" . number_format($amount, 2) . " and disbursed via {$request->payment_method}!");
+                    ->with('success', $successMsg);
             }
 
             return redirect()->route('doctors.payment.index')
-                ->with('success', "Referral for invoice {$sale->sale_invoice_no} settled for ৳" . number_format($amount, 2) . " and added to referrer's due balance!");
+                ->with('success', $successMsg);
         } catch (\Throwable $e) {
             DB::rollback();
             if ($request->wantsJson()) {

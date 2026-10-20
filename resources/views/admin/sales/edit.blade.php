@@ -147,8 +147,70 @@
                                  @endif
                               @endif
                            </select>
-                        </div>
-                     </div>
+                         </div>
+                      </div>
+                      @php
+                         $secondaryRef = $saleMaster->referrals->first(function($r) use ($saleMaster) {
+                             return $r->doctor_id != $saleMaster->reference_by || in_array($r->role, ['quack', 'agent']);
+                         });
+                         $primaryRef = $saleMaster->referrals->first(function($r) use ($saleMaster) {
+                             return $r->doctor_id == $saleMaster->reference_by;
+                         });
+                         $secondaryAmount = $secondaryRef ? (float)$secondaryRef->commission_amount : 0.0;
+                         $primaryAmount = $primaryRef ? (float)$primaryRef->commission_amount : max(0, (float)$saleMaster->reference_amount - $secondaryAmount);
+                      @endphp
+                      <div class="form-group row" style="margin-top: -5px; margin-bottom: 10px;">
+                         <div class="col-md-2"></div>
+                         <div class="col-md-10">
+                            <a href="javascript:void(0)" id="toggle-secondary-referrer" class="text-primary font-weight-bold" style="font-size: 13px; text-decoration: none; {{ $secondaryRef ? 'display:none;' : '' }}">
+                               <i class="fas fa-plus-circle mr-1"></i>+ Add Accompanying Referrer (Quack / Village Doctor / RF Agent)
+                            </a>
+                         </div>
+                      </div>
+
+                      <div id="secondary-referrer-box" class="form-group row" style="{{ $secondaryRef ? '' : 'display:none;' }} background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 14px 18px; margin: 0 0 16px 0;">
+                         <div class="col-12 d-flex justify-content-between align-items-center mb-2">
+                            <span class="font-weight-bold text-dark" style="font-size: 13px;">
+                               <i class="fas fa-user-friends text-info mr-1"></i>Accompanying Referrer / Escort
+                            </span>
+                            <button type="button" class="btn btn-xs btn-outline-danger" id="btn-remove-secondary-referrer" style="font-size: 11px; padding: 2px 8px; border-radius: 6px;">
+                               <i class="fas fa-times mr-1"></i>Remove
+                            </button>
+                         </div>
+                         <div class="col-md-5 mb-2">
+                            <label class="small font-weight-bold text-muted mb-1">Select Quack / Village Doctor / RF</label>
+                            <select class="form-control select" name="secondary_reference_by" id="secondary_reference_by">
+                               <option value="">Select Accompanying Referrer</option>
+                               @foreach ($doctors ?? [] as $doc)
+                                  @php
+                                     $docTypePrefix = match($doc->referrer_type ?? 'doctor') {
+                                        'quack' => '[Quack/RMP] ',
+                                        'agent' => '[RF Agent] ',
+                                        default => '[Doctor] '
+                                     };
+                                  @endphp
+                                  <option value="{{ $doc->id }}" data-type="{{ $doc->referrer_type ?? 'doctor' }}" {{ ($secondaryRef && $secondaryRef->doctor_id == $doc->id) ? 'selected' : '' }}>
+                                     {{ $docTypePrefix }}{{ $doc->name }} ({{ $doc->contact_number ?? 'No phone' }})
+                                  </option>
+                               @endforeach
+                            </select>
+                         </div>
+                         <div class="col-md-4 mb-2">
+                            <label class="small font-weight-bold text-muted mb-1">Commission for Accompanying Referrer (৳)</label>
+                            <input type="number" step="0.01" min="0" class="form-control font-weight-bold" name="secondary_reference_amount" id="secondary_reference_amount" value="{{ number_format($secondaryAmount, 2, '.', '') }}" placeholder="0.00">
+                         </div>
+                         <div class="col-md-3 mb-2">
+                            <label class="small font-weight-bold text-muted mb-1">Role / Tag</label>
+                            <select name="secondary_role" id="secondary_role" class="form-control">
+                               <option value="quack" {{ ($secondaryRef && $secondaryRef->role === 'quack') ? 'selected' : '' }}>Village Doctor / Quack (RMP)</option>
+                               <option value="agent" {{ ($secondaryRef && $secondaryRef->role === 'agent') ? 'selected' : '' }}>RF / Accompanying Agent</option>
+                               <option value="doctor" {{ ($secondaryRef && $secondaryRef->role === 'doctor') ? 'selected' : '' }}>Co-Referring Doctor</option>
+                            </select>
+                         </div>
+                         <div class="col-12 mt-1">
+                            <input type="text" name="secondary_notes" id="secondary_notes" class="form-control form-control-sm" value="{{ $secondaryRef ? $secondaryRef->notes : '' }}" placeholder="Optional notes (e.g. Brought patient in person, negotiated ৳500 cash on spot)">
+                         </div>
+                      </div>
                      <div class="form-group row">
                         <label for="delivery_status" class="col-md-2 col-form-label">Delivery Status:</label>
                         <div class="col-md-4">
@@ -410,9 +472,9 @@
                                  </td>
                                  <td></td>
                               </tr>
-                              <tr>
+                                                            <tr>
                                  <td class="text-right" colspan="8">
-                                    <b>Referral Commission:</b>
+                                    <b>Doctor Commission:</b>
                                     @if($saleMaster->reference_by && $saleMaster->referral_settlement_status === 'pending')
                                        <span class="badge badge-warning ml-1"><i class="fas fa-clock mr-1"></i>Negotiation Pending</span>
                                     @elseif($saleMaster->reference_by && $saleMaster->referral_settlement_status === 'settled')
@@ -420,11 +482,29 @@
                                     @endif
                                  </td>
                                  <td class="text-right">
-                                    <input type="text" class="text-right form-control reference-amount" name="reference_amount" value="{{ number_format($saleMaster->reference_amount, 2, '.', '') }}" placeholder="0.00">
+                                    <input type="text" class="text-right form-control" id="primary_reference_amount" name="primary_reference_amount" value="{{ number_format($primaryAmount, 2, '.', '') }}" placeholder="0.00">
                                     <div id="doc-comm-breakdown" style="display:none; font-size:11px; color:#4338ca; background:#eef2ff; border-radius:4px; padding:3px 6px; margin-top:4px;"></div>
                                     @if($saleMaster->reference_by && $saleMaster->referral_settlement_status === 'pending')
                                        <small class="text-muted d-block mt-1">Leave 0 if commission will be negotiated later at closing time.</small>
                                     @endif
+                                 </td>
+                                 <td></td>
+                              </tr>
+                              <tr id="summary-secondary-comm-row" style="{{ $secondaryAmount > 0.001 ? '' : 'display:none;' }}">
+                                 <td class="text-right" colspan="8">
+                                    <b class="text-info"><i class="fas fa-user-friends mr-1"></i>Quack / RF Commission:</b>
+                                 </td>
+                                 <td class="text-right">
+                                    <input type="text" class="text-right form-control" id="secondary_comm_display" value="৳{{ number_format($secondaryAmount, 2, '.', '') }}" readonly tabindex="-1" style="font-weight:700; color:#0284c7; background:#f0f9ff;">
+                                 </td>
+                                 <td></td>
+                              </tr>
+                              <tr id="row-total-referral-comm">
+                                 <td class="text-right" colspan="8">
+                                    <b>Total Referral Commission:</b>
+                                 </td>
+                                 <td class="text-right">
+                                    <input type="text" class="text-right form-control reference-amount" id="reference_amount" name="reference_amount" value="{{ number_format($saleMaster->reference_amount, 2, '.', '') }}" placeholder="0.00" readonly style="font-weight:700; background:#f8fafc;">
                                  </td>
                                  <td></td>
                               </tr>

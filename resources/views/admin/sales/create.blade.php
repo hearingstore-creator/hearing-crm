@@ -166,6 +166,61 @@
                                 </select>
                             </div>
 
+                            {{-- Secondary / Accompanying Referrer Link & Collapsible Section --}}
+                            <div class="sale-field sale-col-12" style="margin-top: -6px; margin-bottom: 6px;">
+                                <a href="javascript:void(0)" id="toggle-secondary-referrer" class="text-primary font-weight-bold" style="font-size: 12.5px; text-decoration: none;">
+                                    <i class="fas fa-plus-circle mr-1"></i>+ Add Accompanying Referrer (Quack / Village Doctor / RF Agent)
+                                </a>
+                            </div>
+
+                            <div id="secondary-referrer-box" class="sale-field sale-col-12" style="display: none; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="font-weight-bold text-dark" style="font-size: 13px;">
+                                        <i class="fas fa-user-friends text-info mr-1.5"></i>Accompanying Referrer / Escort
+                                    </span>
+                                    <button type="button" class="btn btn-xs btn-outline-danger" id="btn-remove-secondary-referrer" style="font-size: 11px; padding: 2px 8px; border-radius: 6px;">
+                                        <i class="fas fa-times mr-1"></i>Remove
+                                    </button>
+                                </div>
+                                <div class="form-row">
+                                    <div class="col-md-5 mb-2">
+                                        <label class="small font-weight-bold text-muted mb-1">Select Quack / Village Doctor / RF</label>
+                                        <select class="form-control select" name="secondary_reference_by" id="secondary_reference_by">
+                                            <option value="">Select Accompanying Referrer</option>
+                                            @foreach ($doctors ?? [] as $doc)
+                                                @php
+                                                    $docTypePrefix = match($doc->referrer_type ?? 'doctor') {
+                                                        'quack' => '[Quack/RMP] ',
+                                                        'agent' => '[RF Agent] ',
+                                                        default => '[Doctor] '
+                                                    };
+                                                @endphp
+                                                <option value="{{ $doc->id }}" data-type="{{ $doc->referrer_type ?? 'doctor' }}">
+                                                    {{ $docTypePrefix }}{{ $doc->name }} ({{ $doc->contact_number ?? 'No phone' }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label class="small font-weight-bold text-muted mb-1">Commission for Accompanying Referrer (৳)</label>
+                                        <input type="number" step="0.01" min="0" class="form-control font-weight-bold" name="secondary_reference_amount" id="secondary_reference_amount" value="0.00" placeholder="0.00">
+                                    </div>
+                                    <div class="col-md-3 mb-2">
+                                        <label class="small font-weight-bold text-muted mb-1">Role / Tag</label>
+                                        <select name="secondary_role" id="secondary_role" class="form-control">
+                                            <option value="quack" selected>Village Doctor / Quack (RMP)</option>
+                                            <option value="agent">RF / Accompanying Agent</option>
+                                            <option value="doctor">Co-Referring Doctor</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row mt-1">
+                                    <div class="col-12">
+                                        <input type="text" name="secondary_notes" id="secondary_notes" class="form-control form-control-sm" placeholder="Optional notes (e.g. Brought patient in person, negotiated ৳500 cash on spot)">
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="sale-field sale-col-12">
                                 <label for="details">Notes / Details</label>
                                 <input class="form-control" id="details" type="text" name="details" 
@@ -429,9 +484,14 @@
                             <input type="text" class="form-control v-plain total-discount" name="total_discount" value="0.00" readonly="readonly" tabindex="-1">
                         </div>
                         <div class="summary-row">
-                            <label class="k mb-0" for="reference_amount"><i class="fas fa-user-md"></i>Doctor Commission</label>
-                            <input type="text" class="form-control v-input reference-amount" id="reference_amount" name="reference_amount" value="0.00" placeholder="0.00">
+                            <label class="k mb-0" for="primary_reference_amount"><i class="fas fa-user-md"></i>Doctor Commission</label>
+                            <input type="text" class="form-control v-input reference-amount" id="primary_reference_amount" name="primary_reference_amount" value="0.00" placeholder="0.00">
                         </div>
+                        <div class="summary-row" id="summary-secondary-comm-row" style="display: none;">
+                            <label class="k mb-0" for="secondary_comm_display"><i class="fas fa-user-friends text-info"></i>Quack / RF Commission</label>
+                            <input type="text" class="form-control v-plain" id="secondary_comm_display" value="৳0.00" readonly tabindex="-1" style="font-weight: 700; color: #0284c7;">
+                        </div>
+                        <input type="hidden" name="reference_amount" id="reference_amount" value="0.00">
                         <div id="doc-comm-breakdown" style="display:none; font-size:11px; color:#4338ca; background:#eef2ff; border-radius:6px; padding:5px 8px; margin:-4px 0 10px 0; border-left:3px solid #6366f1; line-height: 1.3;"></div>
                     {{-- Customer Advance Offer Banner (Part C) --}}
                     <div id="wrap-customer-advance" style="display:none; margin-bottom:12px; padding:12px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px;">

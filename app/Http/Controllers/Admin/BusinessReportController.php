@@ -582,6 +582,11 @@ class BusinessReportController extends Controller
                 $sales = DB::table('sale_masters')
                     ->leftJoin('customers', 'sale_masters.customer_id', '=', 'customers.id')
                     ->leftJoin('leads', 'customers.lead_id', '=', 'leads.id')
+                    ->leftJoin('sale_referrals', function ($join) use ($doctor) {
+                        $join->on('sale_masters.id', '=', 'sale_referrals.sale_master_id')
+                            ->where('sale_referrals.doctor_id', '=', $doctor->id)
+                            ->whereNull('sale_referrals.deleted_at');
+                    })
                     ->whereIn('sale_masters.sale_invoice_no', $refNos)
                     ->whereNull('sale_masters.deleted_at')
                     ->select([
@@ -589,7 +594,7 @@ class BusinessReportController extends Controller
                         'sale_masters.date',
                         'sale_masters.sale_invoice_no',
                         'sale_masters.total_amount',
-                        'sale_masters.reference_amount as commission_amount',
+                        DB::raw('COALESCE(sale_referrals.commission_amount, sale_masters.reference_amount) as commission_amount'),
                         DB::raw("COALESCE(leads.full_name, 'Patient') as patient_name"),
                         'leads.phone_number as patient_phone',
                     ])

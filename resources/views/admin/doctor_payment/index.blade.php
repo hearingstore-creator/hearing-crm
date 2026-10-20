@@ -156,24 +156,31 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($pendingSales as $pidx => $sale)
+                            @forelse($pendingSales as $pidx => $item)
                             @php
+                                $isReferralObj = $item instanceof \App\Models\SaleReferral;
+                                $sale = $isReferralObj ? $item->saleMaster : $item;
+                                $ref = $isReferralObj ? $item : null;
+                                
                                 $patientName = $sale->customer->lead->full_name ?? ($sale->customer->name ?? 'Walk-in Patient');
                                 $patientPhone = $sale->customer->lead->phone_number ?? ($sale->customer->mobile ?? '');
-                                $doc = $sale->doctor;
+                                $doc = $ref ? $ref->doctor : $sale->doctor;
                                 $docName = $doc ? $doc->name : 'Unknown Referrer';
                                 $docType = $doc ? $doc->referrer_type_label : 'Referrer';
                                 $docBadge = $doc ? $doc->referrer_badge_class : 'badge-primary';
+                                $roleLabel = $ref ? $ref->role_label : $docType;
+                                $roleBadge = $ref ? $ref->role_badge_class : $docBadge;
+                                $rowRoleType = $ref ? $ref->role : ($doc->referrer_type ?? 'doctor');
                                 
                                 $itemNames = [];
-                                foreach ($sale->saleDetails as $sd) {
+                                foreach ($sale->saleDetails ?? [] as $sd) {
                                     if ($sd->product) {
                                         $itemNames[] = $sd->product->product_name ?? 'Product';
                                     }
                                 }
                                 $itemsSummary = !empty($itemNames) ? implode(', ', array_slice($itemNames, 0, 2)) : 'Sale Items';
                             @endphp
-                            <tr class="pending-sale-row" data-referrer-type="{{ $doc->referrer_type ?? 'doctor' }}">
+                            <tr class="pending-sale-row" data-referrer-type="{{ $rowRoleType }}">
                                 <td style="color: var(--page-text-muted); font-size: 12px;">{{ $pidx + 1 }}</td>
                                 <td style="font-size: 13px; font-weight: 500;">
                                     {{ $sale->date ? \Carbon\Carbon::parse($sale->date)->format('d M Y') : '—' }}
@@ -203,10 +210,13 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-center flex-wrap gap-1">
                                         <span class="font-weight-bold" style="color: #0f172a; font-size: 13px;">{{ $docName }}</span>
-                                        <span class="badge {{ $docBadge }} ml-1.5" style="font-size: 10px; font-weight: 600;">{{ $docType }}</span>
+                                        <span class="badge {{ $roleBadge }} ml-1.5" style="font-size: 10px; font-weight: 600;">{{ $roleLabel }}</span>
                                     </div>
+                                    @if($ref && $ref->notes)
+                                        <small class="text-muted d-block mt-0.5" style="font-size: 11px;"><i class="fas fa-sticky-note text-info mr-1"></i>{{ $ref->notes }}</small>
+                                    @endif
                                 </td>
                                 <td>
                                     <span class="badge badge-warning px-2 py-1" style="font-size: 11px; font-weight: 700;">
@@ -218,12 +228,14 @@
                                     <button type="button" class="btn btn-sm btn-success px-2.5 py-1 btn-settle-modal" 
                                             style="border-radius: 6px; font-weight: 700; font-size: 12px;"
                                             data-id="{{ $sale->id }}"
+                                            data-referral-id="{{ $ref?->id }}"
                                             data-invoice="{{ $sale->sale_invoice_no }}"
                                             data-patient="{{ $patientName }}"
                                             data-total="{{ (float) $sale->total_amount }}"
                                             data-referrer="{{ $docName }}"
                                             data-referrer-type="{{ $docType }}"
-                                            data-badge-class="{{ $docBadge }}">
+                                            data-role-label="{{ $roleLabel }}"
+                                            data-badge-class="{{ $roleBadge }}">
                                         <i class="fas fa-handshake mr-1"></i>Settle & Pay
                                     </button>
                                     @else
@@ -448,6 +460,7 @@
                     </button>
                 </div>
                 <div class="modal-body p-4">
+                    <input type="hidden" name="sale_referral_id" id="modal-sale-referral-id" value="">
                     {{-- Sale summary card --}}
                     <div class="p-3 mb-3" style="background: #f1f5f9; border-radius: 8px; border-left: 4px solid var(--accent-500);">
                         <div class="d-flex justify-content-between align-items-center mb-1">
@@ -552,14 +565,17 @@ $(document).ready(function() {
         var total = parseFloat(btn.data('total') || 0);
         var referrer = btn.data('referrer');
         var referrerType = btn.data('referrer-type');
+        var roleLabel = btn.data('role-label') || referrerType;
         var badgeClass = btn.data('badge-class') || 'badge-primary';
+        var referralId = btn.data('referral-id') || '';
 
         $('#settleForm').attr('action', '{{ url("admin/doctors-payment/settle") }}/' + saleId);
+        $('#modal-sale-referral-id').val(referralId);
         $('#modal-invoice-no').text(invoice);
         $('#modal-total-amount').text('৳' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
         $('#modal-patient-info').text('Patient: ' + patient);
         $('#modal-referrer-name').text(referrer);
-        $('#modal-referrer-badge').text(referrerType).attr('class', 'badge ml-1 ' + badgeClass);
+        $('#modal-referrer-badge').text(roleLabel).attr('class', 'badge ml-1 ' + badgeClass);
 
         $('#modal-reference-amount').val('').focus();
         $('#settleForm').data('sale-total', total);

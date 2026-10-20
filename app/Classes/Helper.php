@@ -12,6 +12,8 @@ use App\Models\Product;
 use App\Models\PurchaseDetail;
 use App\Models\SaleDetail;
 use App\Models\SaleMaster;
+use App\Models\SaleReferral;
+use App\Models\Doctor;
 use App\Models\SupplierLedger;
 use App\Models\Stock;
 use Gate;
@@ -771,6 +773,125 @@ class Helper
     }
 
     /**
+     * Synchronize dual/multi referrals for a sale, record individual referral records,
+     * calculate combined total reference_amount, and post separate credits to DoctorLedger.
+     */
+    public static function syncSaleReferrals(SaleMaster $sale, object $request, string $type = 'Sales'): void
+    {
+        // Clean up existing non-payment doctor ledger entries for this invoice to re-sync
+        DoctorLedger::where('ref_invoice_no', $sale->sale_invoice_no)
+            ->where('type', '!=', 'Payment')
+            ->delete();
+
+        $existing = SaleReferral::where('sale_master_id', $sale->id)->get()->keyBy('doctor_id');
+        $activeDoctorIds = [];
+        $totalCommission = 0.0;
+        $hasPending = false;
+
+        // 1. Primary Referrer
+        if (!empty($request->reference_by)) {
+            $primaryDocId = (int) $request->reference_by;
+            $primaryAmount = (float) ($request->primary_reference_amount ?? ($request->reference_amount ?? 0));
+            $activeDoctorIds[] = $primaryDocId;
+            $totalCommission += $primaryAmount;
+
+            $doc = Doctor::find($primaryDocId);
+            $role = $doc->referrer_type ?? 'doctor';
+
+            $existingStatus = $existing->has($primaryDocId) ? $existing[$primaryDocId]->settlement_status : null;
+            $status = $existingStatus === 'settled' ? 'settled' : ($primaryAmount > 0.001 ? 'settled' : 'pending');
+
+            $refRecord = SaleReferral::updateOrCreate(
+                ['sale_master_id' => $sale->id, 'doctor_id' => $primaryDocId],
+                [
+                    'doctor_chamber_id' => $request->doctor_chamber_id ?: null,
+                    'role'              => $role,
+                    'commission_amount' => $primaryAmount,
+                    'settlement_status' => $status,
+                ]
+            );
+
+            if ($status === 'pending') {
+                $hasPending = true;
+            }
+
+            if ($primaryAmount > 0.001) {
+                $dl = new DoctorLedger();
+                $dl->doctor_id = $primaryDocId;
+                $dl->vendor_id = $sale->vendor_id;
+                $dl->date = $sale->date ?: now()->toDateString();
+                $dl->details = "Sale invoice no - {$sale->sale_invoice_no} [Primary Referrer]";
+                $dl->debit = 0;
+                $dl->credit = $primaryAmount;
+                $dl->type = $type;
+                $dl->ref_invoice_no = $sale->sale_invoice_no;
+                $dl->save();
+            }
+        }
+
+        // 2. Secondary / Accompanying Referrer (Quack / Agent)
+        if (!empty($request->secondary_reference_by) && (int) $request->secondary_reference_by !== (int) ($request->reference_by ?? 0)) {
+            $secondaryDocId = (int) $request->secondary_reference_by;
+            $secondaryAmount = (float) ($request->secondary_reference_amount ?? 0);
+            $secondaryRole = $request->secondary_role ?: 'quack';
+            $activeDoctorIds[] = $secondaryDocId;
+            $totalCommission += $secondaryAmount;
+
+            $existingStatus2 = $existing->has($secondaryDocId) ? $existing[$secondaryDocId]->settlement_status : null;
+            $status2 = $existingStatus2 === 'settled' ? 'settled' : ($secondaryAmount > 0.001 ? 'settled' : 'pending');
+
+            $refRecord2 = SaleReferral::updateOrCreate(
+                ['sale_master_id' => $sale->id, 'doctor_id' => $secondaryDocId],
+                [
+                    'doctor_chamber_id' => null,
+                    'role'              => $secondaryRole,
+                    'commission_amount' => $secondaryAmount,
+                    'settlement_status' => $status2,
+                    'notes'             => $request->secondary_notes ?: null,
+                ]
+            );
+
+            if ($status2 === 'pending') {
+                $hasPending = true;
+            }
+
+            if ($secondaryAmount > 0.001) {
+                $roleLabel = match($secondaryRole) {
+                    'quack' => 'Accompanying Quack/RMP',
+                    'agent' => 'Accompanying RF Agent',
+                    default => 'Co-Referrer'
+                };
+                $dl2 = new DoctorLedger();
+                $dl2->doctor_id = $secondaryDocId;
+                $dl2->vendor_id = $sale->vendor_id;
+                $dl2->date = $sale->date ?: now()->toDateString();
+                $dl2->details = "Sale invoice no - {$sale->sale_invoice_no} [{$roleLabel}]";
+                $dl2->debit = 0;
+                $dl2->credit = $secondaryAmount;
+                $dl2->type = $type;
+                $dl2->ref_invoice_no = $sale->sale_invoice_no;
+                $dl2->save();
+            }
+        }
+
+        // Remove any deleted referrals
+        if (!empty($activeDoctorIds)) {
+            SaleReferral::where('sale_master_id', $sale->id)
+                ->whereNotIn('doctor_id', $activeDoctorIds)
+                ->delete();
+        } else {
+            SaleReferral::where('sale_master_id', $sale->id)->delete();
+        }
+
+        // Update SaleMaster reference amount and status
+        $sale->reference_amount = $totalCommission;
+        $sale->referral_settlement_status = empty($activeDoctorIds)
+            ? 'none'
+            : ($hasPending ? 'pending' : 'settled');
+        $sale->saveQuietly();
+    }
+
+    /**
      * Add credit entry to doctor ledger when sale is made with doctor reference.
      *
      * @param object $request
@@ -780,6 +901,11 @@ class Helper
      */
     public static function doctorLedgerCredit(object $request, string $refInvoiceNo, string $type): bool
     {
+        if ($request instanceof SaleMaster) {
+            self::syncSaleReferrals($request, $request, $type);
+            return true;
+        }
+
         if (empty($request->reference_by) || (float) ($request->reference_amount ?? 0) <= 0.001) {
             return false;
         }

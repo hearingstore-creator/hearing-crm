@@ -428,10 +428,11 @@ class SaleController extends Controller
                 $saleMaster->vendor_id = null;
             }
 
-            // Handle doctor reference, chamber and commission
-            if (!empty($request->reference_by)) {
-                $refAmount = (float) ($request->reference_amount ?? 0);
-                if ($refAmount <= 0.001) {
+            // Handle doctor reference, chamber and commission (including dual/multi referrals)
+            if (!empty($request->reference_by) || !empty($request->secondary_reference_by)) {
+                $primaryDocId = !empty($request->reference_by) ? (int) $request->reference_by : (int) $request->secondary_reference_by;
+                $refAmount = (float) ($request->primary_reference_amount ?? ($request->reference_amount ?? 0));
+                if (!empty($request->reference_by) && $refAmount <= 0.001) {
                     $prods = [];
                     if (!empty($requestProductIds)) {
                         foreach ($requestProductIds as $k => $pId) {
@@ -460,10 +461,12 @@ class SaleController extends Controller
                         $request->has('is_percent_service_commission')
                     );
                 }
-                $saleMaster->reference_amount = $refAmount;
-                $saleMaster->reference_by = $request->reference_by;
-                $saleMaster->doctor_chamber_id = $request->doctor_chamber_id ?: null;
-                $saleMaster->referral_settlement_status = ($refAmount > 0.001) ? 'settled' : 'pending';
+
+                $secAmount = (float) ($request->secondary_reference_amount ?? 0);
+                $saleMaster->reference_amount = $refAmount + $secAmount;
+                $saleMaster->reference_by = $primaryDocId;
+                $saleMaster->doctor_chamber_id = !empty($request->reference_by) ? ($request->doctor_chamber_id ?: null) : null;
+                $saleMaster->referral_settlement_status = ($refAmount > 0.001 || $secAmount > 0.001) ? 'settled' : 'pending';
             } else {
                 $saleMaster->reference_amount = 0;
                 $saleMaster->reference_by = null;
@@ -534,9 +537,9 @@ class SaleController extends Controller
                         Helper::incomeLedger($cashRequest, $incomeInvoiceNo, $saleInvoiceNo, $type);
                     }
 
-                    // Add doctor ledger entry if doctor is referenced
-                    if (!empty($request->reference_by)) {
-                        Helper::doctorLedgerCredit($saleMaster, $saleInvoiceNo, $type);
+                    // Add/sync doctor referrals and ledger entries
+                    if (!empty($request->reference_by) || !empty($request->secondary_reference_by)) {
+                        Helper::syncSaleReferrals($saleMaster, $request, $type);
                     }
 
                     // Create new redeem entry if points provided
@@ -685,7 +688,7 @@ class SaleController extends Controller
         $data['serviceTypes'] = ServiceType::where('status', 1)->get();
         $data['doctors'] = Doctor::where('status', 1)->with(['chambers', 'categoryCommissions', 'serviceCommissions'])->get();
 
-        $saleMaster = $this->resolveSaleMaster($id, ['customer', 'doctorChamber']);
+        $saleMaster = $this->resolveSaleMaster($id, ['customer', 'doctorChamber', 'referrals.doctor']);
 
         // Check if the user has access to this sale
         if (!$saleMaster || !$saleMaster->isAccessibleByAuthUser()) {
@@ -975,10 +978,11 @@ class SaleController extends Controller
             $saleMaster->is_percent_service_commission = $request->has('is_percent_service_commission') ? 1 : 0;
             $saleInvoiceNo = $saleMaster->sale_invoice_no;
 
-            // Handle doctor reference, chamber and commission
-            if (!empty($request->reference_by)) {
-                $refAmount = (float) ($request->reference_amount ?? 0);
-                if ($refAmount <= 0.001) {
+            // Handle doctor reference, chamber and commission (including dual/multi referrals)
+            if (!empty($request->reference_by) || !empty($request->secondary_reference_by)) {
+                $primaryDocId = !empty($request->reference_by) ? (int) $request->reference_by : (int) $request->secondary_reference_by;
+                $refAmount = (float) ($request->primary_reference_amount ?? ($request->reference_amount ?? 0));
+                if (!empty($request->reference_by) && $refAmount <= 0.001) {
                     $prods = [];
                     if (isset($request->old)) {
                         foreach ($request->old as $k => $val) {
@@ -1025,10 +1029,12 @@ class SaleController extends Controller
                         $request->has('is_percent_service_commission')
                     );
                 }
-                $saleMaster->reference_amount = $refAmount;
-                $saleMaster->reference_by = $request->reference_by;
-                $saleMaster->doctor_chamber_id = $request->doctor_chamber_id ?: null;
-                $saleMaster->referral_settlement_status = ($refAmount > 0.001) ? 'settled' : 'pending';
+
+                $secAmount = (float) ($request->secondary_reference_amount ?? 0);
+                $saleMaster->reference_amount = $refAmount + $secAmount;
+                $saleMaster->reference_by = $primaryDocId;
+                $saleMaster->doctor_chamber_id = !empty($request->reference_by) ? ($request->doctor_chamber_id ?: null) : null;
+                $saleMaster->referral_settlement_status = ($refAmount > 0.001 || $secAmount > 0.001) ? 'settled' : 'pending';
             } else {
                 $saleMaster->reference_amount = 0;
                 $saleMaster->reference_by = null;
@@ -1155,10 +1161,12 @@ class SaleController extends Controller
                     Helper::customerLedgerCredit($cashRequest, $saleInvoiceNo, $type);
                 }
 
-                // Update doctor ledger entry if doctor is referenced
-                DoctorLedger::where('ref_invoice_no', $saleInvoiceNo)->delete();
-                if (!empty($request->reference_by)) {
-                    Helper::doctorLedgerCredit($saleMaster, $saleInvoiceNo, $type);
+                // Update doctor referral entries and ledger credits
+                if (!empty($request->reference_by) || !empty($request->secondary_reference_by)) {
+                    Helper::syncSaleReferrals($saleMaster, $request, $type);
+                } else {
+                    DoctorLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', '!=', 'Payment')->delete();
+                    SaleReferral::where('sale_master_id', $saleMaster->id)->delete();
                 }
 
                 // Process redeem points (create, update, or give back when set to 0 on the edit form)

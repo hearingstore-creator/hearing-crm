@@ -98,6 +98,11 @@ class SaleMaster extends Model
         return $this->belongsTo(Doctor::class, 'reference_by');
     }
 
+    public function referrals()
+    {
+        return $this->hasMany(SaleReferral::class, 'sale_master_id');
+    }
+
     public function doctorChamber()
     {
         return $this->belongsTo(DoctorChamber::class, 'doctor_chamber_id');

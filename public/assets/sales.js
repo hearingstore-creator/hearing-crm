@@ -410,19 +410,29 @@ $(function () {
         });
 
         var totalCommission = totalProductCommission + totalServiceCommission;
-        $('.reference-amount').val(totalCommission.toFixed(2));
+        if ($('#primary_reference_amount').length) {
+            $('#primary_reference_amount').val(totalCommission.toFixed(2));
+        }
+        var secCommission = parseFloat($('#secondary_reference_amount').val()) || 0;
+        var combinedCommission = totalCommission + secCommission;
+        $('.reference-amount').val(combinedCommission.toFixed(2));
+        $('#reference_amount').val(combinedCommission.toFixed(2));
 
         var $breakdown = $('#doc-comm-breakdown');
         if ($breakdown.length) {
             var parts = [];
             if (totalProductCommission > 0) {
-                parts.push('Products: ৳' + totalProductCommission.toFixed(2) + (catOverrideCount > 0 ? ' (' + catOverrideCount + ' cat overrides)' : ''));
+                parts.push('Doctor Products: ৳' + totalProductCommission.toFixed(2) + (catOverrideCount > 0 ? ' (' + catOverrideCount + ' cat overrides)' : ''));
             }
             if (totalServiceCommission > 0) {
-                parts.push('Services: ৳' + totalServiceCommission.toFixed(2) + (srvOverrideCount > 0 ? ' (' + srvOverrideCount + ' srv overrides)' : ''));
+                parts.push('Doctor Services: ৳' + totalServiceCommission.toFixed(2) + (srvOverrideCount > 0 ? ' (' + srvOverrideCount + ' srv overrides)' : ''));
+            }
+            if (secCommission > 0) {
+                parts.push('Accompanying Referrer: ৳' + secCommission.toFixed(2));
             }
             if (parts.length > 0) {
-                $breakdown.html('<i class="fas fa-calculator mr-1"></i>' + parts.join(' &nbsp;|&nbsp; ')).slideDown(100);
+                var totalLabel = secCommission > 0 ? ' &nbsp;|&nbsp; <b>Total: ৳' + combinedCommission.toFixed(2) + '</b>' : '';
+                $breakdown.html('<i class="fas fa-calculator mr-1"></i>' + parts.join(' &nbsp;|&nbsp; ') + totalLabel).slideDown(100);
             } else {
                 $breakdown.slideUp(100);
             }
@@ -1047,6 +1057,46 @@ $(function () {
     // Recalculate doctor commission when commission checkboxes change
     $('#is_percent_product_commission, #is_percent_service_commission').on('change', function() {
         calculateDoctorCommission();
+    });
+
+    // Secondary / Accompanying Referrer Handlers
+    $('#toggle-secondary-referrer').on('click', function() {
+        $('#secondary-referrer-box').slideDown(150);
+        $(this).hide();
+        $('#secondary_reference_by').select2({ width: '100%', placeholder: "Select Accompanying Referrer" });
+    });
+
+    $('#btn-remove-secondary-referrer').on('click', function() {
+        $('#secondary-referrer-box').slideUp(150);
+        $('#toggle-secondary-referrer').show();
+        $('#secondary_reference_by').val('').trigger('change');
+        $('#secondary_reference_amount').val('0.00');
+        $('#secondary_notes').val('');
+        $('#secondary_comm_display').val('৳0.00');
+        $('#summary-secondary-comm-row').hide();
+        calculateDoctorCommission();
+    });
+
+    $(document).on('input change keyup', '#secondary_reference_amount, #primary_reference_amount', function() {
+        var pri = parseFloat($('#primary_reference_amount').val()) || (parseFloat($('.reference-amount').val()) || 0);
+        var sec = parseFloat($('#secondary_reference_amount').val()) || 0;
+        var tot = pri + sec;
+        $('#secondary_comm_display').val('৳' + sec.toFixed(2));
+        if (sec > 0) {
+            $('#summary-secondary-comm-row').show();
+        } else {
+            $('#summary-secondary-comm-row').hide();
+        }
+        $('#reference_amount').val(tot.toFixed(2));
+        $('.reference-amount').val(tot.toFixed(2));
+    });
+
+    $('#secondary_reference_by').on('change', function() {
+        var sel = $(this).find('option:selected');
+        var role = sel.data('type') || 'quack';
+        if (role) {
+            $('#secondary_role').val(role);
+        }
     });
 
     // Initial check on page load for chambers and commission
