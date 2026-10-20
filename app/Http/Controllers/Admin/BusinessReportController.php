@@ -623,7 +623,7 @@ class BusinessReportController extends Controller
                             'sale_details.mrp_price',
                             'sale_details.discount',
                             'sale_details.serial_no',
-                            DB::raw('(sale_details.qty * sale_details.mrp_price - COALESCE(sale_details.discount, 0)) as line_total')
+                            DB::raw('(sale_details.qty * sale_details.mrp_price * (1 - COALESCE(sale_details.discount, 0) / 100)) as line_total')
                         ])
                         ->get()
                         ->groupBy('sale_master_id');
@@ -640,7 +640,7 @@ class BusinessReportController extends Controller
                             'service_details.qty',
                             'service_details.service_price',
                             'service_details.discount',
-                            DB::raw('(service_details.qty * service_details.service_price - COALESCE(service_details.discount, 0)) as line_total')
+                            DB::raw('(service_details.qty * service_details.service_price * (1 - COALESCE(service_details.discount, 0) / 100)) as line_total')
                         ])
                         ->get()
                         ->groupBy('sale_master_id');
@@ -648,15 +648,16 @@ class BusinessReportController extends Controller
             }
 
             // Doctor Commission Rules for accurate product vs service attribution
-            $doctorModel = Doctor::with(['categoryCommissions', 'serviceCommissions'])->find($doctor->id);
+            $doctorModel = Doctor::with(['categoryCommissions', 'serviceCommissions', 'productCommissions'])->find($doctor->id);
             $categoryRules = $doctorModel ? $doctorModel->categoryCommissions->keyBy('category_id') : collect();
+            $productRules = $doctorModel ? $doctorModel->productCommissions->keyBy('product_id') : collect();
             $serviceRules = $doctorModel ? $doctorModel->serviceCommissions->keyBy('service_type_id') : collect();
             $defaultProdPercent = (float) ($doctorModel->product_commission_percent ?? 0);
             $defaultProdFixed   = (float) ($doctorModel->product_commission_amount ?? 0);
             $defaultServPercent = (float) ($doctorModel->service_commission_percent ?? 0);
             $defaultServFixed   = (float) ($doctorModel->service_commission_amount ?? 0);
 
-            $allRows->each(function ($r) use ($sales, $saleProducts, $saleServices, $categoryRules, $serviceRules, $defaultProdPercent, $defaultProdFixed, $defaultServPercent, $defaultServFixed) {
+            $allRows->each(function ($r) use ($sales, $saleProducts, $saleServices, $categoryRules, $productRules, $serviceRules, $defaultProdPercent, $defaultProdFixed, $defaultServPercent, $defaultServFixed) {
                 $s = $sales->get($r->ref_invoice_no);
                 $r->sale = $s;
                 $r->products = $s ? $saleProducts->get($s->id, collect()) : collect();
@@ -692,7 +693,7 @@ class BusinessReportController extends Controller
                     // Both exist: compute expected commissions from doctor rules
                     $calcProd = 0.0;
                     foreach ($r->products as $p) {
-                        $cRule = $categoryRules->get($p->category_id);
+                        $cRule = $productRules->get($p->product_id ?? 0) ?? $categoryRules->get($p->category_id);
                         if ($cRule) {
                             $calcProd += ($cRule->commission_type === 'percent') ? ($p->line_total * $cRule->commission_value / 100) : ($p->qty * $cRule->commission_value);
                         } elseif ($defaultProdPercent > 0) {

@@ -194,7 +194,7 @@ class SaleController extends Controller
     {
         $data['paymentTypes'] = Helper::paymentType();
         $data['serviceTypes'] = ServiceType::where('status', 1)->get();
-        $data['doctors'] = Doctor::where('status', 1)->with(['chambers', 'categoryCommissions', 'serviceCommissions'])->get();
+        $data['doctors'] = Doctor::where('status', 1)->with(['chambers', 'categoryCommissions', 'serviceCommissions', 'productCommissions'])->get();
         $data['districts'] = District::orderBy('name')->get();
         // Pre-selected customer when coming from a won deal on the pipeline board or proposal
         $data['prefillCustomer'] = $request->filled('customer_id')
@@ -439,7 +439,7 @@ class SaleController extends Controller
                             $prods[] = [
                                 'product_id' => $pId,
                                 'qty' => $request->qty[$k] ?? 1,
-                                'line_total' => ((float)($request->qty[$k] ?? 1) * (float)($request->unit_price[$k] ?? 0)) - (float)($request->discount[$k] ?? 0),
+                                'line_total' => (float)($request->qty[$k] ?? 1) * (float)($request->unit_price[$k] ?? 0) * (1 - (float)($request->discount[$k] ?? 0) / 100),
                             ];
                         }
                     }
@@ -449,7 +449,7 @@ class SaleController extends Controller
                             $servs[] = [
                                 'service_type_id' => $sId,
                                 'qty' => $request->service_qty[$k] ?? 1,
-                                'line_total' => ((float)($request->service_qty[$k] ?? 1) * (float)($request->service_price[$k] ?? 0)) - (float)($request->service_discount[$k] ?? 0),
+                                'line_total' => (float)($request->service_qty[$k] ?? 1) * (float)($request->service_price[$k] ?? 0) * (1 - (float)($request->service_discount[$k] ?? 0) / 100),
                             ];
                         }
                     }
@@ -460,6 +460,9 @@ class SaleController extends Controller
                         $request->has('is_percent_product_commission'),
                         $request->has('is_percent_service_commission')
                     );
+                    // Hand the computed amount on: the referral records below read it from the request, so without this
+                    // a commission worked out from the doctor's rules would be dropped and the sale left "pending".
+                    $request->merge(['primary_reference_amount' => $refAmount]);
                 }
 
                 $secAmount = (float) ($request->secondary_reference_amount ?? 0);
@@ -686,7 +689,7 @@ class SaleController extends Controller
     {
         $data['paymentTypes'] = Helper::paymentType();
         $data['serviceTypes'] = ServiceType::where('status', 1)->get();
-        $data['doctors'] = Doctor::where('status', 1)->with(['chambers', 'categoryCommissions', 'serviceCommissions'])->get();
+        $data['doctors'] = Doctor::where('status', 1)->with(['chambers', 'categoryCommissions', 'serviceCommissions', 'productCommissions'])->get();
 
         $saleMaster = $this->resolveSaleMaster($id, ['customer', 'doctorChamber', 'referrals.doctor']);
 
@@ -989,7 +992,7 @@ class SaleController extends Controller
                             $prods[] = [
                                 'product_id' => $val['product_id'] ?? null,
                                 'qty' => $val['qty'] ?? 1,
-                                'line_total' => ((float)($val['qty'] ?? 1) * (float)($val['unit_price'] ?? 0)) - (float)($val['discount'] ?? 0),
+                                'line_total' => (float)($val['qty'] ?? 1) * (float)($val['unit_price'] ?? 0) * (1 - (float)($val['discount'] ?? 0) / 100),
                             ];
                         }
                     }
@@ -998,7 +1001,7 @@ class SaleController extends Controller
                             $prods[] = [
                                 'product_id' => $pId,
                                 'qty' => $request->qty[$k] ?? 1,
-                                'line_total' => ((float)($request->qty[$k] ?? 1) * (float)($request->unit_price[$k] ?? 0)) - (float)($request->discount[$k] ?? 0),
+                                'line_total' => (float)($request->qty[$k] ?? 1) * (float)($request->unit_price[$k] ?? 0) * (1 - (float)($request->discount[$k] ?? 0) / 100),
                             ];
                         }
                     }
@@ -1008,7 +1011,7 @@ class SaleController extends Controller
                             $servs[] = [
                                 'service_type_id' => $val['service_type_id'] ?? null,
                                 'qty' => $val['service_qty'] ?? 1,
-                                'line_total' => ((float)($val['service_qty'] ?? 1) * (float)($val['service_price'] ?? 0)) - (float)($val['service_discount'] ?? 0),
+                                'line_total' => (float)($val['service_qty'] ?? 1) * (float)($val['service_price'] ?? 0) * (1 - (float)($val['service_discount'] ?? 0) / 100),
                             ];
                         }
                     }
@@ -1017,7 +1020,7 @@ class SaleController extends Controller
                             $servs[] = [
                                 'service_type_id' => $sId,
                                 'qty' => $request->service_qty[$k] ?? 1,
-                                'line_total' => ((float)($request->service_qty[$k] ?? 1) * (float)($request->service_price[$k] ?? 0)) - (float)($request->service_discount[$k] ?? 0),
+                                'line_total' => (float)($request->service_qty[$k] ?? 1) * (float)($request->service_price[$k] ?? 0) * (1 - (float)($request->service_discount[$k] ?? 0) / 100),
                             ];
                         }
                     }
@@ -1028,6 +1031,9 @@ class SaleController extends Controller
                         $request->has('is_percent_product_commission'),
                         $request->has('is_percent_service_commission')
                     );
+                    // Hand the computed amount on: the referral records below read it from the request, so without this
+                    // a commission worked out from the doctor's rules would be dropped and the sale left "pending".
+                    $request->merge(['primary_reference_amount' => $refAmount]);
                 }
 
                 $secAmount = (float) ($request->secondary_reference_amount ?? 0);

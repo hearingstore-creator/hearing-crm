@@ -22,6 +22,7 @@ class UsageGuard
         ['repair_items', 'product_id', 'repair items'],
         ['serial_chains', 'product_id', 'warranty serial records'],
         ['proposal_items', 'product_id', 'proposals'],
+        ['doctor_product_commissions', 'product_id', 'doctor commission rules'],
     ];
     public const CATEGORY = [['products', 'category_id', 'products'], ['doctor_category_commissions', 'category_id', 'doctor commission rules']];
     public const TYPE = [['products', 'type_id', 'products']];

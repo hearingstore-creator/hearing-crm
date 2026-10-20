@@ -19,7 +19,9 @@ trait CrmFixtures
 
     protected function setUpCrm(): void
     {
-        $this->seed(AclSeeder::class);
+        if (! User::where('email', 'admin@gmail.com')->exists()) {
+            $this->seed(AclSeeder::class);
+        }
         $this->admin = User::where('email', 'admin@gmail.com')->firstOrFail();
         $this->branch = User::forceCreate([
             'name' => 'Test Branch', 'email' => 'branch@test.test', 'password' => bcrypt('secret-pass'),

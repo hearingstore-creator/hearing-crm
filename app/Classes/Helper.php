@@ -933,13 +933,14 @@ class Helper
         bool $isPercentProduct = true,
         bool $isPercentService = true
     ): float {
-        $doctor = \App\Models\Doctor::with(['categoryCommissions', 'serviceCommissions'])->find($doctorId);
+        $doctor = \App\Models\Doctor::with(['categoryCommissions', 'serviceCommissions', 'productCommissions'])->find($doctorId);
         if (!$doctor) {
             return 0.0;
         }
 
         $totalComm = 0.0;
         $categoryRules = $doctor->categoryCommissions->keyBy('category_id');
+        $productRules  = $doctor->productCommissions->keyBy('product_id');   // one model beats its category
         $serviceRules  = $doctor->serviceCommissions->keyBy('service_type_id');
 
         $defProdPercent = (float) ($doctor->product_commission_percent ?? 0);
@@ -962,8 +963,9 @@ class Helper
                     continue;
                 }
 
-                if ($catId && $categoryRules->has($catId)) {
-                    $rule = $categoryRules->get($catId);
+                $modelRule = $pId ? $productRules->get($pId) : null;
+                if ($modelRule || ($catId && $categoryRules->has($catId))) {
+                    $rule = $modelRule ?? $categoryRules->get($catId);
                     $totalComm += ($rule->commission_type === 'percent') ? ($lineTotal * $rule->commission_value / 100) : ($qty * $rule->commission_value);
                 } else {
                     if ($isPercentProduct && $defProdPercent > 0) {

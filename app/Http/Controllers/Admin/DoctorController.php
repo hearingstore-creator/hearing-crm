@@ -7,6 +7,8 @@ use App\Models\Category;
 use App\Models\Doctor;
 use App\Models\DoctorCategoryCommission;
 use App\Models\DoctorChamber;
+use App\Models\DoctorProductCommission;
+use App\Models\Product;
 use App\Models\DoctorServiceCommission;
 use App\Models\ServiceType;
 use Illuminate\Http\JsonResponse;
@@ -122,7 +124,9 @@ class DoctorController extends Controller
         $categories = Category::where('status', 1)->orderBy('category_name')->get();
         $serviceTypes = ServiceType::where('status', 1)->orderBy('service_type_name')->get();
 
-        return view('admin.doctor.create', compact('categories', 'serviceTypes'));
+        $products = Product::where('status', 1)->orderBy('model')->get(['id', 'model']);
+
+        return view('admin.doctor.create', compact('categories', 'serviceTypes', 'products'));
     }
 
     /**
@@ -154,6 +158,11 @@ class DoctorController extends Controller
             'chambers.*.visiting_time'   => 'nullable|string|max:100',
 
             // Category commissions validation
+            'product_commissions'                     => 'nullable|array',
+            'product_commissions.*.product_id'        => 'required|exists:products,id',
+            'product_commissions.*.commission_type'   => 'required|in:percent,fixed',
+            'product_commissions.*.commission_value'  => 'required|numeric|min:0',
+
             'category_commissions'                    => 'nullable|array',
             'category_commissions.*.category_id'      => 'required|exists:categories,id',
             'category_commissions.*.commission_type'  => 'required|in:percent,fixed',
@@ -240,6 +249,9 @@ class DoctorController extends Controller
                 }
             }
 
+            // 2b. Process model-wise commissions
+            $this->saveProductCommissions($doctor, $request);
+
             // 3. Process Service Commissions
             if ($request->filled('service_commissions') && is_array($request->service_commissions)) {
                 $seenServices = [];
@@ -275,11 +287,13 @@ class DoctorController extends Controller
      */
     public function edit(int $id): View
     {
-        $doctor = Doctor::with(['chambers', 'categoryCommissions.category', 'serviceCommissions.serviceType'])->findOrFail($id);
+        $doctor = Doctor::with(['chambers', 'categoryCommissions.category', 'serviceCommissions.serviceType', 'productCommissions'])->findOrFail($id);
         $categories = Category::where('status', 1)->orderBy('category_name')->get();
         $serviceTypes = ServiceType::where('status', 1)->orderBy('service_type_name')->get();
+        // Products with a rule stay selectable even if later set inactive
+        $products = Product::where('status', 1)->orWhereIn('id', $doctor->productCommissions->pluck('product_id'))->orderBy('model')->get(['id', 'model']);
 
-        return view('admin.doctor.edit', compact('doctor', 'categories', 'serviceTypes'));
+        return view('admin.doctor.edit', compact('doctor', 'categories', 'serviceTypes', 'products'));
     }
 
     /**
@@ -312,6 +326,11 @@ class DoctorController extends Controller
             'chambers.*.visiting_time'   => 'nullable|string|max:100',
 
             // Category commissions validation
+            'product_commissions'                     => 'nullable|array',
+            'product_commissions.*.product_id'        => 'required|exists:products,id',
+            'product_commissions.*.commission_type'   => 'required|in:percent,fixed',
+            'product_commissions.*.commission_value'  => 'required|numeric|min:0',
+
             'category_commissions'                    => 'nullable|array',
             'category_commissions.*.category_id'      => 'required|exists:categories,id',
             'category_commissions.*.commission_type'  => 'required|in:percent,fixed',
@@ -406,6 +425,10 @@ class DoctorController extends Controller
                 }
             }
 
+            // 2b. Sync model-wise commissions
+            DoctorProductCommission::where('doctor_id', $doctor->id)->delete();
+            $this->saveProductCommissions($doctor, $request);
+
             // 3. Sync Service Commissions
             DoctorServiceCommission::where('doctor_id', $doctor->id)->delete();
             if ($request->filled('service_commissions') && is_array($request->service_commissions)) {
@@ -442,9 +465,27 @@ class DoctorController extends Controller
      */
     public function commissionRules(int $id): JsonResponse
     {
-        $doctor = Doctor::with(['chambers', 'categoryCommissions', 'serviceCommissions'])->findOrFail($id);
+        $doctor = Doctor::with(['chambers', 'categoryCommissions', 'serviceCommissions', 'productCommissions'])->findOrFail($id);
 
         return response()->json($doctor->getCommissionRulesArray());
+    }
+
+    /** One rule per product; the last one wins if a product is listed twice. */
+    private function saveProductCommissions(Doctor $doctor, Request $request): void
+    {
+        $rules = [];
+        foreach ((array) $request->input('product_commissions', []) as $row) {
+            $productId = (int) ($row['product_id'] ?? 0);
+            if ($productId) {
+                $rules[$productId] = [
+                    'commission_type'  => ($row['commission_type'] ?? 'percent') === 'fixed' ? 'fixed' : 'percent',
+                    'commission_value' => (float) ($row['commission_value'] ?? 0),
+                ];
+            }
+        }
+        foreach ($rules as $productId => $rule) {
+            DoctorProductCommission::create(['doctor_id' => $doctor->id, 'product_id' => $productId] + $rule);
+        }
     }
 
     /**

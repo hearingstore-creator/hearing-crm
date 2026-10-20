@@ -338,6 +338,7 @@ $(function () {
         var defaultSrvFixed    = rules ? rules.service_default.amount  : (parseFloat(selectedDoctor.data('service-commission-amount')) || 0);
 
         var categoryOverrides = (rules && rules.category_overrides) ? rules.category_overrides : {};
+        var productOverrides  = (rules && rules.product_overrides)  ? rules.product_overrides  : {};
         var serviceOverrides  = (rules && rules.service_overrides)  ? rules.service_overrides  : {};
 
         var isProductPercent = $('#is_percent_product_commission').is(':checked');
@@ -346,6 +347,7 @@ $(function () {
         var totalProductCommission = 0;
         var totalServiceCommission = 0;
         var catOverrideCount = 0;
+        var modelOverrideCount = 0;
         var srvOverrideCount = 0;
 
         // 1. Calculate Product Commissions
@@ -357,7 +359,17 @@ $(function () {
 
             if (qty <= 0 && lineTotal <= 0) return;
 
-            if (catId && categoryOverrides[catId]) {
+            var modelId = tr.find('select.product').val();
+            if (modelId && productOverrides[modelId]) {
+                // a rule for this exact model beats its category and the default
+                var modelRule = productOverrides[modelId];
+                modelOverrideCount++;
+                if (modelRule.type === 'percent') {
+                    totalProductCommission += (lineTotal * modelRule.value) / 100;
+                } else {
+                    totalProductCommission += (qty * modelRule.value);
+                }
+            } else if (catId && categoryOverrides[catId]) {
                 var catRule = categoryOverrides[catId];
                 catOverrideCount++;
                 if (catRule.type === 'percent') {
@@ -422,7 +434,7 @@ $(function () {
         if ($breakdown.length) {
             var parts = [];
             if (totalProductCommission > 0) {
-                parts.push('Doctor Products: ৳' + totalProductCommission.toFixed(2) + (catOverrideCount > 0 ? ' (' + catOverrideCount + ' cat overrides)' : ''));
+                parts.push('Doctor Products: ৳' + totalProductCommission.toFixed(2) + ((catOverrideCount + modelOverrideCount) > 0 ? ' (' + (modelOverrideCount > 0 ? modelOverrideCount + ' model' : '') + (modelOverrideCount > 0 && catOverrideCount > 0 ? ', ' : '') + (catOverrideCount > 0 ? catOverrideCount + ' category' : '') + ' rules)' : ''));
             }
             if (totalServiceCommission > 0) {
                 parts.push('Doctor Services: ৳' + totalServiceCommission.toFixed(2) + (srvOverrideCount > 0 ? ' (' + srvOverrideCount + ' srv overrides)' : ''));

@@ -78,6 +78,14 @@ class Doctor extends Model
     }
 
     /**
+     * Get the model-wise (single product) commissions for the doctor.
+     */
+    public function productCommissions()
+    {
+        return $this->hasMany(DoctorProductCommission::class);
+    }
+
+    /**
      * Get the per-service commissions for the doctor.
      */
     public function serviceCommissions()
@@ -116,6 +124,12 @@ class Doctor extends Model
             ],
             'category_overrides' => $this->categoryCommissions->mapWithKeys(function ($item) {
                 return [$item->category_id => [
+                    'type'  => $item->commission_type,
+                    'value' => (float) $item->commission_value,
+                ]];
+            })->all(),
+            'product_overrides' => $this->productCommissions->mapWithKeys(function ($item) {
+                return [$item->product_id => [
                     'type'  => $item->commission_type,
                     'value' => (float) $item->commission_value,
                 ]];

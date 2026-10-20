@@ -283,6 +283,8 @@
             </div>
         </div>
 
+        @include('admin.doctor.partials.product-rules', ['products' => $products ?? collect(), 'rules' => collect()])
+
         {{-- 4. Service Commissions (All-in-Total + Per-Service Overrides) --}}
         <div class="crm-form-section crm-animate-in delay-4">
             <div class="crm-form-section-header">
