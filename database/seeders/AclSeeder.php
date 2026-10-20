@@ -115,7 +115,7 @@ class AclSeeder extends Seeder
             $admin->roles()->syncWithoutDetaching([$superAdmin->id]);
         }
 
-        $this->command->info('ACL Seeder completed successfully!');
+        $this->command?->info('ACL Seeder completed successfully!');
     }
 
     /**
@@ -151,7 +151,7 @@ class AclSeeder extends Seeder
                 if ($existingChild) {
                     // Move the child to the new parent (preserves ID, permissions, role_permission)
                     $existingChild->update(['parent_id' => $newParent->id]);
-                    $this->command->info("  Migrated '{$child['name']}' from parent #{$existingChild->getOriginal('parent_id')} to '{$menuData['name']}' (#{$newParent->id})");
+                    $this->command?->info("  Migrated '{$child['name']}' from parent #{$existingChild->getOriginal('parent_id')} to '{$menuData['name']}' (#{$newParent->id})");
                 }
             }
         }

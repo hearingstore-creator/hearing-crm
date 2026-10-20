@@ -34,39 +34,65 @@
 }
 
 /* Nav Pills Custom */
-.nav-pills-custom {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 22px;
+.nav.nav-pills-custom {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 16px !important;
+    margin-top: 4px !important;
+    margin-bottom: 28px !important;
+    padding: 0 !important;
+    border: none !important;
 }
-.nav-pills-custom .nav-link {
-    border-radius: 10px;
-    padding: 10px 22px;
-    font-weight: 700;
-    font-size: 13.5px;
-    color: #475569;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+.nav.nav-pills-custom .nav-item {
+    margin-right: 16px !important;
+    margin-bottom: 10px !important;
 }
-.nav-pills-custom .nav-link:hover {
-    background: #f8fafc;
-    color: #1e293b;
-    border-color: #cbd5e1;
+.nav.nav-pills-custom .nav-item:last-child {
+    margin-right: 0 !important;
 }
-.nav-pills-custom .nav-link.active {
-    background: #4f46e5;
-    color: #ffffff;
-    border-color: #4f46e5;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.22);
+.nav.nav-pills-custom .nav-link {
+    border-radius: 10px !important;
+    padding: 11px 24px !important;
+    font-weight: 700 !important;
+    font-size: 13.5px !important;
+    color: #475569 !important;
+    background: #ffffff !important;
+    border: 1.5px solid #e2e8f0 !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important;
 }
-.nav-pills-custom .nav-link .badge {
-    font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 6px;
+.nav.nav-pills-custom .nav-link:hover {
+    background: #f8fafc !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
+}
+.nav.nav-pills-custom .nav-link.active {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    border-color: #4f46e5 !important;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28) !important;
+}
+.nav.nav-pills-custom .nav-link .badge {
+    font-size: 11px !important;
+    padding: 3.5px 9px !important;
+    border-radius: 6px !important;
+    margin-left: 8px !important;
+}
+
+/* Tab Content & KPI Spacing */
+.rec-tab-content {
+    padding-top: 16px !important;
+}
+.rec-kpi-row {
+    margin-top: 16px !important;
+    padding-top: 12px !important;
+    margin-bottom: 30px !important;
 }
 
 /* KPI Cards */
@@ -295,33 +321,33 @@
     @endif
 
     {{-- Nav Tabs --}}
-    <ul class="nav nav-pills-custom" id="recTabs" role="tablist">
-        <li class="nav-item">
+    <ul class="nav nav-pills nav-pills-custom mb-4" id="recTabs" role="tablist" style="gap: 16px; margin-bottom: 28px !important;">
+        <li class="nav-item" style="margin-right: 16px; margin-bottom: 10px;">
             <a class="nav-link {{ $tab === 'pending' ? 'active' : '' }}" 
                id="pending-tab" data-toggle="pill" href="#pending-panel" role="tab">
-                <i class="fas fa-clock mr-1"></i>Pending Settlements
-                <span class="badge {{ $pendingCount > 0 ? 'badge-danger' : 'badge-light' }} ml-1">
+                <i class="fas fa-clock mr-1.5"></i>Pending Settlements
+                <span class="badge {{ $pendingCount > 0 ? 'badge-danger' : 'badge-light' }} ml-2">
                     {{ $pendingCount }}
                 </span>
             </a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item" style="margin-bottom: 10px;">
             <a class="nav-link {{ $tab === 'history' ? 'active' : '' }}" 
                id="history-tab" data-toggle="pill" href="#history-panel" role="tab">
-                <i class="fas fa-history mr-1"></i>Reconciliation History &amp; Batches
-                <span class="badge {{ $tab === 'history' ? 'badge-light' : 'badge-secondary' }} ml-1">{{ $historyCount }}</span>
+                <i class="fas fa-history mr-1.5"></i>Reconciliation History &amp; Batches
+                <span class="badge {{ $tab === 'history' ? 'badge-light' : 'badge-secondary' }} ml-2">{{ $historyCount }}</span>
             </a>
         </li>
     </ul>
 
-    <div class="tab-content" id="recTabContent">
+    <div class="tab-content rec-tab-content pt-3" id="recTabContent" style="padding-top: 16px !important;">
         {{-- ======================================================== --}}
         {{-- TAB 1: PENDING SETTLEMENTS                               --}}
         {{-- ======================================================== --}}
         <div class="tab-pane fade {{ $tab === 'pending' ? 'show active' : '' }}" id="pending-panel" role="tabpanel">
             
             {{-- KPI Summary Cards --}}
-            <div class="row mb-4">
+            <div class="row rec-kpi-row pt-2 mb-4" style="margin-top: 16px !important; padding-top: 12px !important; margin-bottom: 30px !important;">
                 <div class="col-lg-3 col-md-6 mb-3">
                     <div class="rec-kpi-card">
                         <div>
@@ -611,7 +637,7 @@
         <div class="tab-pane fade {{ $tab === 'history' ? 'show active' : '' }}" id="history-panel" role="tabpanel">
             
             {{-- History KPI Summary Cards --}}
-            <div class="row mb-4">
+            <div class="row rec-kpi-row pt-2 mb-4" style="margin-top: 16px !important; padding-top: 12px !important; margin-bottom: 30px !important;">
                 <div class="col-lg-4 col-md-6 mb-3">
                     <div class="rec-kpi-card">
                         <div>
