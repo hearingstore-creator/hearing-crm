@@ -220,7 +220,7 @@
                                     </button>
                                     <div class="dropdown-menu dropdown-menu-left shadow-sm p-1" style="border-radius:8px; font-size:11.5px; min-width:170px;">
                                         <div class="dropdown-header text-uppercase font-weight-bold py-1 px-2 text-muted" style="font-size:9.5px;">Update Status</div>
-                                        @foreach (\App\Enums\DeliveryStatus::casesFor($isServiceItem) as $stCase)
+                                        @foreach (\App\Enums\DeliveryStatus::casesFrom($item->delivery_status, $isServiceItem) as $stCase)
                                             <a class="dropdown-item py-1 px-2 d-flex align-items-center quick-status-select-index {{ $item->delivery_status === $stCase->value ? 'active font-weight-bold' : '' }}" 
                                                href="#" 
                                                data-id="{{ $item->id }}" 

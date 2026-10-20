@@ -580,6 +580,17 @@ $(document).ready(function() {
             const products = data.products || [];
             const services = data.services || [];
             globalItemIndex = 0;
+            const policy = data.policy || {};
+            const defaultRate = parseFloat(policy.charge_percent) || 0;
+            if (policy.delivered || policy.outside_window) {
+                let note = 'Delivered ' + policy.days_since + ' day(s) ago. Return window: ' + policy.window_days + ' days. Return charge: ' + defaultRate + '%.';
+                let cls = 'text-muted';
+                if (policy.outside_window) {
+                    cls = policy.can_override ? 'text-warning' : 'text-danger';
+                    note += policy.can_override ? ' Outside the window: you can approve this as an exception (write the reason below).' : ' Outside the window: a manager must approve this return.';
+                }
+                $('#invoiceSearchFeedback').append('<div class="' + cls + ' font-weight-bold mt-1"><i class="fas fa-info-circle mr-1"></i>' + note + '</div>');
+            }
 
             // Auto select customer
             if (sale.customer_id) {
@@ -687,7 +698,7 @@ $(document).ready(function() {
                                 <div class="input-group input-group-sm">
                                     <input type="number" step="0.01" class="form-control item-deduction-rate" 
                                         name="items[${idx}][deduction_rate]" 
-                                        placeholder="%" title="Deduction %" value="0">
+                                        placeholder="%" title="Deduction %" value="${defaultRate}">
                                     <div class="input-group-append">
                                         <span class="input-group-text">%</span>
                                     </div>
@@ -752,7 +763,7 @@ $(document).ready(function() {
                                 <div class="input-group input-group-sm">
                                     <input type="number" step="0.01" class="form-control item-deduction-rate" 
                                         name="items[${idx}][deduction_rate]" 
-                                        placeholder="%" title="Deduction %" value="0">
+                                        placeholder="%" title="Deduction %" value="${defaultRate}">
                                     <div class="input-group-append">
                                         <span class="input-group-text">%</span>
                                     </div>
@@ -832,6 +843,11 @@ $(document).ready(function() {
             const qty = parseFloat($(this).find('.item-qty').val()) || 0;
             const price = parseFloat($(this).find('.item-price').val()) || 0;
             const gross = qty * price;
+            // default return charge: fill the amount from the % until someone types an amount
+            const defRate = parseFloat($(this).find('.item-deduction-rate').val()) || 0;
+            if (defRate > 0 && gross > 0 && !(parseFloat($(this).find('.item-deduction-amount').val()) > 0)) {
+                $(this).find('.item-deduction-amount').val(((gross * defRate) / 100).toFixed(2));
+            }
 
             let deduction = parseFloat($(this).find('.item-deduction-amount').val()) || 0;
             if (deduction > gross) {

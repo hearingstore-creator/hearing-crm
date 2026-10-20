@@ -33,6 +33,22 @@
                                             </div>
                                         </div>
                                         <div class="form-group row">
+                                            <label for="return_window_days" class="col-sm-4 col-form-label">Return Window (days):</label>
+                                            <div class="col-sm-8">
+                                                <input type="number" min="0" max="365" class="form-control" id="return_window_days"
+                                                    name="return_window_days" value="{{ $setting->return_window_days ?? 7 }}">
+                                                <small class="text-muted">Devices are sold as non-returnable. A return or exchange inside this many days of delivery is allowed; later ones need manager approval. 0 = approval always needed.</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="return_charge_percent" class="col-sm-4 col-form-label">Return Charge (%):</label>
+                                            <div class="col-sm-8">
+                                                <input type="number" min="0" max="100" step="0.01" class="form-control" id="return_charge_percent"
+                                                    name="return_charge_percent" value="{{ $setting->return_charge_percent ?? 10 }}">
+                                                <small class="text-muted">Minimum charge kept from the returned amount. Only a manager can waive it.</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
                                             <label for="website_url" class="col-sm-4 col-form-label">Website Address:</label>
                                             <div class="col-sm-8">
                                                 <input type="text" class="form-control" id="website_url"

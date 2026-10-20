@@ -361,7 +361,33 @@ class SaleReturnController extends Controller
             'products' => $products,
             'services' => $services,
             'items'    => array_merge($products, $services),
+            'policy'   => $this->returnPolicy($sale, now()),
         ]);
+    }
+
+    /**
+     * Return policy for an invoice. Devices are sold as non-returnable; a return inside the window is allowed
+     * with a minimum return charge, and anything else needs someone holding sale_return.policy_override.
+     * The charge only applies once the goods or report were actually delivered.
+     */
+    protected function returnPolicy(?SaleMaster $sale, $on): array
+    {
+        $setting = Setting::first();
+        $window = (int) ($setting->return_window_days ?? 7);
+        $percent = (float) ($setting->return_charge_percent ?? 10);
+
+        $delivered = $sale && $sale->delivered_at;
+        $days = $delivered ? (int) $sale->delivered_at->copy()->startOfDay()->diffInDays(\Illuminate\Support\Carbon::parse($on)->startOfDay(), false) : 0;
+
+        return [
+            'window_days'    => $window,
+            'charge_percent' => $delivered || !$sale ? $percent : 0,
+            'delivered'      => (bool) $delivered,
+            'days_since'     => $days,
+            // no invoice at all cannot be checked against a window, so it counts as outside
+            'outside_window' => !$sale || ($delivered && $days > $window),
+            'can_override'   => auth()->user()->hasAccess('sale_return.policy_override'),
+        ];
     }
 
     /**
@@ -479,6 +505,30 @@ class SaleReturnController extends Controller
 
             $creditNoteAmount = max(0, $returnSubtotal - $totalDeductions);
 
+            // Return policy: window and minimum charge. Exceptions are possible only for a manager, with a written reason.
+            $policy = $this->returnPolicy($saleMaster, $request->date);
+            $exceptions = [];
+            if ($policy['outside_window']) {
+                $exceptions[] = 'outside_window';
+            }
+            $minCharge = round($returnSubtotal * $policy['charge_percent'] / 100, 2);
+            if ($totalDeductions + 0.01 < $minCharge) {
+                $exceptions[] = 'charge_waived';
+            }
+            if ($exceptions) {
+                $what = in_array('outside_window', $exceptions, true)
+                    ? ($saleMaster ? "This sale was delivered {$policy['days_since']} days ago; returns are accepted within {$policy['window_days']} days only." : 'Returns need an invoice so the return window can be checked.')
+                    : 'A return charge of at least ' . rtrim(rtrim(number_format($policy['charge_percent'], 2), '0'), '.') . '% (৳' . number_format($minCharge, 2) . ') applies to this return.';
+                if (!$policy['can_override']) {
+                    DB::rollBack();
+                    return redirect()->back()->withInput()->with('warning', $what . ' A manager has to approve an exception.');
+                }
+                if (!filled(trim((string) $request->reason))) {
+                    DB::rollBack();
+                    return redirect()->back()->withInput()->with('warning', $what . ' To approve it, write the reason in the notes box.');
+                }
+            }
+
             // -------------------------------------------------------------
             // Smart Financial Allocation Correlation Engine:
             // Bucket A: Clears unpaid Due on this invoice first
@@ -523,6 +573,8 @@ class SaleReturnController extends Controller
             $saleReturn->doctor_id = $saleMaster?->reference_by;
             $saleReturn->doctor_commission_adjusted = (float) ($request->doctor_commission_adjusted ?? 0);
             $saleReturn->reason = $request->reason;
+            $saleReturn->policy_exception = $exceptions ? implode(',', $exceptions) : null;
+            $saleReturn->approved_by = $exceptions ? auth()->id() : null;
             $saleReturn->status = 'completed';
             $saleReturn->created_by = auth()->id();
             $saleReturn->save();

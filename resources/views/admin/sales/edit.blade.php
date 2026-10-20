@@ -526,7 +526,7 @@
                                  <td class="text-right" colspan="8"><b style="color:var(--accent-600);"><i class="fas fa-clipboard-check mr-1"></i>Fulfillment Status:</b></td>
                                  <td class="text-right">
                                     <select class="form-control" name="delivery_status" style="font-weight:600;">
-                                       @foreach (\App\Enums\DeliveryStatus::casesFor($saleMaster->isServiceSale()) as $st)
+                                       @foreach (\App\Enums\DeliveryStatus::casesFrom($saleMaster->delivery_status, $saleMaster->isServiceSale()) as $st)
                                           <option value="{{ $st->value }}" @selected($saleMaster->delivery_status === $st->value)>
                                              {{ $st->label($saleMaster->isServiceSale()) }}
                                           </option>

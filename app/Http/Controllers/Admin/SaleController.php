@@ -965,7 +965,11 @@ class SaleController extends Controller
             $saleMaster->total_amount = $request->total_amount;
             $saleMaster->paid = $request->paid;
             $saleMaster->due_date = ($request->filled('due_date') && ($request->total_amount - $request->paid) > 0.009) ? $request->due_date : null;
-            $saleMaster->delivery_status = $request->delivery_status ?? DeliveryStatus::ORDERED->value;
+            // A delivered invoice stays delivered when it is edited (corrections to a delivered sale are allowed, un-delivering is not)
+            $wasDelivered = $saleMaster->getOriginal('delivery_status') === DeliveryStatus::DELIVERED->value;
+            $saleMaster->delivery_status = $wasDelivered
+                ? DeliveryStatus::DELIVERED->value
+                : ($request->delivery_status ?? DeliveryStatus::ORDERED->value);
             $saleMaster->delivery_date_time = $request->filled('delivery_date_time') ? date('Y-m-d H:i:s', strtotime($request->delivery_date_time)) : null;
             $saleMaster->lab_name = $request->filled('lab_name') ? $request->lab_name : null;
             if ($saleMaster->delivery_status === DeliveryStatus::DELIVERED->value) {
@@ -2109,6 +2113,15 @@ class SaleController extends Controller
                 return response()->json(['success' => false, 'message' => 'You do not have permission to update this invoice.'], 403);
             }
             return redirect()->back()->with('warning', 'You do not have permission to update this invoice.');
+        }
+
+        // Delivered is final. A device in the patient's hands is not "cancelled": it comes back through a credit note.
+        if ($sale->delivery_status === DeliveryStatus::DELIVERED->value && $request->delivery_status !== DeliveryStatus::DELIVERED->value) {
+            $msg = 'This invoice is already delivered, so its status cannot be changed. For a return or exchange, create a credit note (Sales Returns).';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->with('warning', $msg);
         }
 
         $currentDue = round($sale->total_amount - $sale->paid, 2);

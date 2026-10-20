@@ -690,7 +690,7 @@
                                     </button>
                                     <div class="dropdown-menu dropdown-menu-right shadow-sm p-1" style="border-radius:8px; font-size:12px; min-width:180px;">
                                         <div class="dropdown-header text-uppercase font-weight-bold py-1 px-2 text-muted" style="font-size:10px;">Quick Change Status</div>
-                                        @foreach (\App\Enums\DeliveryStatus::casesFor($isService) as $stCase)
+                                        @foreach (\App\Enums\DeliveryStatus::casesFrom($sale->delivery_status, $isService) as $stCase)
                                             <a class="dropdown-item py-1 px-2 d-flex align-items-center quick-status-select {{ $sale->delivery_status === $stCase->value ? 'active font-weight-bold' : '' }}" 
                                                href="#" 
                                                data-id="{{ $sale->id }}" 
@@ -757,6 +757,10 @@
                                         <button type="button" class="quick-action-btn btn-deliver btn-quick-step" data-id="{{ $sale->id }}" data-status="delivered" data-due="{{ $due }}" title="Mark as delivered & collect due">
                                             <i class="fas fa-check-circle"></i> Handover / Deliver
                                         </button>
+                                    @elseif ($statusEnum === \App\Enums\DeliveryStatus::DELIVERED && auth()->user()->hasAccess('sale_return.create'))
+                                        <a href="{{ route('sale-returns.create', ['sale_invoice_no' => $sale->sale_invoice_no]) }}" class="quick-action-btn" style="text-decoration:none; text-align:center;" title="Delivered invoices cannot be cancelled. Start a return / exchange (a return charge applies).">
+                                            <i class="fas fa-undo-alt"></i> Return / Exchange
+                                        </a>
                                     @endif
 
                                     <div style="display: flex; gap: 4px; margin-top: 2px;">
@@ -993,6 +997,10 @@ $(document).ready(function() {
         var select = $('#modal_delivery_status');
         select.empty();
         var options = isService ? serviceOptions : productOptions;
+        // Delivered is final: a return or exchange goes through a credit note, not a status change
+        if (status === 'delivered') {
+            options = $.grep(options, function(o) { return o.value === 'delivered'; });
+        }
         $.each(options, function(i, opt) {
             var selected = (opt.value === status) ? 'selected' : '';
             select.append('<option value="' + opt.value + '" ' + selected + '>' + opt.label + '</option>');

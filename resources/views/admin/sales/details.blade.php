@@ -726,7 +726,7 @@
                             Status <span class="text-danger">*</span>
                         </label>
                         <select class="form-control" name="delivery_status" id="details_delivery_status" required style="font-weight:600;">
-                            @foreach (\App\Enums\DeliveryStatus::casesFor($saleMaster->isServiceSale()) as $st)
+                            @foreach (\App\Enums\DeliveryStatus::casesFrom($saleMaster->delivery_status, $saleMaster->isServiceSale()) as $st)
                                 <option value="{{ $st->value }}" @selected($saleMaster->delivery_status === $st->value)>
                                     {{ $st->label($saleMaster->isServiceSale()) }}
                                 </option>

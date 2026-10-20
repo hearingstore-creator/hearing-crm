@@ -280,7 +280,7 @@ return [
                     'name' => 'Sale Return',
                     'label' => 'Sales Returns (Credit Notes)',
                     'route' => 'admin/sale-returns',
-                    'actions' => ['index', 'create', 'view', 'delete']
+                    'actions' => ['index', 'create', 'view', 'delete', 'policy_override']
                 ],
             ]
         ],

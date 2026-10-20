@@ -122,6 +122,21 @@ enum DeliveryStatus: string
     }
 
     /**
+     * Statuses that can be chosen from the current one. Delivered is final: once the device or report
+     * is in the patient's hands, undoing it goes through a credit note (return / exchange), not a status change.
+     *
+     * @return array<self>
+     */
+    public static function casesFrom(?string $current, bool $isService = false): array
+    {
+        if ($current === self::DELIVERED->value) {
+            return [self::DELIVERED];
+        }
+
+        return self::casesFor($isService);
+    }
+
+    /**
      * Get options array for selects.
      *
      * @param bool $isService
