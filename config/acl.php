@@ -576,6 +576,13 @@ return [
                     'route' => 'admin/expense',
                     'actions' => ['index', 'create', 'delete']
                 ],
+                [
+                    'name' => 'Payment Reconciliation',
+                    'label' => 'Payment Reconciliation (POS / MFS)',
+                    'route' => 'admin/payment-reconciliation',
+                    'icon' => 'fa-balance-scale',
+                    'actions' => ['index', 'create', 'delete']
+                ],
             ]
         ],
         [

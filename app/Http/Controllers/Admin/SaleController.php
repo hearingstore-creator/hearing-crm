@@ -391,6 +391,14 @@ class SaleController extends Controller
             $saleMaster = new SaleMaster();
             $saleMaster->customer_id = $request->customer_id;
             $saleMaster->payment_id = $request->payment_type_id;
+            $saleMaster->payment_method = $request->payment_method ?: Helper::channelKeyFromPaymentId($request->payment_type_id);
+            $saleMaster->payment_trx_no = $request->payment_trx_no ?: null;
+            $saleMaster->pos_terminal_name = $request->pos_terminal_name ?: null;
+            if (Helper::isReconcilableGatewayPayment($request->payment_type_id) && (float) $request->paid > 0) {
+                $saleMaster->gateway_settlement_status = 'pending';
+            } else {
+                $saleMaster->gateway_settlement_status = 'not_applicable';
+            }
             $saleMaster->date = $request->date;
             $saleMaster->details = $request->details;
             $saleMaster->sale_invoice_no = $saleInvoiceNo;
@@ -929,6 +937,21 @@ class SaleController extends Controller
 
             $saleMaster->customer_id = $request->customer_id;
             $saleMaster->payment_id = $request->payment_type_id;
+            $saleMaster->payment_method = $request->payment_method ?: Helper::channelKeyFromPaymentId($request->payment_type_id);
+            if ($request->filled('payment_trx_no')) {
+                $saleMaster->payment_trx_no = $request->payment_trx_no;
+            }
+            if ($request->filled('pos_terminal_name')) {
+                $saleMaster->pos_terminal_name = $request->pos_terminal_name;
+            }
+            // Only update settlement status if not already reconciled
+            if ($saleMaster->gateway_settlement_status !== 'reconciled') {
+                if (Helper::isReconcilableGatewayPayment($request->payment_type_id) && (float) $request->paid > 0) {
+                    $saleMaster->gateway_settlement_status = 'pending';
+                } else {
+                    $saleMaster->gateway_settlement_status = 'not_applicable';
+                }
+            }
             $saleMaster->date = $request->date;
             $saleMaster->details = $request->details;
             $saleMaster->vat = $request->vat;

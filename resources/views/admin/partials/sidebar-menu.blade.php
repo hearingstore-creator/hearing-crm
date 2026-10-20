@@ -81,6 +81,7 @@
         'admin/report/ledger'                   => 'fa-book',
         'admin/income-expense-head'             => 'fa-sitemap',
         'admin/expense'                         => 'fa-receipt',
+        'admin/payment-reconciliation'          => 'fa-balance-scale',
 
         // Repair & Service
         'admin/repairs'                         => 'fa-columns',

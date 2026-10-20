@@ -24,7 +24,7 @@ return [
         'Appointments' => ['appointment', 'add_appointment', 'appointment_today', 'appointment_list', 'calendar_view', 'roster', 'professional_list', 'service_list', 'time_slot', 'sound_booths'],
         'Support'      => ['support', 'add_ticket', 'ticket_list', 'add_task', 'task_list', 'support_settings'],
         'Repairs'      => ['repair', 'repair_jobs_board', 'new_repair_intake', 'quick_walk-in_service', 'warranty_&_serial_check', 'supplier_rma_&_replacements', 'repair_history'],
-        'Accounts'     => ['accounts', 'ledger', 'income_expense_head', 'expense'],
+        'Accounts'     => ['accounts', 'ledger', 'income_expense_head', 'expense', 'payment_reconciliation'],
         'Membership'   => ['membership', 'membership_tiers', 'milestones', 'loyalty_settings', 'reward_wallets', 'reward_ledger', 'referrals', 'tier_upgrades'],
         'SMS'          => ['sms_centre', 'compose_&_send', 'templates', 'send_log', 'analytics', 'sms_automation'],
         'Reports'      => ['report', 'reports_hub', 'profit_statement', 'stock', 'purchase_&_stock', 'purchase_report', 'vendor_monthly_report', 'warranty_expiry', 'battery_usage_expiry', 'sales_performance', 'membership_&_loyalty', 'lead_funnel', 'advances_report', 'services_status_report'],

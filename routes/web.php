@@ -401,6 +401,13 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('report/advances', [\App\Http\Controllers\Admin\ReportController::class, 'advancesReport'])->name('report.advances');
     Route::get('report/services-status', [\App\Http\Controllers\Admin\ReportController::class, 'servicesStatusReport'])->name('report.services-status');
 
+    // Payment Reconciliation & Gateway Fees (POS / MFS)
+    Route::get('payment-reconciliation', [\App\Http\Controllers\Admin\PaymentReconciliationController::class, 'index'])->name('payment-reconciliation.index');
+    Route::post('payment-reconciliation/settle-single/{id}', [\App\Http\Controllers\Admin\PaymentReconciliationController::class, 'settleSingle'])->name('payment-reconciliation.settle-single');
+    Route::post('payment-reconciliation/settle-batch', [\App\Http\Controllers\Admin\PaymentReconciliationController::class, 'settleBatch'])->name('payment-reconciliation.settle-batch');
+    Route::get('payment-reconciliation/slip/{id}', [\App\Http\Controllers\Admin\PaymentReconciliationController::class, 'showSlip'])->name('payment-reconciliation.slip');
+    Route::delete('payment-reconciliation/{id}', [\App\Http\Controllers\Admin\PaymentReconciliationController::class, 'destroy'])->name('payment-reconciliation.destroy');
+
     // Customer Advances & Refunds (Parts C & D)
     Route::post('appointments/{id}/advance', [\App\Http\Controllers\Admin\CustomerAdvanceController::class, 'recordAppointmentAdvance'])->name('appointments.record-advance');
     Route::get('appointments/{id}/advance-receipt', [\App\Http\Controllers\Admin\CustomerAdvanceController::class, 'advanceReceipt'])->name('appointments.advance-receipt');

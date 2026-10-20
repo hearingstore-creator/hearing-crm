@@ -36,6 +36,14 @@ class SaleMaster extends Model
         'applied_advance_id',
         'applied_advance_amount',
         'referral_settlement_status',
+        'payment_method',
+        'payment_trx_no',
+        'pos_terminal_name',
+        'gateway_settlement_status',
+        'gateway_charge_amount',
+        'gateway_net_amount',
+        'gateway_settled_at',
+        'gateway_settlement_id',
     ];
 
     protected $casts = [
@@ -46,7 +54,24 @@ class SaleMaster extends Model
        'is_percent_product_commission' => 'boolean',
        'is_percent_service_commission' => 'boolean',
        'applied_advance_amount' => 'float',
+       'gateway_settled_at' => 'datetime',
+       'gateway_charge_amount' => 'float',
+       'gateway_net_amount' => 'float',
     ];
+
+    public function gatewaySettlement()
+    {
+        return $this->belongsTo(PaymentReconciliation::class, 'gateway_settlement_id');
+    }
+
+    public function getGatewayStatusBadgeClassAttribute(): string
+    {
+        return match ($this->gateway_settlement_status) {
+            'reconciled' => 'badge-success',
+            'pending'    => 'badge-warning',
+            default      => 'badge-secondary',
+        };
+    }
 
     public function appliedAdvance()
     {

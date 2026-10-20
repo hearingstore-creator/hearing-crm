@@ -112,6 +112,23 @@
                            </div>
                         </div>
                      </div>
+                     <div class="form-group row" id="wrap-digital-payment-details" style="{{ in_array($saleMaster->payment_id, [3, 5, 6, 7, 8]) ? '' : 'display: none;' }}">
+                        <label for="payment_trx_no" class="col-md-2 col-form-label"><i class="fas fa-receipt text-info mr-1"></i>Slip / Trx #:</label>
+                        <div class="col-md-4">
+                           <input type="text" name="payment_trx_no" id="payment_trx_no" class="form-control" value="{{ old('payment_trx_no', $saleMaster->payment_trx_no) }}" placeholder="e.g. Appr 04918 or Trx ID">
+                        </div>
+                        <label for="pos_terminal_name" class="col-md-2 col-form-label"><i class="fas fa-credit-card text-success mr-1"></i>POS Machine:</label>
+                        <div class="col-md-4">
+                           <input type="text" name="pos_terminal_name" id="pos_terminal_name" class="form-control" value="{{ old('pos_terminal_name', $saleMaster->pos_terminal_name) }}" placeholder="e.g. City Bank POS" list="pos_machines_edit">
+                           <datalist id="pos_machines_edit">
+                              <option value="City Bank POS">
+                              <option value="BRAC Bank POS">
+                              <option value="Eastern Bank (EBL) POS">
+                              <option value="bKash Merchant QR">
+                              <option value="Nagad Merchant">
+                           </datalist>
+                        </div>
+                     </div>
                      <div class="form-group row" id="doctor-chamber-wrap" style="{{ $saleMaster->reference_by ? '' : 'display: none;' }}">
                         <label for="doctor_chamber_id" class="col-md-2 col-form-label"><i class="fas fa-hospital-alt text-primary mr-1"></i>Doctor Chamber:</label>
                         <div class="col-md-4">
@@ -499,6 +516,19 @@
                 setTimeout(syncDueRow, 50);
             });
             syncDueRow();
+
+            function toggleDigitalPaymentFields(val) {
+                var digitalTypes = ['3', '5', '6', '7', '8'];
+                if (digitalTypes.indexOf(String(val)) !== -1) {
+                    $('#wrap-digital-payment-details').slideDown(150);
+                } else {
+                    $('#wrap-digital-payment-details').slideUp(150);
+                }
+            }
+
+            $('#payment_type_id').on('change', function() {
+                toggleDigitalPaymentFields($(this).val());
+            });
         });
     </script>
 @endpush

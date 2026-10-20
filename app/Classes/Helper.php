@@ -166,11 +166,50 @@ class Helper
     public static function paymentType(): array
     {
         return [
-            '4' => 'Credit / Pay Later (On Account)',
             '1' => 'Cash Payment',
+            '5' => 'POS Card (Visa / Master / Amex)',
+            '6' => 'bKash Merchant',
+            '7' => 'Nagad',
+            '8' => 'Rocket / Other MFS',
             '2' => 'Bank Deposit / Cheque',
             '3' => 'Online Transfer',
+            '4' => 'Credit / Pay Later (On Account)',
         ];
+    }
+
+    /**
+     * Check if a payment type requires gateway/MFS settlement & fee reconciliation.
+     */
+    public static function isReconcilableGatewayPayment(int|string|null $paymentId): bool
+    {
+        return in_array((int) $paymentId, [3, 5, 6, 7, 8], true);
+    }
+
+    /**
+     * Map payment_id to standard gateway channel code.
+     */
+    public static function channelKeyFromPaymentId(int|string|null $paymentId): string
+    {
+        return match ((int) $paymentId) {
+            5 => 'card',
+            6 => 'bkash',
+            7 => 'nagad',
+            8 => 'rocket',
+            2 => 'bank_transfer',
+            3 => 'other',
+            default => 'cash',
+        };
+    }
+
+    /**
+     * Get or create the standard expense head for gateway/card charges.
+     */
+    public static function getOrCreateGatewayChargeHead(): \App\Models\IncomeExpenseHead
+    {
+        return \App\Models\IncomeExpenseHead::firstOrCreate(
+            ['head_name' => 'Payment Gateway & Bank Charges', 'head_type' => self::$expense],
+            ['status' => 1]
+        );
     }
 
     /**

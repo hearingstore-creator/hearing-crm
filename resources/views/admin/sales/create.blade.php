@@ -112,6 +112,21 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="sale-field sale-col-4" id="wrap-digital-trx-no" style="display: none;">
+                                <label for="payment_trx_no"><i class="fas fa-receipt text-info mr-1"></i>Slip # / Approval / Trx ID</label>
+                                <input type="text" name="payment_trx_no" id="payment_trx_no" class="form-control" placeholder="e.g. Appr 04918 or Trx ID">
+                            </div>
+                            <div class="sale-field sale-col-4" id="wrap-pos-terminal-name" style="display: none;">
+                                <label for="pos_terminal_name"><i class="fas fa-credit-card text-success mr-1"></i>POS Terminal / Machine</label>
+                                <input type="text" name="pos_terminal_name" id="pos_terminal_name" class="form-control" placeholder="e.g. City Bank POS, bKash QR" list="pos_machines_list">
+                                <datalist id="pos_machines_list">
+                                    <option value="City Bank POS">
+                                    <option value="BRAC Bank POS">
+                                    <option value="Eastern Bank (EBL) POS">
+                                    <option value="bKash Merchant QR">
+                                    <option value="Nagad Merchant">
+                                </datalist>
+                            </div>
                             <div class="sale-field sale-col-4">
                                 <label for="reference_by">Referred By</label>
                                 <select class="form-control doctor-select" name="reference_by" id="reference_by">
@@ -659,6 +674,26 @@
                     $('#text-advance-details').html('This customer has an advance of <strong>৳' + parseFloat(activeAdvance.balance).toFixed(2) + '</strong> &mdash; apply to this bill?');
                 }
             });
+
+            // Digital Payment Details Toggle
+            function toggleDigitalPaymentFields(val) {
+                var digitalTypes = ['3', '5', '6', '7', '8'];
+                if (digitalTypes.indexOf(String(val)) !== -1) {
+                    $('#wrap-digital-trx-no').slideDown(150);
+                    $('#wrap-pos-terminal-name').slideDown(150);
+                } else {
+                    $('#wrap-digital-trx-no').slideUp(150);
+                    $('#wrap-pos-terminal-name').slideUp(150);
+                }
+            }
+
+            $('#payment_type_id').on('change', function() {
+                toggleDigitalPaymentFields($(this).val());
+            });
+
+            if ($('#payment_type_id').val()) {
+                toggleDigitalPaymentFields($('#payment_type_id').val());
+            }
 
             var $productWrap = $('#product-items-wrap');
             var $serviceWrap = $('#service-items-wrap');
