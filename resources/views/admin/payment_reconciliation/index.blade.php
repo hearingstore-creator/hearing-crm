@@ -5,55 +5,161 @@
 @section('breadcrumb_parent_url', url('admin/payment-reconciliation'))
 
 @push('css')
+<link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/css/kpi-cards.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/plugins/select2/css/select2.min.css') }}">
 <style>
-.rec-kpi-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 16px 20px;
+.rec-page-container {
+    padding: 16px 28px 40px 28px;
+}
+.rec-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+.rec-header h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px 0;
+}
+.rec-header p {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+}
+
+/* Nav Pills Custom */
+.nav-pills-custom {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 22px;
+}
+.nav-pills-custom .nav-link {
+    border-radius: 10px;
+    padding: 10px 22px;
+    font-weight: 700;
+    font-size: 13.5px;
+    color: #475569;
+    background: #ffffff;
     border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.nav-pills-custom .nav-link:hover {
+    background: #f8fafc;
+    color: #1e293b;
+    border-color: #cbd5e1;
+}
+.nav-pills-custom .nav-link.active {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.22);
+}
+.nav-pills-custom .nav-link .badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+/* KPI Cards */
+.rec-kpi-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 20px 22px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 4px 10px rgba(0,0,0,0.02);
     display: flex;
     align-items: center;
     justify-content: space-between;
     transition: all 0.2s ease;
+    height: 100%;
 }
 .rec-kpi-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    border-color: #cbd5e1;
 }
 .rec-kpi-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 22px;
+    flex-shrink: 0;
+    margin-left: 14px;
 }
 .rec-kpi-val {
-    font-size: 22px;
+    font-size: 23px;
     font-weight: 800;
-    line-height: 1.1;
-    margin-top: 4px;
+    line-height: 1.15;
+    margin-top: 5px;
+    margin-bottom: 3px;
 }
 .rec-kpi-lbl {
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
     color: #64748b;
 }
 
-.crm-table-card {
-    background: #fff;
-    border-radius: 12px;
+/* Filter Card */
+.rec-filter-card {
+    background: #ffffff;
+    border-radius: 14px;
     border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 18px 22px;
+    margin-bottom: 22px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.rec-filter-card label {
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+}
+.rec-filter-card .form-control {
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 13px;
+    padding: 6px 12px;
+}
+.rec-filter-card .form-control:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+.rec-filter-card .btn-filter {
+    height: 38px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Table Card */
+.crm-table-card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
     overflow: hidden;
+    margin-bottom: 24px;
 }
 .crm-table-header {
-    padding: 14px 20px;
+    padding: 16px 24px;
     background: #f8fafc;
     border-bottom: 1px solid #e2e8f0;
 }
@@ -69,109 +175,141 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 10px 14px;
+    padding: 13px 18px;
     border-bottom: 1px solid #cbd5e1;
     vertical-align: middle;
 }
 .crm-table td {
-    padding: 11px 14px;
+    padding: 14px 18px;
     border-bottom: 1px solid #e2e8f0;
     vertical-align: middle;
-    font-size: 13px;
+    font-size: 13.5px;
 }
 .crm-table tr:hover td {
     background-color: #f8fafc;
 }
 
+/* Channel Badges */
 .badge-channel {
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 700;
-    padding: 4px 8px;
+    padding: 4px 10px;
     border-radius: 6px;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
 }
-.badge-card { background: #e0e7ff; color: #3730a3; }
-.badge-bkash { background: #fce7f3; color: #9d174d; }
-.badge-nagad { background: #fef3c7; color: #92400e; }
-.badge-rocket { background: #e0f2fe; color: #0369a1; }
-.badge-bank { background: #f1f5f9; color: #334155; }
-.badge-other { background: #ede9fe; color: #5b21b6; }
+.badge-card { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
+.badge-bkash { background: #fce7f3; color: #9d174d; border: 1px solid #fbcfe8; }
+.badge-nagad { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.badge-rocket { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+.badge-bank { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+.badge-other { background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe; }
 
+/* Quick Presets & Batch Toolbar */
 .btn-quick-pct {
     border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-quick-pct:hover {
+    background: #eef2ff;
+    border-color: #6366f1;
+    color: #4f46e5;
 }
 .batch-toolbar {
     background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 8px;
-    padding: 10px 16px;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 12px;
+    padding: 14px 22px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 14px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.08);
+}
+
+/* Modals */
+.modal-content-styled {
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.14);
+    overflow: hidden;
+}
+.modal-header-styled {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 18px 24px;
+}
+.modal-body-styled {
+    padding: 24px;
+}
+.modal-footer-styled {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    padding: 16px 24px;
 }
 </style>
 @endpush
 
 @section('content')
-<div class="content-header p-0 mb-3">
-    <div class="container-fluid pl-0 pr-0">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-                <h1 class="m-0 text-dark font-weight-bold" style="font-size: 24px;">
-                    <i class="fas fa-balance-scale text-primary mr-2"></i>Payment Gateway & POS Reconciliation
-                </h1>
-                <p class="text-muted small mb-0 mt-1">
-                    Reconcile Card POS terminals, bKash & MFS payments, adjust transaction charges (MDR), and auto-post to General Ledger.
-                </p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <a href="{{ route('report.profit-statement') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-chart-pie mr-1"></i>Profit Statement
-                </a>
-                <a href="{{ url('admin/expense') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-receipt mr-1"></i>Expenses
-                </a>
-            </div>
+<div class="container-fluid rec-page-container">
+    {{-- Header --}}
+    <div class="rec-header">
+        <div>
+            <h1>
+                <i class="fas fa-balance-scale text-primary mr-2"></i>Payment Gateway & POS Reconciliation
+            </h1>
+            <p>
+                Reconcile Card POS terminals, bKash & MFS payments, record transaction fees (MDR), and auto-post directly to General Ledger.
+            </p>
+        </div>
+        <div class="d-flex align-items-center" style="gap: 10px;">
+            <a href="{{ route('report.profit-statement') }}" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; font-weight: 600; padding: 7px 14px;">
+                <i class="fas fa-chart-pie mr-1.5 text-primary"></i>Profit Statement
+            </a>
+            <a href="{{ url('admin/expense') }}" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; font-weight: 600; padding: 7px 14px;">
+                <i class="fas fa-receipt mr-1.5 text-success"></i>Expenses
+            </a>
         </div>
     </div>
-</div>
 
-<div class="container-fluid pl-0 pr-0">
+    {{-- Alerts --}}
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <div class="alert alert-success alert-dismissible fade show shadow-sm mb-4" role="alert" style="border-radius: 10px;">
             <i class="fas fa-check-circle mr-2"></i>{{ session('success') }}
             <button type="button" class="close" data-dismiss="alert">&times;</button>
         </div>
     @endif
     @if(session('warning'))
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <div class="alert alert-warning alert-dismissible fade show shadow-sm mb-4" role="alert" style="border-radius: 10px;">
             <i class="fas fa-exclamation-triangle mr-2"></i>{{ session('warning') }}
             <button type="button" class="close" data-dismiss="alert">&times;</button>
         </div>
     @endif
 
     {{-- Nav Tabs --}}
-    <ul class="nav nav-pills mb-3" id="recTabs" role="tablist">
+    <ul class="nav nav-pills-custom" id="recTabs" role="tablist">
         <li class="nav-item">
-            <a class="nav-link font-weight-bold {{ $tab === 'pending' ? 'active' : '' }}" 
+            <a class="nav-link {{ $tab === 'pending' ? 'active' : '' }}" 
                id="pending-tab" data-toggle="pill" href="#pending-panel" role="tab">
-                <i class="fas fa-clock mr-1.5"></i>Pending Settlements
-                <span class="badge {{ $pendingCount > 0 ? 'badge-danger' : 'badge-light' }} ml-1.5">
+                <i class="fas fa-clock mr-1"></i>Pending Settlements
+                <span class="badge {{ $pendingCount > 0 ? 'badge-danger' : 'badge-light' }} ml-1">
                     {{ $pendingCount }}
                 </span>
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link font-weight-bold {{ $tab === 'history' ? 'active' : '' }}" 
+            <a class="nav-link {{ $tab === 'history' ? 'active' : '' }}" 
                id="history-tab" data-toggle="pill" href="#history-panel" role="tab">
-                <i class="fas fa-history mr-1.5"></i>Reconciliation History & Batches
-                <span class="badge badge-light ml-1.5">{{ $historyCount }}</span>
+                <i class="fas fa-history mr-1"></i>Reconciliation History &amp; Batches
+                <span class="badge {{ $tab === 'history' ? 'badge-light' : 'badge-secondary' }} ml-1">{{ $historyCount }}</span>
             </a>
         </li>
     </ul>
@@ -183,20 +321,20 @@
         <div class="tab-pane fade {{ $tab === 'pending' ? 'show active' : '' }}" id="pending-panel" role="tabpanel">
             
             {{-- KPI Summary Cards --}}
-            <div class="row mb-3">
-                <div class="col-md-3 col-sm-6 mb-2">
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
                     <div class="rec-kpi-card">
                         <div>
                             <div class="rec-kpi-lbl">Unsettled Sales</div>
                             <div class="rec-kpi-val text-dark">{{ number_format($pendingCount) }}</div>
-                            <small class="text-muted">Awaiting bank/MFS match</small>
+                            <small class="text-muted">Awaiting bank / MFS match</small>
                         </div>
                         <div class="rec-kpi-icon" style="background: #eff6ff; color: #2563eb;">
                             <i class="fas fa-file-invoice-dollar"></i>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6 mb-2">
+                <div class="col-lg-3 col-md-6 mb-3">
                     <div class="rec-kpi-card">
                         <div>
                             <div class="rec-kpi-lbl">Unsettled Gross</div>
@@ -208,7 +346,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6 mb-2">
+                <div class="col-lg-3 col-md-6 mb-3">
                     <div class="rec-kpi-card">
                         <div>
                             <div class="rec-kpi-lbl">POS Cards In-Transit</div>
@@ -220,7 +358,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-sm-6 mb-2">
+                <div class="col-lg-3 col-md-6 mb-3">
                     <div class="rec-kpi-card">
                         <div>
                             <div class="rec-kpi-lbl">bKash & MFS In-Transit</div>
@@ -235,85 +373,85 @@
             </div>
 
             {{-- Filter Bar --}}
-            <div class="card shadow-sm border-0 mb-3" style="border-radius: 12px;">
-                <div class="card-body p-3">
-                    <form method="GET" action="{{ route('payment-reconciliation.index') }}" class="form-row align-items-end">
-                        <input type="hidden" name="tab" value="pending">
-                        
-                        @if(!auth()->user()->isVendor())
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="fas fa-store mr-1"></i>Branch</label>
-                            <select name="vendor_id" class="form-control form-control-sm">
-                                <option value="all">All Branches</option>
-                                <option value="hq" {{ $vendorFilter === 'hq' ? 'selected' : '' }}>Head Office</option>
-                                @foreach($vendors as $v)
-                                    <option value="{{ $v->id }}" {{ (string)$vendorFilter === (string)$v->id ? 'selected' : '' }}>{{ $v->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        @endif
+            <div class="rec-filter-card">
+                <form method="GET" action="{{ route('payment-reconciliation.index') }}" class="form-row align-items-end">
+                    <input type="hidden" name="tab" value="pending">
+                    
+                    @if(!auth()->user()->isVendor())
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="fas fa-store mr-1 text-muted"></i>Branch</label>
+                        <select name="vendor_id" class="form-control">
+                            <option value="all">All Branches</option>
+                            <option value="hq" {{ $vendorFilter === 'hq' ? 'selected' : '' }}>Head Office</option>
+                            @foreach($vendors as $v)
+                                <option value="{{ $v->id }}" {{ (string)$vendorFilter === (string)$v->id ? 'selected' : '' }}>{{ $v->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
 
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="fas fa-layer-group mr-1"></i>Channel</label>
-                            <select name="channel" class="form-control form-control-sm">
-                                <option value="">All Channels</option>
-                                <option value="card" {{ request('channel') === 'card' ? 'selected' : '' }}>POS Card Terminal</option>
-                                <option value="bkash" {{ request('channel') === 'bkash' ? 'selected' : '' }}>bKash Merchant</option>
-                                <option value="nagad" {{ request('channel') === 'nagad' ? 'selected' : '' }}>Nagad</option>
-                                <option value="rocket" {{ request('channel') === 'rocket' ? 'selected' : '' }}>Rocket</option>
-                                <option value="bank_transfer" {{ request('channel') === 'bank_transfer' ? 'selected' : '' }}>Bank / Online</option>
-                            </select>
-                        </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="fas fa-layer-group mr-1 text-muted"></i>Channel</label>
+                        <select name="channel" class="form-control">
+                            <option value="">All Channels</option>
+                            <option value="card" {{ request('channel') === 'card' ? 'selected' : '' }}>POS Card Terminal</option>
+                            <option value="bkash" {{ request('channel') === 'bkash' ? 'selected' : '' }}>bKash Merchant</option>
+                            <option value="nagad" {{ request('channel') === 'nagad' ? 'selected' : '' }}>Nagad</option>
+                            <option value="rocket" {{ request('channel') === 'rocket' ? 'selected' : '' }}>Rocket</option>
+                            <option value="bank_transfer" {{ request('channel') === 'bank_transfer' ? 'selected' : '' }}>Bank / Online</option>
+                        </select>
+                    </div>
 
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="far fa-calendar mr-1"></i>From Date</label>
-                            <input type="date" name="start_date" class="form-control form-control-sm" value="{{ request('start_date') }}">
-                        </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="far fa-calendar mr-1 text-muted"></i>From Date</label>
+                        <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
+                    </div>
 
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="far fa-calendar mr-1"></i>To Date</label>
-                            <input type="date" name="end_date" class="form-control form-control-sm" value="{{ request('end_date') }}">
-                        </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="far fa-calendar mr-1 text-muted"></i>To Date</label>
+                        <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
+                    </div>
 
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="fas fa-search mr-1"></i>Search</label>
-                            <input type="text" name="q" class="form-control form-control-sm" placeholder="Invoice, patient, slip #" value="{{ request('q') }}">
-                        </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="fas fa-search mr-1 text-muted"></i>Search</label>
+                        <input type="text" name="q" class="form-control" placeholder="Invoice, patient, slip #" value="{{ request('q') }}">
+                    </div>
 
-                        <div class="col-md-2 col-sm-6 mb-2 d-flex">
-                            <button type="submit" class="btn btn-primary btn-sm mr-2 flex-grow-1 font-weight-bold">
-                                <i class="fas fa-filter mr-1"></i>Filter
-                            </button>
-                            <a href="{{ route('payment-reconciliation.index', ['tab' => 'pending']) }}" class="btn btn-outline-secondary btn-sm" title="Reset Filters">
-                                <i class="fas fa-redo"></i>
-                            </a>
-                        </div>
-                    </form>
-                </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2 d-flex" style="gap: 8px;">
+                        <button type="submit" class="btn btn-primary btn-filter flex-grow-1">
+                            <i class="fas fa-filter mr-1.5"></i>Filter
+                        </button>
+                        <a href="{{ route('payment-reconciliation.index', ['tab' => 'pending']) }}" class="btn btn-outline-secondary btn-filter" style="width: 42px;" title="Reset Filters">
+                            <i class="fas fa-redo"></i>
+                        </a>
+                    </div>
+                </form>
             </div>
 
-            {{-- Batch Selection Toolbar (hidden until checkboxes clicked) --}}
+            {{-- Batch Selection Toolbar (revealed when rows checked) --}}
             <div id="batch-action-bar" class="batch-toolbar" style="display: none;">
                 <div class="d-flex align-items-center">
-                    <i class="fas fa-check-double text-primary mr-2" style="font-size: 18px;"></i>
-                    <span class="font-weight-bold text-dark">
-                        <span id="selected-count">0</span> transactions selected
-                    </span>
-                    <span class="text-muted ml-3">
-                        Total Gross: <b class="text-primary" id="selected-gross">৳0.00</b>
-                    </span>
+                    <i class="fas fa-check-double text-primary mr-3" style="font-size: 20px;"></i>
+                    <div>
+                        <span class="font-weight-bold text-dark" style="font-size: 14.5px;">
+                            <span id="selected-count">0</span> transactions selected
+                        </span>
+                        <span class="text-muted ml-3" style="font-size: 13.5px;">
+                            Total Gross: <b class="text-primary font-weight-bold" id="selected-gross">৳0.00</b>
+                        </span>
+                    </div>
                 </div>
                 <div>
-                    <button type="button" class="btn btn-primary btn-sm font-weight-bold px-3" id="btn-open-batch-modal">
-                        <i class="fas fa-receipt mr-1"></i>Settle Selected Batch (POS Terminal Slip)
+                    <button type="button" class="btn btn-primary font-weight-bold px-3 py-2" id="btn-open-batch-modal" style="border-radius: 8px; font-size: 13px;">
+                        <i class="fas fa-receipt mr-1.5"></i>Settle Selected Batch (POS Terminal Slip)
                     </button>
                 </div>
             </div>
 
             {{-- Pending Sales Table Card --}}
             <div class="crm-table-card">
-                <div class="crm-table-header d-flex justify-content-between align-items-center">
-                    <div class="font-weight-bold text-dark" style="font-size: 14px;">
+                <div class="crm-table-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="font-weight-bold text-dark" style="font-size: 14.5px;">
                         <i class="fas fa-list text-warning mr-1.5"></i>
                         Digital Payments Awaiting Reconciliation ({{ $pendingSales->total() }})
                     </div>
@@ -326,19 +464,19 @@
                     <table class="crm-table">
                         <thead>
                             <tr>
-                                <th style="width: 35px; text-align: center;">
-                                    <input type="checkbox" id="check-all-pending" style="cursor: pointer;">
+                                <th style="width: 40px; text-align: center;">
+                                    <input type="checkbox" id="check-all-pending" style="cursor: pointer; width: 16px; height: 16px;">
                                 </th>
-                                <th style="width: 45px;">#</th>
-                                <th style="width: 95px;">Date</th>
+                                <th style="width: 50px;">#</th>
+                                <th style="width: 105px;">Date</th>
                                 <th>Invoice #</th>
                                 <th>Branch</th>
                                 <th>Patient</th>
                                 <th>Payment Method</th>
                                 <th>Slip / Trx #</th>
-                                <th class="num" style="width: 120px; text-align: right;">Gross Paid</th>
-                                <th style="width: 130px; text-align: center;">Status</th>
-                                <th style="width: 110px; text-align: center;">Action</th>
+                                <th class="num" style="width: 125px; text-align: right;">Gross Paid</th>
+                                <th style="width: 120px; text-align: center;">Status</th>
+                                <th style="width: 120px; text-align: center;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -371,24 +509,24 @@
                                            data-gross="{{ (float) $sale->paid }}"
                                            data-channel="{{ $pMethod }}"
                                            data-invoice="{{ $sale->sale_invoice_no }}"
-                                           style="cursor: pointer;">
+                                           style="cursor: pointer; width: 16px; height: 16px;">
                                 </td>
-                                <td class="text-muted" style="font-size: 12px;">{{ $pendingSales->firstItem() + $idx }}</td>
+                                <td class="text-muted" style="font-size: 12.5px;">{{ $pendingSales->firstItem() + $idx }}</td>
                                 <td style="font-weight: 500;">
                                     {{ $sale->date ? \Carbon\Carbon::parse($sale->date)->format('d M Y') : '—' }}
                                 </td>
                                 <td>
-                                    <a href="{{ url('admin/sale/' . $sale->id) }}" target="_blank" class="font-weight-bold text-dark">
+                                    <a href="{{ url('admin/sale/' . $sale->id) }}" target="_blank" class="font-weight-bold text-dark hover-primary">
                                         {{ $sale->sale_invoice_no }}
                                     </a>
                                 </td>
                                 <td>
-                                    <span class="badge badge-light border text-muted" style="font-size: 11px;">
+                                    <span class="badge badge-light border text-muted px-2 py-1" style="font-size: 11.5px;">
                                         {{ $sale->vendor->name ?? 'Head Office' }}
                                     </span>
                                 </td>
                                 <td>
-                                    <div class="font-weight-bold text-dark" style="font-size: 13px;">{{ $patientName }}</div>
+                                    <div class="font-weight-bold text-dark" style="font-size: 13.5px;">{{ $patientName }}</div>
                                     @if($patientPhone)
                                         <small class="text-muted" style="font-size: 11px;">{{ $patientPhone }}</small>
                                     @endif
@@ -396,21 +534,21 @@
                                 <td>
                                     <span class="badge-channel {{ $badgeClass }}">
                                         @if($pMethod === 'card')
-                                            <i class="fas fa-credit-card"></i>
+                                             <i class="fas fa-credit-card"></i>
                                         @elseif($pMethod === 'bkash' || $pMethod === 'nagad' || $pMethod === 'rocket')
-                                            <i class="fas fa-mobile-alt"></i>
+                                             <i class="fas fa-mobile-alt"></i>
                                         @else
-                                            <i class="fas fa-globe"></i>
+                                             <i class="fas fa-globe"></i>
                                         @endif
                                         {{ $channelLabel }}
                                     </span>
                                     @if($sale->pos_terminal_name)
-                                        <small class="text-muted d-block" style="font-size: 11px;">{{ $sale->pos_terminal_name }}</small>
+                                        <small class="text-muted d-block mt-0.5" style="font-size: 11px;">{{ $sale->pos_terminal_name }}</small>
                                     @endif
                                 </td>
                                 <td>
                                     @if($sale->payment_trx_no)
-                                        <span class="badge badge-light border text-dark font-weight-bold" style="font-size: 11px;">
+                                        <span class="badge badge-light border text-dark font-weight-bold px-2 py-1" style="font-size: 11.5px;">
                                             {{ $sale->payment_trx_no }}
                                         </span>
                                     @else
@@ -418,18 +556,18 @@
                                     @endif
                                 </td>
                                 <td style="text-align: right;">
-                                    <span class="font-weight-bold text-dark" style="font-size: 13.5px;">
+                                    <span class="font-weight-bold text-dark" style="font-size: 14px;">
                                         ৳{{ number_format((float) $sale->paid, 2) }}
                                     </span>
                                 </td>
                                 <td style="text-align: center;">
-                                    <span class="badge badge-warning px-2 py-1" style="font-size: 11px; font-weight: 700;">
+                                    <span class="badge badge-warning px-2.5 py-1" style="font-size: 11.5px; font-weight: 700; border-radius: 6px;">
                                         <i class="fas fa-clock mr-1"></i>Unsettled
                                     </span>
                                 </td>
                                 <td style="text-align: center;">
                                     @can('permission', 'payment_reconciliation.create')
-                                    <button type="button" class="btn btn-sm btn-primary px-2.5 py-1 btn-open-single-modal"
+                                    <button type="button" class="btn btn-primary px-3 py-1 btn-open-single-modal"
                                             data-id="{{ $sale->id }}"
                                             data-invoice="{{ $sale->sale_invoice_no }}"
                                             data-patient="{{ $patientName }}"
@@ -440,7 +578,7 @@
                                             data-terminal="{{ $sale->pos_terminal_name }}"
                                             data-trx="{{ $sale->payment_trx_no }}"
                                             data-date="{{ $sale->date ? \Carbon\Carbon::parse($sale->date)->format('Y-m-d') : date('Y-m-d') }}"
-                                            style="border-radius: 6px; font-weight: 700; font-size: 11.5px;">
+                                            style="border-radius: 6px; font-weight: 700; font-size: 12px;">
                                         <i class="fas fa-check-circle mr-1"></i>Settle
                                     </button>
                                     @endcan
@@ -448,9 +586,10 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="11" style="text-align: center; padding: 45px 15px; color: #94a3b8;">
-                                    <i class="fas fa-check-circle text-success" style="font-size: 36px; display: block; margin-bottom: 12px;"></i>
-                                    All digital payments are reconciled and settled! No pending items found.
+                                <td colspan="11" style="text-align: center; padding: 50px 20px; color: #94a3b8;">
+                                    <i class="fas fa-check-circle text-success" style="font-size: 40px; display: block; margin-bottom: 14px;"></i>
+                                    <h6 class="font-weight-bold text-dark mb-1">All Caught Up!</h6>
+                                    All digital payments are reconciled and settled. No pending items found.
                                 </td>
                             </tr>
                             @endforelse
@@ -472,8 +611,8 @@
         <div class="tab-pane fade {{ $tab === 'history' ? 'show active' : '' }}" id="history-panel" role="tabpanel">
             
             {{-- History KPI Summary Cards --}}
-            <div class="row mb-3">
-                <div class="col-md-4 col-sm-6 mb-2">
+            <div class="row mb-4">
+                <div class="col-lg-4 col-md-6 mb-3">
                     <div class="rec-kpi-card">
                         <div>
                             <div class="rec-kpi-lbl">Reconciled Batches</div>
@@ -485,7 +624,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4 col-sm-6 mb-2">
+                <div class="col-lg-4 col-md-6 mb-3">
                     <div class="rec-kpi-card">
                         <div>
                             <div class="rec-kpi-lbl">Total Charges Deducted</div>
@@ -497,7 +636,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4 col-sm-6 mb-2">
+                <div class="col-lg-4 col-md-6 mb-3">
                     <div class="rec-kpi-card">
                         <div>
                             <div class="rec-kpi-lbl">Total Net Banked</div>
@@ -512,67 +651,65 @@
             </div>
 
             {{-- History Filter Card --}}
-            <div class="card shadow-sm border-0 mb-3" style="border-radius: 12px;">
-                <div class="card-body p-3">
-                    <form method="GET" action="{{ route('payment-reconciliation.index') }}" class="form-row align-items-end">
-                        <input type="hidden" name="tab" value="history">
+            <div class="rec-filter-card">
+                <form method="GET" action="{{ route('payment-reconciliation.index') }}" class="form-row align-items-end">
+                    <input type="hidden" name="tab" value="history">
 
-                        @if(!auth()->user()->isVendor())
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="fas fa-store mr-1"></i>Branch</label>
-                            <select name="vendor_id" class="form-control form-control-sm">
-                                <option value="all">All Branches</option>
-                                <option value="hq" {{ $vendorFilter === 'hq' ? 'selected' : '' }}>Head Office</option>
-                                @foreach($vendors as $v)
-                                    <option value="{{ $v->id }}" {{ (string)$vendorFilter === (string)$v->id ? 'selected' : '' }}>{{ $v->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        @endif
+                    @if(!auth()->user()->isVendor())
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="fas fa-store mr-1 text-muted"></i>Branch</label>
+                        <select name="vendor_id" class="form-control">
+                            <option value="all">All Branches</option>
+                            <option value="hq" {{ $vendorFilter === 'hq' ? 'selected' : '' }}>Head Office</option>
+                            @foreach($vendors as $v)
+                                <option value="{{ $v->id }}" {{ (string)$vendorFilter === (string)$v->id ? 'selected' : '' }}>{{ $v->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
 
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="fas fa-layer-group mr-1"></i>Channel</label>
-                            <select name="history_channel" class="form-control form-control-sm">
-                                <option value="">All Channels</option>
-                                <option value="card" {{ request('history_channel') === 'card' ? 'selected' : '' }}>POS Card Terminal</option>
-                                <option value="bkash" {{ request('history_channel') === 'bkash' ? 'selected' : '' }}>bKash Merchant</option>
-                                <option value="nagad" {{ request('history_channel') === 'nagad' ? 'selected' : '' }}>Nagad</option>
-                                <option value="rocket" {{ request('history_channel') === 'rocket' ? 'selected' : '' }}>Rocket</option>
-                                <option value="bank_transfer" {{ request('history_channel') === 'bank_transfer' ? 'selected' : '' }}>Bank / Online</option>
-                            </select>
-                        </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="fas fa-layer-group mr-1 text-muted"></i>Channel</label>
+                        <select name="history_channel" class="form-control">
+                            <option value="">All Channels</option>
+                            <option value="card" {{ request('history_channel') === 'card' ? 'selected' : '' }}>POS Card Terminal</option>
+                            <option value="bkash" {{ request('history_channel') === 'bkash' ? 'selected' : '' }}>bKash Merchant</option>
+                            <option value="nagad" {{ request('history_channel') === 'nagad' ? 'selected' : '' }}>Nagad</option>
+                            <option value="rocket" {{ request('history_channel') === 'rocket' ? 'selected' : '' }}>Rocket</option>
+                            <option value="bank_transfer" {{ request('history_channel') === 'bank_transfer' ? 'selected' : '' }}>Bank / Online</option>
+                        </select>
+                    </div>
 
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="far fa-calendar mr-1"></i>From Date</label>
-                            <input type="date" name="history_start" class="form-control form-control-sm" value="{{ request('history_start') }}">
-                        </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="far fa-calendar mr-1 text-muted"></i>From Date</label>
+                        <input type="date" name="history_start" class="form-control" value="{{ request('history_start') }}">
+                    </div>
 
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="far fa-calendar mr-1"></i>To Date</label>
-                            <input type="date" name="history_end" class="form-control form-control-sm" value="{{ request('history_end') }}">
-                        </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="far fa-calendar mr-1 text-muted"></i>To Date</label>
+                        <input type="date" name="history_end" class="form-control" value="{{ request('history_end') }}">
+                    </div>
 
-                        <div class="col-md-2 col-sm-6 mb-2">
-                            <label class="small font-weight-bold text-muted mb-1"><i class="fas fa-search mr-1"></i>Search</label>
-                            <input type="text" name="history_q" class="form-control form-control-sm" placeholder="Rec #, batch #, notes" value="{{ request('history_q') }}">
-                        </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2">
+                        <label><i class="fas fa-search mr-1 text-muted"></i>Search</label>
+                        <input type="text" name="history_q" class="form-control" placeholder="Rec #, batch #, notes" value="{{ request('history_q') }}">
+                    </div>
 
-                        <div class="col-md-2 col-sm-6 mb-2 d-flex">
-                            <button type="submit" class="btn btn-primary btn-sm mr-2 flex-grow-1 font-weight-bold">
-                                <i class="fas fa-filter mr-1"></i>Filter
-                            </button>
-                            <a href="{{ route('payment-reconciliation.index', ['tab' => 'history']) }}" class="btn btn-outline-secondary btn-sm" title="Reset Filters">
-                                <i class="fas fa-redo"></i>
-                            </a>
-                        </div>
-                    </form>
-                </div>
+                    <div class="col-lg-2 col-md-4 col-sm-6 mb-2 d-flex" style="gap: 8px;">
+                        <button type="submit" class="btn btn-primary btn-filter flex-grow-1">
+                            <i class="fas fa-filter mr-1.5"></i>Filter
+                        </button>
+                        <a href="{{ route('payment-reconciliation.index', ['tab' => 'history']) }}" class="btn btn-outline-secondary btn-filter" style="width: 42px;" title="Reset Filters">
+                            <i class="fas fa-redo"></i>
+                        </a>
+                    </div>
+                </form>
             </div>
 
             {{-- History Table Card --}}
             <div class="crm-table-card">
-                <div class="crm-table-header d-flex justify-content-between align-items-center">
-                    <div class="font-weight-bold text-dark" style="font-size: 14px;">
+                <div class="crm-table-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="font-weight-bold text-dark" style="font-size: 14.5px;">
                         <i class="fas fa-check-circle text-success mr-1.5"></i>
                         Reconciliation &amp; Settlement Records ({{ $reconciliations->total() }})
                     </div>
@@ -585,17 +722,17 @@
                     <table class="crm-table">
                         <thead>
                             <tr>
-                                <th style="width: 45px;">#</th>
-                                <th style="width: 100px;">Settled Date</th>
+                                <th style="width: 50px;">#</th>
+                                <th style="width: 105px;">Settled Date</th>
                                 <th>Reconciliation #</th>
                                 <th>Batch / Trx #</th>
                                 <th>Channel &amp; Terminal</th>
                                 <th>Branch</th>
-                                <th class="num" style="width: 110px; text-align: right;">Gross (৳)</th>
-                                <th class="num" style="width: 120px; text-align: right;">Fee (৳)</th>
-                                <th class="num" style="width: 120px; text-align: right;">Net Banked (৳)</th>
+                                <th class="num" style="width: 115px; text-align: right;">Gross (৳)</th>
+                                <th class="num" style="width: 125px; text-align: right;">Fee (৳)</th>
+                                <th class="num" style="width: 125px; text-align: right;">Net Banked (৳)</th>
                                 <th style="width: 80px; text-align: center;">Sales</th>
-                                <th style="width: 120px; text-align: center;">Actions</th>
+                                <th style="width: 130px; text-align: center;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -611,14 +748,14 @@
                                 };
                             @endphp
                             <tr>
-                                <td class="text-muted" style="font-size: 12px;">{{ $reconciliations->firstItem() + $idx }}</td>
+                                <td class="text-muted" style="font-size: 12.5px;">{{ $reconciliations->firstItem() + $idx }}</td>
                                 <td style="font-weight: 500;">
                                     {{ $rec->settlement_date ? $rec->settlement_date->format('d M Y') : '—' }}
                                 </td>
                                 <td>
                                     <span class="font-weight-bold text-primary">{{ $rec->reconciliation_no }}</span>
                                     @if($rec->ledger)
-                                        <small class="text-muted d-block" style="font-size: 10.5px;">Voucher: {{ $rec->ledger->invoice_no }}</small>
+                                        <small class="text-muted d-block mt-0.5" style="font-size: 11px;">Voucher: {{ $rec->ledger->invoice_no }}</small>
                                     @endif
                                 </td>
                                 <td>
@@ -629,11 +766,11 @@
                                         {{ $rec->channel_label }}
                                     </span>
                                     @if($rec->pos_terminal_name)
-                                        <small class="text-muted d-block" style="font-size: 11px;">{{ $rec->pos_terminal_name }}</small>
+                                        <small class="text-muted d-block mt-0.5" style="font-size: 11px;">{{ $rec->pos_terminal_name }}</small>
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="badge badge-light border text-muted" style="font-size: 11px;">
+                                    <span class="badge badge-light border text-muted px-2 py-1" style="font-size: 11.5px;">
                                         {{ $rec->vendor->name ?? 'Head Office' }}
                                     </span>
                                 </td>
@@ -643,25 +780,26 @@
                                 <td style="text-align: right; font-weight: 700; color: #dc2626;">
                                     ৳{{ number_format($rec->fee_amount, 2) }}
                                     @if($rec->fee_rate)
-                                        <small class="text-muted d-block" style="font-size: 10.5px;">({{ number_format($rec->fee_rate, 2) }}%)</small>
+                                        <small class="text-muted d-block mt-0.5" style="font-size: 11px;">({{ number_format($rec->fee_rate, 2) }}%)</small>
                                     @endif
                                 </td>
                                 <td style="text-align: right; font-weight: 800; color: #16a34a;">
                                     ৳{{ number_format($rec->net_amount, 2) }}
                                 </td>
                                 <td style="text-align: center;">
-                                    <span class="badge badge-secondary" style="font-size: 11px;">{{ $rec->total_transactions }}</span>
+                                    <span class="badge badge-secondary px-2 py-1" style="font-size: 11.5px; border-radius: 6px;">{{ $rec->total_transactions }}</span>
                                 </td>
                                 <td style="text-align: center;">
                                     <div class="btn-group btn-group-sm" role="group">
-                                        <button type="button" class="btn btn-outline-primary btn-sm btn-view-slip" data-id="{{ $rec->id }}" title="View Voucher Slip">
-                                            <i class="fas fa-file-invoice"></i> View
+                                        <button type="button" class="btn btn-outline-primary btn-sm btn-view-slip px-2 py-1" data-id="{{ $rec->id }}" title="View Voucher Slip" style="border-radius: 6px 0 0 6px;">
+                                            <i class="fas fa-file-invoice mr-1"></i>View
                                         </button>
                                         @can('permission', 'payment_reconciliation.delete')
-                                        <button type="button" class="btn btn-outline-danger btn-sm btn-delete-rec" 
+                                        <button type="button" class="btn btn-outline-danger btn-sm btn-delete-rec px-2 py-1" 
                                                 data-id="{{ $rec->id }}" 
                                                 data-no="{{ $rec->reconciliation_no }}" 
-                                                title="Rollback Settlement">
+                                                title="Rollback Settlement"
+                                                style="border-radius: 0 6px 6px 0;">
                                             <i class="fas fa-undo"></i>
                                         </button>
                                         @endcan
@@ -670,9 +808,10 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="11" style="text-align: center; padding: 45px 15px; color: #94a3b8;">
-                                    <i class="fas fa-inbox text-muted" style="font-size: 36px; display: block; margin-bottom: 12px;"></i>
-                                    No past reconciliation records found.
+                                <td colspan="11" style="text-align: center; padding: 50px 20px; color: #94a3b8;">
+                                    <i class="fas fa-inbox text-muted" style="font-size: 40px; display: block; margin-bottom: 14px;"></i>
+                                    <h6 class="font-weight-bold text-dark mb-1">No Past Settlements</h6>
+                                    No past reconciliation records found matching criteria.
                                 </td>
                             </tr>
                             @endforelse
@@ -694,28 +833,28 @@
 {{-- MODAL 1: SINGLE SETTLE MODAL                             --}}
 {{-- ======================================================== --}}
 <div class="modal fade" id="singleSettleModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 520px;">
-        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
-            <div class="modal-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; border-radius: 12px 12px 0 0;">
-                <h5 class="modal-title font-weight-bold" style="font-size: 16px; color: #0f172a;">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 540px;">
+        <div class="modal-content modal-content-styled">
+            <div class="modal-header modal-header-styled">
+                <h5 class="modal-title font-weight-bold mb-0" style="font-size: 16px; color: #0f172a;">
                     <i class="fas fa-check-circle text-primary mr-2"></i>Reconcile Single Transaction
                 </h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <form id="singleSettleForm" method="POST" action="">
                 @csrf
-                <div class="modal-body p-4">
+                <div class="modal-body modal-body-styled">
                     {{-- Summary Box --}}
-                    <div class="p-3 mb-3" style="background: #f1f5f9; border-radius: 8px;">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div class="p-3 mb-4" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="text-muted small">Invoice #:</span>
                             <span class="font-weight-bold text-dark" id="modal-single-invoice">—</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="text-muted small">Patient:</span>
                             <span class="font-weight-bold text-dark" id="modal-single-patient">—</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="text-muted small">Payment Method:</span>
                             <span id="modal-single-badge" class="badge badge-primary">POS Card</span>
                         </div>
@@ -729,50 +868,50 @@
                     <div class="form-row">
                         <div class="col-md-6 mb-3">
                             <label class="small font-weight-bold text-muted mb-1">Settlement Date <i class="text-danger">*</i></label>
-                            <input type="date" name="settlement_date" id="single-settlement-date" class="form-control form-control-sm" required>
+                            <input type="date" name="settlement_date" id="single-settlement-date" class="form-control" style="height: 38px; border-radius: 8px;" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="small font-weight-bold text-muted mb-1">Slip # / Approval Trx #</label>
-                            <input type="text" name="batch_no" id="single-batch-no" class="form-control form-control-sm" placeholder="e.g. Appr 04519">
+                            <input type="text" name="batch_no" id="single-batch-no" class="form-control" style="height: 38px; border-radius: 8px;" placeholder="e.g. Appr 04519">
                         </div>
                     </div>
 
-                    <div class="form-group mb-2">
-                        <label class="small font-weight-bold text-muted mb-1 d-flex justify-content-between">
+                    <div class="form-group mb-3">
+                        <label class="small font-weight-bold text-muted mb-1 d-flex justify-content-between align-items-center">
                             <span>Gateway / Card Charge (৳) <i class="text-danger">*</i></span>
-                            <span class="text-primary font-weight-normal">Quick % presets:</span>
+                            <span class="text-primary font-weight-bold" style="font-size: 11.5px;">Quick % presets:</span>
                         </label>
-                        <div class="d-flex gap-1 mb-2">
-                            <button type="button" class="btn btn-outline-secondary btn-xs btn-quick-pct mr-1" data-pct="1.2">1.2%</button>
-                            <button type="button" class="btn btn-outline-primary btn-xs btn-quick-pct mr-1" data-pct="1.5">1.5% (Card)</button>
-                            <button type="button" class="btn btn-outline-info btn-xs btn-quick-pct mr-1" data-pct="1.85">1.85% (bKash)</button>
-                            <button type="button" class="btn btn-outline-warning btn-xs btn-quick-pct mr-1" data-pct="2.0">2.0%</button>
-                            <button type="button" class="btn btn-outline-dark btn-xs btn-quick-pct" data-pct="2.5">2.5% (Amex)</button>
+                        <div class="d-flex flex-wrap mb-2" style="gap: 6px;">
+                            <button type="button" class="btn btn-quick-pct" data-pct="1.2">1.2%</button>
+                            <button type="button" class="btn btn-quick-pct" data-pct="1.5">1.5% (Card)</button>
+                            <button type="button" class="btn btn-quick-pct" data-pct="1.85">1.85% (bKash)</button>
+                            <button type="button" class="btn btn-quick-pct" data-pct="2.0">2.0%</button>
+                            <button type="button" class="btn btn-quick-pct" data-pct="2.5">2.5% (Amex)</button>
                         </div>
-                        <div class="input-group input-group-sm">
+                        <div class="input-group">
                             <div class="input-group-prepend">
-                                <span class="input-group-text font-weight-bold">৳</span>
+                                <span class="input-group-text font-weight-bold" style="border-radius: 8px 0 0 8px;">৳</span>
                             </div>
-                            <input type="number" step="0.01" min="0" name="fee_amount" id="single-fee-amount" class="form-control font-weight-bold" placeholder="0.00" required>
+                            <input type="number" step="0.01" min="0" name="fee_amount" id="single-fee-amount" class="form-control font-weight-bold" style="height: 40px; border-radius: 0 8px 8px 0;" placeholder="0.00" required>
                             <input type="hidden" name="fee_rate" id="single-fee-rate">
                         </div>
                     </div>
 
                     {{-- Net Received Live Display --}}
-                    <div class="p-2.5 mb-3 d-flex justify-content-between align-items-center" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+                    <div class="p-3 mb-3 d-flex justify-content-between align-items-center" style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px;">
                         <span class="text-success small font-weight-bold">Net Credited to Bank Account:</span>
-                        <span class="font-weight-extrabold text-success" style="font-size: 16px;" id="single-net-display">৳0.00</span>
+                        <span class="font-weight-extrabold text-success" style="font-size: 17px;" id="single-net-display">৳0.00</span>
                     </div>
 
                     <div class="form-group mb-0">
                         <label class="small font-weight-bold text-muted mb-1">Notes / Remarks (Optional)</label>
-                        <input type="text" name="notes" class="form-control form-control-sm" placeholder="e.g. City Bank POS Batch #12">
+                        <input type="text" name="notes" class="form-control" style="height: 38px; border-radius: 8px;" placeholder="e.g. City Bank POS Batch #12">
                     </div>
                 </div>
-                <div class="modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
-                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm font-weight-bold px-3">
-                        <i class="fas fa-check-circle mr-1"></i>Confirm &amp; Post to Ledger
+                <div class="modal-footer modal-footer-styled">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal" style="border-radius: 8px; font-weight: 600; padding: 7px 18px;">Cancel</button>
+                    <button type="submit" class="btn btn-primary font-weight-bold px-4 py-2" style="border-radius: 8px;">
+                        <i class="fas fa-check-circle mr-1.5"></i>Confirm &amp; Post to Ledger
                     </button>
                 </div>
             </form>
@@ -784,10 +923,10 @@
 {{-- MODAL 2: BATCH SETTLE MODAL                              --}}
 {{-- ======================================================== --}}
 <div class="modal fade" id="batchSettleModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 560px;">
-        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
-            <div class="modal-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; border-radius: 12px 12px 0 0;">
-                <h5 class="modal-title font-weight-bold" style="font-size: 16px; color: #0f172a;">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 580px;">
+        <div class="modal-content modal-content-styled">
+            <div class="modal-header modal-header-styled">
+                <h5 class="modal-title font-weight-bold mb-0" style="font-size: 16px; color: #0f172a;">
                     <i class="fas fa-receipt text-primary mr-2"></i>Daily POS Batch Settlement
                 </h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
@@ -796,9 +935,9 @@
                 @csrf
                 <div id="batch-hidden-inputs"></div>
 
-                <div class="modal-body p-4">
+                <div class="modal-body modal-body-styled">
                     {{-- Summary Box --}}
-                    <div class="p-3 mb-3" style="background: #f1f5f9; border-radius: 8px;">
+                    <div class="p-3 mb-4" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="text-muted small">Transactions Selected:</span>
                             <span class="font-weight-bold text-dark" id="modal-batch-count">0</span>
@@ -812,18 +951,18 @@
                     <div class="form-row">
                         <div class="col-md-6 mb-3">
                             <label class="small font-weight-bold text-muted mb-1">Terminal Batch # <i class="text-danger">*</i></label>
-                            <input type="text" name="batch_no" class="form-control form-control-sm" placeholder="e.g. Batch #0045" required>
+                            <input type="text" name="batch_no" class="form-control" style="height: 38px; border-radius: 8px;" placeholder="e.g. Batch #0045" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="small font-weight-bold text-muted mb-1">Settlement Date <i class="text-danger">*</i></label>
-                            <input type="date" name="settlement_date" value="{{ date('Y-m-d') }}" class="form-control form-control-sm" required>
+                            <input type="date" name="settlement_date" value="{{ date('Y-m-d') }}" class="form-control" style="height: 38px; border-radius: 8px;" required>
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="col-md-6 mb-3">
                             <label class="small font-weight-bold text-muted mb-1">Channel <i class="text-danger">*</i></label>
-                            <select name="channel" id="batch-channel" class="form-control form-control-sm" required>
+                            <select name="channel" id="batch-channel" class="form-control" style="height: 38px; border-radius: 8px;" required>
                                 <option value="card" selected>POS Card Terminal</option>
                                 <option value="bkash">bKash Merchant</option>
                                 <option value="nagad">Nagad</option>
@@ -832,7 +971,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="small font-weight-bold text-muted mb-1">POS Terminal Machine</label>
-                            <input type="text" name="pos_terminal_name" class="form-control form-control-sm" placeholder="e.g. City Bank POS #1" list="pos_machines_list">
+                            <input type="text" name="pos_terminal_name" class="form-control" style="height: 38px; border-radius: 8px;" placeholder="e.g. City Bank POS #1" list="pos_machines_list">
                             <datalist id="pos_machines_list">
                                 <option value="City Bank POS">
                                 <option value="BRAC Bank POS">
@@ -842,40 +981,40 @@
                         </div>
                     </div>
 
-                    <div class="form-group mb-2">
-                        <label class="small font-weight-bold text-muted mb-1 d-flex justify-content-between">
+                    <div class="form-group mb-3">
+                        <label class="small font-weight-bold text-muted mb-1 d-flex justify-content-between align-items-center">
                             <span>Total Batch Fee / Charge (৳) <i class="text-danger">*</i></span>
-                            <span class="text-primary font-weight-normal">Quick presets:</span>
+                            <span class="text-primary font-weight-bold" style="font-size: 11.5px;">Quick presets:</span>
                         </label>
-                        <div class="d-flex gap-1 mb-2">
-                            <button type="button" class="btn btn-outline-secondary btn-xs btn-batch-quick-pct mr-1" data-pct="1.2">1.2%</button>
-                            <button type="button" class="btn btn-outline-primary btn-xs btn-batch-quick-pct mr-1" data-pct="1.5">1.5% (Card)</button>
-                            <button type="button" class="btn btn-outline-info btn-xs btn-batch-quick-pct mr-1" data-pct="1.85">1.85% (bKash)</button>
-                            <button type="button" class="btn btn-outline-dark btn-xs btn-batch-quick-pct" data-pct="2.5">2.5% (Amex)</button>
+                        <div class="d-flex flex-wrap mb-2" style="gap: 6px;">
+                            <button type="button" class="btn btn-quick-pct btn-batch-quick-pct" data-pct="1.2">1.2%</button>
+                            <button type="button" class="btn btn-quick-pct btn-batch-quick-pct" data-pct="1.5">1.5% (Card)</button>
+                            <button type="button" class="btn btn-quick-pct btn-batch-quick-pct" data-pct="1.85">1.85% (bKash)</button>
+                            <button type="button" class="btn btn-quick-pct btn-batch-quick-pct" data-pct="2.5">2.5% (Amex)</button>
                         </div>
-                        <div class="input-group input-group-sm">
+                        <div class="input-group">
                             <div class="input-group-prepend">
-                                <span class="input-group-text font-weight-bold">৳</span>
+                                <span class="input-group-text font-weight-bold" style="border-radius: 8px 0 0 8px;">৳</span>
                             </div>
-                            <input type="number" step="0.01" min="0" name="batch_fee" id="batch-fee-amount" class="form-control font-weight-bold" placeholder="0.00" required>
+                            <input type="number" step="0.01" min="0" name="batch_fee" id="batch-fee-amount" class="form-control font-weight-bold" style="height: 40px; border-radius: 0 8px 8px 0;" placeholder="0.00" required>
                         </div>
                     </div>
 
                     {{-- Batch Net Display --}}
-                    <div class="p-2.5 mb-3 d-flex justify-content-between align-items-center" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+                    <div class="p-3 mb-3 d-flex justify-content-between align-items-center" style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px;">
                         <span class="text-success small font-weight-bold">Net Deposit Credited to Bank Account:</span>
-                        <span class="font-weight-extrabold text-success" style="font-size: 16px;" id="batch-net-display">৳0.00</span>
+                        <span class="font-weight-extrabold text-success" style="font-size: 17px;" id="batch-net-display">৳0.00</span>
                     </div>
 
                     <div class="form-group mb-0">
                         <label class="small font-weight-bold text-muted mb-1">Notes / Closing Remarks (Optional)</label>
-                        <input type="text" name="notes" class="form-control form-control-sm" placeholder="e.g. Settled at evening closing">
+                        <input type="text" name="notes" class="form-control" style="height: 38px; border-radius: 8px;" placeholder="e.g. Settled at evening closing">
                     </div>
                 </div>
-                <div class="modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
-                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm font-weight-bold px-3">
-                        <i class="fas fa-check-circle mr-1"></i>Confirm Batch Settlement
+                <div class="modal-footer modal-footer-styled">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal" style="border-radius: 8px; font-weight: 600; padding: 7px 18px;">Cancel</button>
+                    <button type="submit" class="btn btn-primary font-weight-bold px-4 py-2" style="border-radius: 8px;">
+                        <i class="fas fa-check-circle mr-1.5"></i>Confirm Batch Settlement
                     </button>
                 </div>
             </form>
@@ -888,20 +1027,20 @@
 {{-- ======================================================== --}}
 <div class="modal fade" id="slipModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
-            <div class="modal-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; border-radius: 12px 12px 0 0;">
-                <h5 class="modal-title font-weight-bold" style="font-size: 16px; color: #0f172a;">
+        <div class="modal-content modal-content-styled">
+            <div class="modal-header modal-header-styled">
+                <h5 class="modal-title font-weight-bold mb-0" style="font-size: 16px; color: #0f172a;">
                     <i class="fas fa-receipt text-primary mr-2"></i>Reconciliation Voucher &amp; Statement
                 </h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
-            <div class="modal-body p-4" id="slip-modal-content">
-                <div class="text-center py-4">
+            <div class="modal-body modal-body-styled" id="slip-modal-content">
+                <div class="text-center py-5">
                     <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
                 </div>
             </div>
-            <div class="modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
-                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+            <div class="modal-footer modal-footer-styled">
+                <button type="button" class="btn btn-secondary px-4 py-2" data-dismiss="modal" style="border-radius: 8px; font-weight: 600;">Close</button>
             </div>
         </div>
     </div>
@@ -1047,7 +1186,7 @@ $(document).ready(function() {
     $('.btn-view-slip').on('click', function() {
         var id = $(this).data('id');
         var content = $('#slip-modal-content');
-        content.html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>');
+        content.html('<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>');
         $('#slipModal').modal('show');
 
         $.get('{{ url("admin/payment-reconciliation/slip") }}/' + id, function(res) {
@@ -1055,49 +1194,50 @@ $(document).ready(function() {
                 var r = res.rec;
                 var salesHtml = '';
                 if (r.sales && r.sales.length > 0) {
-                    salesHtml = '<table class="table table-sm table-bordered mt-3 mb-0" style="font-size: 12.5px;">' +
-                        '<thead class="thead-light"><tr><th>Invoice #</th><th>Date</th><th>Patient</th><th class="text-right">Gross (৳)</th><th class="text-right">Fee (৳)</th><th class="text-right">Net (৳)</th></tr></thead><tbody>';
+                    salesHtml = '<div class="table-responsive mt-3 mb-0" style="border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden;">' +
+                        '<table class="table table-sm table-striped mb-0" style="font-size: 13px;">' +
+                        '<thead style="background: #f1f5f9; color: #475569;"><tr><th class="p-2">Invoice #</th><th class="p-2">Date</th><th class="p-2">Patient</th><th class="p-2 text-right">Gross (৳)</th><th class="p-2 text-right">Fee (৳)</th><th class="p-2 text-right">Net (৳)</th></tr></thead><tbody>';
                     r.sales.forEach(function(s) {
                         salesHtml += '<tr>' +
-                            '<td class="font-weight-bold">' + s.invoice_no + '</td>' +
-                            '<td>' + s.date + '</td>' +
-                            '<td>' + s.patient + '</td>' +
-                            '<td class="text-right">৳' + s.gross + '</td>' +
-                            '<td class="text-right text-danger">৳' + s.fee + '</td>' +
-                            '<td class="text-right font-weight-bold text-success">৳' + s.net + '</td>' +
+                            '<td class="p-2 font-weight-bold">' + s.invoice_no + '</td>' +
+                            '<td class="p-2">' + s.date + '</td>' +
+                            '<td class="p-2">' + s.patient + '</td>' +
+                            '<td class="p-2 text-right font-weight-bold">৳' + s.gross + '</td>' +
+                            '<td class="p-2 text-right text-danger font-weight-bold">৳' + s.fee + '</td>' +
+                            '<td class="p-2 text-right font-weight-extrabold text-success">৳' + s.net + '</td>' +
                             '</tr>';
                     });
-                    salesHtml += '</tbody></table>';
+                    salesHtml += '</tbody></table></div>';
                 }
 
                 var html = '<div class="row mb-3">' +
                     '<div class="col-md-6">' +
-                        '<div class="font-weight-bold text-dark" style="font-size: 16px;">' + r.reconciliation_no + '</div>' +
-                        '<div class="text-muted small">Batch/Slip #: ' + r.batch_no + ' · Channel: <b>' + r.channel_label + '</b></div>' +
-                        '<div class="text-muted small">Branch: ' + r.branch_name + ' · Settled Date: <b>' + r.settlement_date + '</b></div>' +
+                        '<div class="font-weight-bold text-dark" style="font-size: 17px;">' + r.reconciliation_no + '</div>' +
+                        '<div class="text-muted small mt-1">Batch/Slip #: <b class="text-dark">' + r.batch_no + '</b> · Channel: <b>' + r.channel_label + '</b></div>' +
+                        '<div class="text-muted small">Branch: <b class="text-dark">' + r.branch_name + '</b> · Settled Date: <b class="text-dark">' + r.settlement_date + '</b></div>' +
                     '</div>' +
-                    '<div class="col-md-6 text-md-right">' +
-                        (r.ledger_invoice ? '<span class="badge badge-success px-2 py-1"><i class="fas fa-shield-alt mr-1"></i>Ledger Voucher: ' + r.ledger_invoice + '</span><br>' : '') +
-                        '<small class="text-muted">Reconciled by: ' + r.reconciled_by + ' on ' + r.created_at + '</small>' +
-                    '</div>' +
-                '</div>' +
-                '<div class="row text-center p-3 mb-3" style="background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">' +
-                    '<div class="col-4">' +
-                        '<div class="small text-muted font-weight-bold uppercase">GROSS COLLECTED</div>' +
-                        '<div class="font-weight-extrabold text-dark" style="font-size: 17px;">৳' + r.gross_amount + '</div>' +
-                    '</div>' +
-                    '<div class="col-4">' +
-                        '<div class="small text-muted font-weight-bold uppercase">TOTAL CHARGE (' + r.fee_rate + ')</div>' +
-                        '<div class="font-weight-extrabold text-danger" style="font-size: 17px;">৳' + r.fee_amount + '</div>' +
-                    '</div>' +
-                    '<div class="col-4">' +
-                        '<div class="small text-muted font-weight-bold uppercase">NET CREDITED</div>' +
-                        '<div class="font-weight-extrabold text-success" style="font-size: 17px;">৳' + r.net_amount + '</div>' +
+                    '<div class="col-md-6 text-md-right mt-2 mt-md-0">' +
+                        (r.ledger_invoice ? '<span class="badge badge-success px-3 py-1.5 font-weight-bold" style="font-size: 12px; border-radius: 6px;"><i class="fas fa-shield-alt mr-1"></i>Ledger Voucher: ' + r.ledger_invoice + '</span><br>' : '') +
+                        '<small class="text-muted d-block mt-1">Reconciled by: <b>' + r.reconciled_by + '</b> on ' + r.created_at + '</small>' +
                     '</div>' +
                 '</div>' +
-                '<h6 class="font-weight-bold text-dark mt-3 mb-2"><i class="fas fa-list mr-1"></i>Included Sales Transactions (' + r.total_transactions + ')</h6>' +
+                '<div class="row text-center p-3 mb-3" style="background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">' +
+                    '<div class="col-4">' +
+                        '<div class="small text-muted font-weight-bold uppercase" style="font-size: 11px;">GROSS COLLECTED</div>' +
+                        '<div class="font-weight-extrabold text-dark mt-1" style="font-size: 18px;">৳' + r.gross_amount + '</div>' +
+                    '</div>' +
+                    '<div class="col-4">' +
+                        '<div class="small text-muted font-weight-bold uppercase" style="font-size: 11px;">TOTAL CHARGE (' + r.fee_rate + ')</div>' +
+                        '<div class="font-weight-extrabold text-danger mt-1" style="font-size: 18px;">৳' + r.fee_amount + '</div>' +
+                    '</div>' +
+                    '<div class="col-4">' +
+                        '<div class="small text-muted font-weight-bold uppercase" style="font-size: 11px;">NET CREDITED</div>' +
+                        '<div class="font-weight-extrabold text-success mt-1" style="font-size: 18px;">৳' + r.net_amount + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<h6 class="font-weight-bold text-dark mt-4 mb-2" style="font-size: 14px;"><i class="fas fa-list mr-1.5 text-primary"></i>Included Sales Transactions (' + r.total_transactions + ')</h6>' +
                 salesHtml +
-                (r.notes !== 'None' ? '<div class="mt-3 p-2 bg-light rounded small text-muted"><strong>Notes:</strong> ' + r.notes + '</div>' : '');
+                (r.notes !== 'None' ? '<div class="mt-3 p-3 bg-light rounded small text-muted" style="border: 1px solid #e2e8f0;"><strong>Notes:</strong> ' + r.notes + '</div>' : '');
 
                 content.html(html);
             } else {
