@@ -26,6 +26,8 @@ class SmsLog extends Model
         'follow_up_created',
         'read_by_agent',
         'campaign_name',
+        'automation_trigger',
+        'sms_parts',
     ];
 
     protected $casts = [

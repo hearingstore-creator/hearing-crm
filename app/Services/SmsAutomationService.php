@@ -43,7 +43,7 @@ class SmsAutomationService
             }
 
             $vars += ['company_phone' => Setting::find(1)?->phone ?? ''];
-            $this->sms->sendAndLogSms($phone, $this->sms->replaceVariables($automation->message_body, $vars), $recipientType, $recipientId);
+            $this->sms->sendAndLogSms($phone, $this->sms->replaceVariables($automation->message_body, $vars), $recipientType, $recipientId, null, \App\Enums\SmsType::AUTOMATED, $trigger->value);
             $automation->increment('sent_count');
 
             return true;
@@ -97,7 +97,21 @@ class SmsAutomationService
 
     public function active(SmsAutomationTrigger $trigger): ?SmsAutomation
     {
+        // The SMS Center mode is the master control: off stops everything, essential keeps only the must-have messages
+        $mode = self::mode();
+        if ($mode === 'off' || ($mode === 'essential' && !$trigger->isEssential())) {
+            return null;
+        }
+
         return SmsAutomation::where('trigger_type', $trigger->value)->where('is_active', true)->first();
+    }
+
+    /** all | essential | off */
+    public static function mode(): string
+    {
+        $mode = (string) (Setting::find(1)?->sms_automation_mode ?? 'all');
+
+        return in_array($mode, ['all', 'essential', 'off'], true) ? $mode : 'all';
     }
 
     public function underDailyCap(): bool

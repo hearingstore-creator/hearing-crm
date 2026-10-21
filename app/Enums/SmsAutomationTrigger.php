@@ -15,6 +15,9 @@ enum SmsAutomationTrigger: string
     case WARRANTY_EXPIRING = 'warranty_expiring';
     case MEMBERSHIP_UPGRADE = 'membership_upgrade';
     case POINTS_EXPIRING = 'points_expiring';
+    case REPAIR_RECEIVED = 'repair_received';
+    case REPAIR_READY = 'repair_ready';
+    case ORDER_READY = 'order_ready';
     /** Legacy: never fired, hidden from the picker; kept so old rows still show a label. */
     case POINTS_MILESTONE = 'points_milestone';
 
@@ -33,6 +36,9 @@ enum SmsAutomationTrigger: string
             self::POINTS_MILESTONE => 'Points Milestone (not used)',
             self::MEMBERSHIP_UPGRADE => 'Membership Upgrade',
             self::POINTS_EXPIRING => 'Points Expiring (7 days before)',
+            self::REPAIR_RECEIVED => 'Repair Received',
+            self::REPAIR_READY => 'Repair Ready for Pickup',
+            self::ORDER_READY => 'Order Ready for Pickup (Delivery Hub)',
         };
     }
 
@@ -40,6 +46,19 @@ enum SmsAutomationTrigger: string
     public function isPromotional(): bool
     {
         return in_array($this, [self::LEAD_CREATED, self::WARRANTY_EXPIRING, self::MEMBERSHIP_UPGRADE, self::POINTS_EXPIRING, self::CUSTOMER_FIRST_SALE], true);
+    }
+
+    /**
+     * Essential messages tell a patient something they need to act on (come in, pick up, be there).
+     * Everything else is a courtesy or marketing message and is the first to switch off when SMS costs climb.
+     */
+    public function isEssential(): bool
+    {
+        return in_array($this, [
+            self::APPOINTMENT_BOOKED, self::APPOINTMENT_RESCHEDULED, self::APPOINTMENT_REMINDER,
+            self::TICKET_CREATED, self::TICKET_SOLVED,
+            self::REPAIR_RECEIVED, self::REPAIR_READY, self::ORDER_READY,
+        ], true);
     }
 
     /** Triggers that can be chosen for a new/edited automation. */

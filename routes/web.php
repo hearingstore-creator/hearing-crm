@@ -438,6 +438,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     
     // SMS Automations
     Route::resource('sms-automations', App\Http\Controllers\Admin\SmsAutomationController::class)->except(['show']);
+    Route::post('sms-automations/mode', [App\Http\Controllers\Admin\SmsAutomationController::class, 'mode'])->name('sms-automations.mode');
     Route::post('sms-automations/{id}/toggle', [App\Http\Controllers\Admin\SmsAutomationController::class, 'toggle']);
 
     // SMS Templates — Full CRUD

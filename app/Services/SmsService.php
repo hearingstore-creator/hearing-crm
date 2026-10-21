@@ -353,7 +353,7 @@ class SmsService
     /**
      * Send single SMS via gateway and log the result
      */
-    public function sendAndLogSms(string $phone, string $message, string $recipientType, int $recipientId, string $csmsId = null, SmsType $type = SmsType::AUTOMATED): void
+    public function sendAndLogSms(string $phone, string $message, string $recipientType, int $recipientId, string $csmsId = null, SmsType $type = SmsType::AUTOMATED, ?string $automationTrigger = null): void
     {
         $csmsId = $csmsId ?? 'SMS-' . time() . '-' . rand(1000, 9999);
 
@@ -369,6 +369,8 @@ class SmsService
                 'phone_number'    => $phone,
                 'message'         => $message,
                 'type'            => $type->value,
+                'automation_trigger' => $automationTrigger,
+                'sms_parts'       => \App\Http\Controllers\Admin\SmsController::smsParts($message),
                 'status'          => $success ? SmsStatus::SENT->value : SmsStatus::FAILED->value,
                 'gateway_response' => $response,
                 'error_message'   => !$success ? ($decoded['error_message'] ?? 'Unknown error') : null,
@@ -381,6 +383,8 @@ class SmsService
                 'phone_number'    => $phone,
                 'message'         => $message,
                 'type'            => $type->value,
+                'automation_trigger' => $automationTrigger,
+                'sms_parts'       => \App\Http\Controllers\Admin\SmsController::smsParts($message),
                 'status'          => SmsStatus::FAILED->value,
                 'error_message'   => $e->getMessage(),
                 'sent_at'         => now(),

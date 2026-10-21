@@ -53,7 +53,9 @@ class SmsController extends Controller
         $automations = \App\Models\SmsAutomation::with('smsTemplate')->orderBy('id', 'desc')->get();
         $optOuts = BlockedContact::where('type', BlockedContact::SMS_OPT_OUT)->latest('id')->get();
 
-        return view('admin.sms.index', compact('stats', 'templates', 'recentLogs', 'activeCampaigns', 'automations', 'optOuts'));
+        $usage = app(\App\Services\SmsUsage::class)->summary();
+
+        return view('admin.sms.index', compact('stats', 'templates', 'recentLogs', 'activeCampaigns', 'automations', 'optOuts', 'usage'));
     }
 
     /** Add a number to the SMS opt-out list. */

@@ -2139,6 +2139,7 @@ class SaleController extends Controller
         DB::beginTransaction();
         try {
             $newStatus = DeliveryStatus::from($request->delivery_status);
+            $previousStatus = $sale->delivery_status;
             $sale->delivery_status = $newStatus->value;
 
             if ($request->has('delivery_date_time')) {
@@ -2209,12 +2210,31 @@ class SaleController extends Controller
                         $smsPhone,
                         $messageBody,
                         'customer',
-                        (int) $sale->customer_id
+                        (int) $sale->customer_id,
+                        null,
+                        \App\Enums\SmsType::MANUAL
                     );
                     $smsSent = true;
                 } catch (\Exception $smsEx) {
                     Log::warning('Fulfillment SMS delivery failed: ' . $smsEx->getMessage());
                 }
+            } elseif ($newStatus === DeliveryStatus::READY_FOR_DELIVERY && $previousStatus !== $newStatus->value && !empty($smsPhone)) {
+                // Automatic "ready for pickup" message (SMS Center automation; honours its on/off switch, the SMS mode and the cap).
+                // The intermediate steps (sent to lab, etc.) deliberately send nothing.
+                $smsSent = app(\App\Services\SmsAutomationService::class)->fire(
+                    \App\Enums\SmsAutomationTrigger::ORDER_READY,
+                    $smsPhone,
+                    'customer',
+                    (int) $sale->customer_id,
+                    [
+                        'name'          => $customerName,
+                        'invoice'       => $sale->sale_invoice_no,
+                        'item'          => $sale->isServiceSale() ? 'hearing report' : 'hearing device',
+                        'branch'        => Setting::first()?->company_name ?? 'our center',
+                        'due'           => number_format(max(0, (float) $sale->total_amount - (float) $sale->paid), 2),
+                    ],
+                    'order-ready:' . $sale->id
+                );
             }
 
             $statusLabel = $sale->deliveryStatusLabel();
