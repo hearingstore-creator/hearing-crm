@@ -423,6 +423,10 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('sms/recipients', [SmsController::class, 'getRecipients']);
     Route::post('sms/send', [SmsController::class, 'sendCampaign'])->name('sms.send');
     Route::post('sms/quick-send', [SmsController::class, 'quickSend'])->name('sms.quick-send');
+    Route::post('sms/test-send', [SmsController::class, 'testSend'])->name('sms.test-send');
+    Route::delete('sms/campaigns/{id}/cancel', [SmsController::class, 'cancelScheduled'])->name('sms.campaigns.cancel');
+    Route::post('sms-log/retry-failed', [SmsController::class, 'retryFailed'])->name('sms.log.retry-failed');
+    Route::post('sms-log/{id}/resend', [SmsController::class, 'resend'])->name('sms.log.resend');
     Route::get('sms-log', [SmsController::class, 'logIndex'])->name('sms.log');
     Route::get('sms-analytics', [SmsController::class, 'analytics'])->name('sms.analytics');
     Route::post('sms/opt-outs', [SmsController::class, 'optOutStore'])->name('sms.opt-outs.store');

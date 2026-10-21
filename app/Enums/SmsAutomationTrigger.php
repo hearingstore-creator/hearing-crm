@@ -18,6 +18,11 @@ enum SmsAutomationTrigger: string
     case REPAIR_RECEIVED = 'repair_received';
     case REPAIR_READY = 'repair_ready';
     case ORDER_READY = 'order_ready';
+    case PAYMENT_RECEIVED = 'payment_received';
+    case DUE_REMINDER = 'due_reminder';
+    case REFERRAL_EARNED = 'referral_earned';
+    case REFERRAL_PAID = 'referral_paid';
+    case BIRTHDAY = 'birthday';
     /** Legacy: never fired, hidden from the picker; kept so old rows still show a label. */
     case POINTS_MILESTONE = 'points_milestone';
 
@@ -39,13 +44,18 @@ enum SmsAutomationTrigger: string
             self::REPAIR_RECEIVED => 'Repair Received',
             self::REPAIR_READY => 'Repair Ready for Pickup',
             self::ORDER_READY => 'Order Ready for Pickup (Delivery Hub)',
+            self::PAYMENT_RECEIVED => 'Payment Received',
+            self::DUE_REMINDER => 'Payment Due Reminder',
+            self::REFERRAL_EARNED => 'Referral Commission Earned',
+            self::REFERRAL_PAID => 'Referral Commission Paid',
+            self::BIRTHDAY => 'Birthday Greeting',
         };
     }
 
     /** Marketing-type messages: skipped for opted-out numbers. Service messages always go out. */
     public function isPromotional(): bool
     {
-        return in_array($this, [self::LEAD_CREATED, self::WARRANTY_EXPIRING, self::MEMBERSHIP_UPGRADE, self::POINTS_EXPIRING, self::CUSTOMER_FIRST_SALE], true);
+        return in_array($this, [self::LEAD_CREATED, self::WARRANTY_EXPIRING, self::MEMBERSHIP_UPGRADE, self::POINTS_EXPIRING, self::CUSTOMER_FIRST_SALE, self::BIRTHDAY], true);
     }
 
     /**

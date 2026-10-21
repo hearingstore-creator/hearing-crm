@@ -7,6 +7,7 @@ enum SmsCampaignStatus: string
     case SENDING = 'sending';
     case COMPLETED = 'completed';
     case FAILED = 'failed';
+    case SCHEDULED = 'scheduled';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum SmsCampaignStatus: string
             self::SENDING => 'Sending',
             self::COMPLETED => 'Completed',
             self::FAILED => 'Failed',
+            self::SCHEDULED => 'Scheduled',
         };
     }
 
@@ -23,6 +25,7 @@ enum SmsCampaignStatus: string
             self::SENDING => 'blue',
             self::COMPLETED => 'green',
             self::FAILED => 'red',
+            self::SCHEDULED => 'gray',
         };
     }
 }

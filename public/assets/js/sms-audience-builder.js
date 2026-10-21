@@ -513,6 +513,25 @@ $('#abClearAll').on('click', function() {
 });
 
 /* ─── Helpers ────────────────────────────────── */
+/* ─── Schedule + test send (step 3) ───────────── */
+$('#abScheduledAt').on('input change', function() {
+    var scheduled = !!$(this).val();
+    $('#abSendBtn').html(scheduled
+        ? '<i class="far fa-clock mr-1"></i> Schedule Campaign'
+        : '<i class="fas fa-paper-plane mr-1"></i> Send Campaign Now');
+});
+$('#abTestSend').on('click', function() {
+    var btn = $(this).prop('disabled', true);
+    var out = $('#abTestResult').removeClass('text-danger text-success').text('Sending...');
+    $.ajax({
+        url: BASE + '/sms/test-send', method: 'POST',
+        headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'},
+        data: { message: getMessageBody(), phone: $.trim($('#abTestPhone').val()) }
+    }).done(function(r) { out.addClass('text-success').text(r.message); })
+      .fail(function(xhr) { out.addClass('text-danger').text((xhr.responseJSON && xhr.responseJSON.message) || 'Could not send the test.'); })
+      .always(function() { btn.prop('disabled', false); });
+});
+
 function typeLabel() {
     return state.type === 'leads' ? 'Leads' : (state.type === 'team' ? 'Team & Doctors' : 'Customers');
 }

@@ -27,6 +27,7 @@ class SmsController extends Controller
             ->only(['audienceFilterConfig', 'audienceQuickCounts', 'audienceFilter', 'getFilterGroups']);
         $this->middleware('permission:compose_&_send.create')->only(['saveFilterGroup', 'deleteFilterGroup']);
         $this->middleware('permission:compose_&_send.team')->only(['quickSend']);
+        $this->middleware('permission:compose_&_send.create')->only(['cancelScheduled', 'testSend', 'resend', 'retryFailed']);
     }
 
     /**
@@ -54,8 +55,9 @@ class SmsController extends Controller
         $optOuts = BlockedContact::where('type', BlockedContact::SMS_OPT_OUT)->latest('id')->get();
 
         $usage = app(\App\Services\SmsUsage::class)->summary();
+        $scheduled = SmsCampaign::where('status', 'scheduled')->orderBy('scheduled_at')->get();
 
-        return view('admin.sms.index', compact('stats', 'templates', 'recentLogs', 'activeCampaigns', 'automations', 'optOuts', 'usage'));
+        return view('admin.sms.index', compact('stats', 'templates', 'recentLogs', 'activeCampaigns', 'automations', 'optOuts', 'usage', 'scheduled'));
     }
 
     /** Add a number to the SMS opt-out list. */
@@ -125,9 +127,13 @@ class SmsController extends Controller
             'message_body' => 'required|string|max:1000',
             'audience_type' => 'required|string',
             'sms_template_id' => 'nullable|exists:sms_templates,id',
+            'scheduled_at' => 'nullable|date',
         ]);
 
         $this->guardTeam($request->audience_type);
+        if ($request->filled('scheduled_at') && \Illuminate\Support\Carbon::parse($request->scheduled_at, 'Asia/Dhaka')->lte(now())) {
+            return redirect()->back()->withInput()->with('warning', 'Pick a time in the future for a scheduled campaign (Bangladesh time).');
+        }
 
         $campaign = SmsCampaign::create([
             'name' => $request->campaign_name,
@@ -139,7 +145,8 @@ class SmsController extends Controller
             'follow_up_days' => $request->follow_up_days ?: null,
             'follow_up_assigned_user' => $request->follow_up_assigned_user ?: auth()->id(),
             'follow_up_mode' => $request->follow_up_mode ?: null,
-            'status' => \App\Enums\SmsCampaignStatus::SENDING->value,
+            'status' => $request->filled('scheduled_at') ? \App\Enums\SmsCampaignStatus::SCHEDULED->value : \App\Enums\SmsCampaignStatus::SENDING->value,
+            'scheduled_at' => $request->filled('scheduled_at') ? \Illuminate\Support\Carbon::parse($request->scheduled_at, 'Asia/Dhaka')->setTimezone(config('app.timezone')) : null,
         ]);
 
         // Cost guard: how many people, how many SMS parts each, and who may send that many
@@ -154,6 +161,13 @@ class SmsController extends Controller
             return redirect('admin/sms')->with('warning', "This campaign would reach {$recipientCount} people. Campaigns above {$threshold} recipients must be sent by a Super Admin.");
         }
         $parts = self::smsParts($request->message_body);
+
+        // A scheduled campaign waits: `php artisan sms:send-scheduled` (every minute) starts it at the chosen time
+        if ($campaign->scheduled_at) {
+            $when = $campaign->scheduled_at->copy()->timezone('Asia/Dhaka')->format('g:i A, d M Y');
+
+            return redirect('admin/sms')->with('success', "Campaign \"{$campaign->name}\" is scheduled for {$when}: {$recipientCount} recipients now, {$parts} SMS part" . ($parts > 1 ? 's' : '') . ' each. The audience is worked out again when it is sent.');
+        }
 
         // Quiet hours: a campaign started late in the evening or at night waits until morning
         $sendAt = self::quietHoursSendAt();
@@ -494,6 +508,111 @@ class SmsController extends Controller
             ],
         ];
     }
+    /** Cancel a campaign that is still waiting for its send time. */
+    public function cancelScheduled(int $id)
+    {
+        $campaign = SmsCampaign::where('status', 'scheduled')->findOrFail($id);
+        $campaign->delete();
+
+        return redirect('admin/sms')->with('success', "Scheduled campaign \"{$campaign->name}\" was cancelled. Nothing was sent.");
+    }
+
+    /**
+     * Send the message to one number (default: the signed-in user's own mobile) with sample details,
+     * so the wording can be checked before it goes to hundreds of people. It is a real SMS and counts as one.
+     */
+    public function testSend(Request $request)
+    {
+        $data = $request->validate([
+            'message' => 'required|string|max:1000',
+            'phone'   => 'nullable|string|max:20',
+        ]);
+
+        $phone = trim((string) ($data['phone'] ?? '')) ?: trim((string) auth()->user()->mobile_no);
+        if ($phone === '') {
+            return response()->json(['success' => false, 'message' => 'Enter a mobile number: your own profile has none saved.'], 422);
+        }
+
+        $sample = ['name' => 'Sample Patient', 'company_phone' => \App\Models\Setting::find(1)?->phone ?? '', 'customer_id' => 'C-0000', 'tier' => 'Silver', 'points' => '120',
+            'warranty_expiry_date' => now()->addDays(20)->format('d M Y'), 'appointment_date' => now()->addDay()->format('d M Y')];
+        $text = $this->smsService->replaceVariables($data['message'], $sample);
+
+        $before = (int) SmsLog::max('id');
+        $this->smsService->sendAndLogSms($phone, '[TEST] ' . $text, 'employee', (int) auth()->id(), null, \App\Enums\SmsType::MANUAL);
+        $log = SmsLog::where('id', '>', $before)->latest('id')->first();
+        $ok = $log && ($log->status instanceof \App\Enums\SmsStatus ? $log->status->value : $log->status) === \App\Enums\SmsStatus::SENT->value;
+
+        return response()->json([
+            'success' => $ok,
+            'message' => $ok ? "Test SMS sent to {$phone}." : 'The SMS gateway did not accept the test message. See the Send Log.',
+            'preview' => '[TEST] ' . $text,
+        ], $ok ? 200 : 502);
+    }
+
+    /** Send one failed message again. */
+    public function resend(int $id)
+    {
+        $log = SmsLog::findOrFail($id);
+        $result = $this->retryOne($log);
+
+        return redirect()->back()->with($result === true ? 'success' : 'warning', $result === true ? "Sent again to {$log->phone_number}." : $result);
+    }
+
+    /** Send every failed message in the current filter again (at most 100 per click). */
+    public function retryFailed(Request $request)
+    {
+        $logs = SmsLog::where('status', 'failed')->whereNull('retried_at')
+            ->when($request->filled('recipient'), fn ($q) => $q->where('recipient_type', $request->recipient))
+            ->when($request->filled('type'), fn ($q) => $q->where('type', $request->type))
+            ->when($request->filled('date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->date_from))
+            ->when($request->filled('date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->date_to))
+            ->orderBy('id')->limit(100)->get();
+
+        $sent = 0;
+        $skipped = 0;
+        $seen = [];
+        foreach ($logs as $log) {
+            $key = $log->phone_number . '|' . md5($log->message);
+            if (isset($seen[$key])) {
+                $skipped++;
+                continue;
+            }
+            $seen[$key] = true;
+            $this->retryOne($log) === true ? $sent++ : $skipped++;
+        }
+
+        return redirect()->back()->with($sent ? 'success' : 'warning', "Retried {$sent} failed message(s)" . ($skipped ? ", skipped {$skipped} (opted out, already sent, or duplicates)." : '.'));
+    }
+
+    /** true when sent again, else the reason it was not. */
+    protected function retryOne(SmsLog $log): bool|string
+    {
+        $status = $log->status instanceof \App\Enums\SmsStatus ? $log->status->value : $log->status;
+        if ($status !== 'failed') {
+            return 'Only failed messages can be sent again.';
+        }
+        if ($log->retried_at) {
+            return 'This message was already sent again.';
+        }
+        if (\App\Services\SmsAutomationService::isOptedOut($log->phone_number)) {
+            return 'This number has opted out of SMS.';
+        }
+        // the same text may have gone through meanwhile (for example a later retry from another screen)
+        if (SmsLog::where('phone_number', $log->phone_number)->where('message', $log->message)->where('status', 'sent')->where('id', '>', $log->id)->exists()) {
+            $log->update(['retried_at' => now()]);
+            return 'The same message was already delivered to this number afterwards.';
+        }
+
+        $before = (int) SmsLog::max('id');
+        $this->smsService->sendAndLogSms($log->phone_number, $log->message, $log->recipient_type ?: 'customer', (int) $log->recipient_id, null, \App\Enums\SmsType::MANUAL, $log->automation_trigger);
+        $new = SmsLog::where('id', '>', $before)->latest('id')->first();
+        $log->update(['retried_at' => now()]);
+
+        $newStatus = $new ? ($new->status instanceof \App\Enums\SmsStatus ? $new->status->value : $new->status) : null;
+
+        return $newStatus === 'sent' ? true : 'The gateway refused it again: ' . ($new->error_message ?? 'no reason given');
+    }
+
     /** The Doctors / Referrers / Employees audience is for managers: it needs its own permission. */
     protected function guardTeam(?string $type): void
     {

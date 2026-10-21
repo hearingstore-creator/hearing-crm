@@ -28,12 +28,14 @@ use Illuminate\Support\Facades\DB;
  *   php artisan crm:automations digest       – 8 AM summary in the bell (per owner + Super Admin), plus each person's tickets and tasks
  *   php artisan crm:automations tickets      – overdue tickets, tickets with no update, Solved tickets that close by themselves
  *   php artisan crm:automations tasks        – tasks due tomorrow or overdue
+ *   php artisan crm:automations dues         – SMS for invoices due tomorrow, and overdue ones once a week
+ *   php artisan crm:automations birthdays    – birthday greeting to patients
  */
 class CrmAutomations extends Command
 {
-    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks'];
+    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays'];
 
-    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks} {--dry : show what would happen, change nothing}';
+    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays} {--dry : show what would happen, change nothing}';
     protected $description = 'Run one lead automation';
 
     public function __construct(private CrmNotifier $notifier, private DealService $deals, private SmsAutomationService $sms)
@@ -312,6 +314,70 @@ class CrmAutomations extends Command
     }
 
     /** SMS through the central service (active text, opt-out, daily cap, once per key). Dry run only prints. */
+    /** Unpaid invoices due tomorrow (or already overdue, once a week) → SMS, using the "Payment Due Reminder" automation. */
+    private function dues(): int
+    {
+        if (!$this->sms->active(SmsAutomationTrigger::DUE_REMINDER)) {
+            $this->line('No active "Payment Due Reminder" SMS automation – skipped.');
+            return 0;
+        }
+
+        $today = Carbon::today('Asia/Dhaka');
+        $rows = DB::table('sale_masters as s')
+            ->join('customers as c', 'c.id', '=', 's.customer_id')
+            ->join('leads as l', 'l.id', '=', 'c.lead_id')
+            ->whereNull('s.deleted_at')
+            ->whereNotNull('s.due_date')
+            ->whereDate('s.due_date', '<=', $today->copy()->addDay()->toDateString())
+            ->whereRaw('s.total_amount - s.paid > 0.009')
+            ->whereNotNull('l.phone_number')
+            ->get(['s.id', 's.sale_invoice_no', 's.due_date', 's.total_amount', 's.paid', 'c.id as customer_id', 'l.full_name', 'l.phone_number']);
+
+        $n = 0;
+        foreach ($rows as $r) {
+            $due = Carbon::parse($r->due_date);
+            // due tomorrow or today: once for that due date; already overdue: once a week
+            $key = $due->gte($today) ? "due-sms:{$r->id}:{$due->toDateString()}" : "due-sms:{$r->id}:w" . $today->format('oW');
+            $n += (int) $this->sendSms(SmsAutomationTrigger::DUE_REMINDER, $key, $r->phone_number, 'customer', (int) $r->customer_id, [
+                'name'     => $r->full_name,
+                'due'      => number_format((float) $r->total_amount - (float) $r->paid, 2),
+                'invoice'  => $r->sale_invoice_no,
+                'due_text' => $due->gte($today) ? ' (due ' . $due->format('d M') . ')' : ' (overdue since ' . $due->format('d M') . ')',
+                'company_phone' => \App\Models\Setting::find(1)?->phone ?? '',
+            ]);
+        }
+
+        return $n;
+    }
+
+    /** Patients whose birthday is today → greeting, using the "Birthday Greeting" automation (once a year each). */
+    private function birthdays(): int
+    {
+        if (!$this->sms->active(SmsAutomationTrigger::BIRTHDAY)) {
+            $this->line('No active "Birthday Greeting" SMS automation – skipped.');
+            return 0;
+        }
+
+        $today = Carbon::today('Asia/Dhaka');
+        $rows = DB::table('customers as c')
+            ->join('leads as l', 'l.id', '=', 'c.lead_id')
+            ->whereNull('c.deleted_at')
+            ->whereNotNull('l.date_of_birth')
+            ->whereRaw('MONTH(l.date_of_birth) = ? AND DAY(l.date_of_birth) = ?', [$today->month, $today->day])
+            ->whereNotNull('l.phone_number')
+            ->get(['c.id as customer_id', 'l.full_name', 'l.phone_number']);
+
+        $n = 0;
+        foreach ($rows as $r) {
+            $n += (int) $this->sendSms(SmsAutomationTrigger::BIRTHDAY, "bday-sms:{$r->customer_id}:{$today->year}", $r->phone_number, 'customer', (int) $r->customer_id, [
+                'name' => $r->full_name,
+                'company_phone' => \App\Models\Setting::find(1)?->phone ?? '',
+            ]);
+        }
+
+        return $n;
+    }
+
     private function sendSms(SmsAutomationTrigger $trigger, string $key, string $phone, string $type, int $id, array $vars): bool
     {
         if ($this->option('dry')) {

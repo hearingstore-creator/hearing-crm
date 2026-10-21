@@ -21,6 +21,21 @@
         </div>
     </div>
 
+    @if (isset($scheduled) && $scheduled->count())
+        <div class="crm-table-card" style="margin-bottom: 16px; padding: 12px 16px;">
+            <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--page-text-muted); margin-bottom:6px;"><i class="far fa-clock mr-1"></i>Scheduled campaigns</div>
+            @foreach ($scheduled as $camp)
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--gray-100); font-size:13px;">
+                    <span><strong>{{ $camp->name }}</strong> <span class="text-muted">· {{ $camp->scheduled_at?->copy()->timezone('Asia/Dhaka')->format('g:i A, d M Y') }}</span></span>
+                    <form action="{{ route('sms.campaigns.cancel', $camp->id) }}" method="POST" onsubmit="return confirm('Cancel this scheduled campaign? Nothing will be sent.');">
+                        @csrf @method('DELETE')
+                        <button class="btn btn-outline-danger btn-sm" type="submit">Cancel</button>
+                    </form>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     {{-- Step Indicator --}}
     <div class="ab-steps-bar">
         <div class="ab-step active" data-step="1">
@@ -321,6 +336,19 @@
                             </p>
                         </div>
 
+                        {{-- Test first: one real SMS with sample details --}}
+                        <div style="text-align:left; border:1px dashed var(--gray-200); border-radius:8px; padding:10px 12px; margin-bottom:14px;">
+                            <label style="font-weight:600;font-size:12px;margin-bottom:4px;">Send a test to your phone</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="abTestPhone" class="form-control" placeholder="{{ auth()->user()->mobile_no ?: '01XXXXXXXXX' }}" value="">
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-outline-primary" id="abTestSend"><i class="fas fa-vial mr-1"></i>Test</button>
+                                </div>
+                            </div>
+                            <small class="text-muted">Uses sample details such as "Sample Patient". It is a real SMS and counts as one. Leave the number empty to use your own.</small>
+                            <div id="abTestResult" style="font-size:12px;margin-top:4px;"></div>
+                        </div>
+
                         <form id="abSendForm" method="POST" action="{{ url('admin/sms/send') }}">
                             @csrf
                             <input type="hidden" name="campaign_name" id="abFormCampaignName">
@@ -332,6 +360,12 @@
                             <input type="hidden" name="follow_up_days" id="abFormFollowUpDays" value="">
                             <input type="hidden" name="follow_up_assigned_user" id="abFormFollowUpUser" value="">
                             <input type="hidden" name="follow_up_mode" id="abFormFollowUpMode" value="">
+
+                            <div style="text-align:left; margin-bottom:14px;">
+                                <label style="font-weight:600;font-size:12px;margin-bottom:4px;">Send time (optional)</label>
+                                <input type="datetime-local" name="scheduled_at" id="abScheduledAt" class="form-control form-control-sm" min="{{ now('Asia/Dhaka')->format('Y-m-d\TH:i') }}">
+                                <small class="text-muted">Leave empty to send now. Bangladesh time. The audience is worked out again at send time.</small>
+                            </div>
 
                             <div class="ab-summary-actions">
                                 <button type="button" class="btn btn-outline-secondary btn-sm btn-block" id="abBackStep2"><i class="fas fa-arrow-left mr-1"></i> Back to Compose</button>

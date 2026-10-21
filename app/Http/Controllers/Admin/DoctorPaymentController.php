@@ -309,6 +309,13 @@ class DoctorPaymentController extends Controller
             $doctorLedger->settlement_period_end = $request->settlement_period_end;
             $doctorLedger->save();
 
+            // Optional "commission paid" SMS to the doctor / referrer (SMS Center automation, off unless switched on)
+            try {
+                app(\App\Services\SmsAutomationService::class)->onReferralPaid($doctorLedger);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Referral payment SMS skipped: ' . $e->getMessage());
+            }
+
             // 2. Post to General Company Ledger (CRUCIAL FOR PROFIT ACCURACY)
             // Ensure Income/Expense Head exists for Doctor Payment
             $head = IncomeExpenseHead::where('head_type', Helper::$expense)

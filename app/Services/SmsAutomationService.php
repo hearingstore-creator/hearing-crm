@@ -95,6 +95,46 @@ class SmsAutomationService
         ], 'tier-up:' . $customer->id . ':' . $customer->membership_tier_id);
     }
 
+    /** A payment was recorded for a patient (Receive and checkout payments). Fires after the transaction commits. */
+    public function onPaymentReceived(\App\Models\CustomerLedger $entry): void
+    {
+        if (!$entry->customer_id || (float) $entry->credit <= 0 || !$this->active(SmsAutomationTrigger::PAYMENT_RECEIVED)) {
+            return;
+        }
+        $customer = \App\Models\Customer::withoutGlobalScopes()->with('lead')->find($entry->customer_id);
+        if (!$customer?->lead?->phone_number) {
+            return;
+        }
+        $this->fireAfterCommit(SmsAutomationTrigger::PAYMENT_RECEIVED, $customer->lead->phone_number, 'customer', (int) $customer->id, [
+            'name' => $customer->lead->full_name, 'amount' => number_format((float) $entry->credit, 2),
+            'invoice' => $entry->ref_invoice_no, 'date' => \Illuminate\Support\Carbon::parse($entry->date ?: now())->format('d M Y'),
+        ], 'payment:' . $entry->id);
+    }
+
+    /** A sale credited commission to a doctor / referrer (once per sale and person, even if the sale is edited). */
+    public function onReferralEarned(?\App\Models\Doctor $doctor, float $amount, string $invoiceNo, int $saleId): void
+    {
+        if (!$doctor || $amount <= 0 || !$doctor->contact_number || !$this->active(SmsAutomationTrigger::REFERRAL_EARNED)) {
+            return;
+        }
+        $this->fireAfterCommit(SmsAutomationTrigger::REFERRAL_EARNED, $doctor->contact_number, ($doctor->referrer_type ?? 'doctor') === 'doctor' ? 'doctor' : 'referrer', (int) $doctor->id, [
+            'name' => $doctor->name, 'amount' => number_format($amount, 2), 'invoice' => $invoiceNo,
+        ], 'ref-earned:' . $saleId . ':' . $doctor->id);
+    }
+
+    /** A commission payment was made to a doctor / referrer. */
+    public function onReferralPaid(\App\Models\DoctorLedger $entry): void
+    {
+        $doctor = \App\Models\Doctor::withoutGlobalScopes()->find($entry->doctor_id);
+        if (!$doctor || (float) $entry->debit <= 0 || !$doctor->contact_number || !$this->active(SmsAutomationTrigger::REFERRAL_PAID)) {
+            return;
+        }
+        $this->fireAfterCommit(SmsAutomationTrigger::REFERRAL_PAID, $doctor->contact_number, ($doctor->referrer_type ?? 'doctor') === 'doctor' ? 'doctor' : 'referrer', (int) $doctor->id, [
+            'name' => $doctor->name, 'amount' => number_format((float) $entry->debit, 2), 'voucher' => $entry->ref_invoice_no,
+            'date' => \Illuminate\Support\Carbon::parse($entry->date ?: now())->format('d M Y'),
+        ], 'ref-paid:' . $entry->id);
+    }
+
     public function active(SmsAutomationTrigger $trigger): ?SmsAutomation
     {
         // The SMS Center mode is the master control: off stops everything, essential keeps only the must-have messages

@@ -451,6 +451,15 @@ class Helper
         $cLedger->ref_invoice_no = $refInvoiceNo;
         $cLedger->save();
 
+        // Optional "payment received" SMS (SMS Center automation; off unless switched on). Never blocks the payment.
+        if (in_array($type, [self::$receive, self::$sales], true)) {
+            try {
+                app(\App\Services\SmsAutomationService::class)->onPaymentReceived($cLedger);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Payment SMS skipped: ' . $e->getMessage());
+            }
+        }
+
         return true;
     }
 
@@ -826,6 +835,7 @@ class Helper
                 $dl->type = $type;
                 $dl->ref_invoice_no = $sale->sale_invoice_no;
                 $dl->save();
+                self::referralEarnedSms($doc, $primaryAmount, $sale);
             }
         }
 
@@ -871,6 +881,7 @@ class Helper
                 $dl2->type = $type;
                 $dl2->ref_invoice_no = $sale->sale_invoice_no;
                 $dl2->save();
+                self::referralEarnedSms(Doctor::find($secondaryDocId), $secondaryAmount, $sale);
             }
         }
 
@@ -889,6 +900,16 @@ class Helper
             ? 'none'
             : ($hasPending ? 'pending' : 'settled');
         $sale->saveQuietly();
+    }
+
+    /** Optional "commission earned" SMS to the referrer; never blocks the sale. */
+    protected static function referralEarnedSms(?Doctor $doctor, float $amount, SaleMaster $sale): void
+    {
+        try {
+            app(\App\Services\SmsAutomationService::class)->onReferralEarned($doctor, $amount, (string) $sale->sale_invoice_no, (int) $sale->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Referral SMS skipped: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -117,6 +117,18 @@
     @include('admin.alert_message')
 
     <div class="crm-table-card crm-animate-in delay-1" style="border-radius:12px;overflow:hidden;">
+        @if (request('status') === 'failed')
+            @can('permission', 'compose_&_send.create')
+            <form action="{{ route('sms.log.retry-failed') }}" method="POST" style="padding:10px 16px; background:var(--warning-50); border-bottom:1px solid var(--gray-100); display:flex; justify-content:space-between; align-items:center;">
+                @csrf
+                @foreach (['recipient', 'type', 'date_from', 'date_to'] as $keep)
+                    @if (request($keep))<input type="hidden" name="{{ $keep }}" value="{{ request($keep) }}">@endif
+                @endforeach
+                <span style="font-size:13px;">Failed messages can be sent again. Up to 100 per click; opted-out numbers and duplicates are skipped.</span>
+                <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Send the failed messages in this list again? Each one costs an SMS.');"><i class="fas fa-redo mr-1"></i>Retry all failed</button>
+            </form>
+            @endcan
+        @endif
         {{-- Filter Bar --}}
         <form method="GET">
             <div class="log-filter-bar">
@@ -217,6 +229,16 @@
                             </span>
                             @if($log->follow_up_created)
                                 <span class="log-followup-badge ml-1">+FU</span>
+                            @endif
+                            @if(($log->status instanceof \App\Enums\SmsStatus ? $log->status->value : $log->status) === 'failed' && ! $log->retried_at)
+                                @can('permission', 'compose_&_send.create')
+                                <form action="{{ route('sms.log.resend', $log->id) }}" method="POST" style="display:inline;">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-primary btn-sm py-0 px-1 ml-1" style="font-size:10px;" title="Send this message again"><i class="fas fa-redo"></i> Resend</button>
+                                </form>
+                                @endcan
+                            @elseif($log->retried_at)
+                                <span class="text-muted ml-1" style="font-size:10px;" title="Sent again {{ $log->retried_at->format('d M, g:i A') }}">resent</span>
                             @endif
                         </td>
                         <td>

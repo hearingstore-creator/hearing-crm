@@ -28,10 +28,12 @@ class SmsLog extends Model
         'campaign_name',
         'automation_trigger',
         'sms_parts',
+        'retried_at',
     ];
 
     protected $casts = [
         'sent_at' => 'datetime',
+        'retried_at' => 'datetime',
     ];
 
     public function getTypeLabelAttribute(): string
