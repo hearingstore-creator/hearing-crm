@@ -147,6 +147,15 @@
                     </select>
                 </div>
                 <div class="log-filter-group">
+                    <label>Sent to</label>
+                    <select name="recipient">
+                        <option value="">Everyone</option>
+                        @foreach(['lead' => 'Leads', 'customer' => 'Customers', 'doctor' => 'Doctors', 'referrer' => 'Field referrers / agents', 'employee' => 'Employees', 'branch' => 'Branch managers'] as $rv => $rl)
+                        <option value="{{ $rv }}" {{ request('recipient') == $rv ? 'selected' : '' }}>{{ $rl }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="log-filter-group">
                     <label>From</label>
                     <input type="date" name="date_from" value="{{ request('date_from', '') }}">
                 </div>
@@ -197,10 +206,10 @@
                         </td>
                         <td>
                             <span class="log-entity">
-                                <i class="fas {{ $log->recipient_type === 'lead' ? 'fa-user-tag' : 'fa-user' }} mr-1" style="color:var(--accent-400);"></i>
+                                <i class="fas {{ $log->recipient_type === 'lead' ? 'fa-user-tag' : (in_array($log->recipient_type, ['doctor', 'referrer']) ? 'fa-user-md' : (in_array($log->recipient_type, ['employee', 'branch']) ? 'fa-id-badge' : 'fa-user')) }} mr-1" style="color:var(--accent-400);"></i>
                                 {{ ucfirst($log->recipient_type) }}
                                 @if($log->recipient_id)
-                                    <a href="{{ url('admin/' . ($log->recipient_type === 'lead' ? 'leads' : 'customers') . '/' . $log->recipient_id) }}"
+                                    <a href="{{ \App\Support\SmsPerson::profileUrl($log->recipient_type, (int) $log->recipient_id) ?? url('admin/' . ($log->recipient_type === 'lead' ? 'leads' : 'customers') . '/' . $log->recipient_id) }}"
                                        style="font-size:10px;color:var(--accent-600);" title="View profile">
                                         #{{ $log->recipient_id }}
                                     </a>

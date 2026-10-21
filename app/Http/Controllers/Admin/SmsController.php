@@ -26,6 +26,7 @@ class SmsController extends Controller
         $this->middleware('permission:compose_&_send.index|compose_&_send.create')
             ->only(['audienceFilterConfig', 'audienceQuickCounts', 'audienceFilter', 'getFilterGroups']);
         $this->middleware('permission:compose_&_send.create')->only(['saveFilterGroup', 'deleteFilterGroup']);
+        $this->middleware('permission:compose_&_send.team')->only(['quickSend']);
     }
 
     /**
@@ -124,6 +125,8 @@ class SmsController extends Controller
             'sms_template_id' => 'nullable|exists:sms_templates,id',
         ]);
 
+        $this->guardTeam($request->audience_type);
+
         $campaign = SmsCampaign::create([
             'name' => $request->campaign_name,
             'message_body' => $request->message_body,
@@ -214,6 +217,9 @@ class SmsController extends Controller
             ->when($request->filled('type'), function ($q) use ($request) {
                 $q->where('type', $request->type);
             })
+            ->when($request->filled('recipient'), function ($q) use ($request) {
+                $q->where('recipient_type', $request->recipient);
+            })
             ->when($request->filled('date_from'), function ($q) use ($request) {
                 $q->whereDate('sent_at', '>=', $request->date_from);
             })
@@ -271,17 +277,29 @@ class SmsController extends Controller
     public function audienceFilter(Request $request)
     {
         $type = $request->input('type', 'leads');
+        $this->guardTeam($type);
         $filters = $request->input('filters', []);
         $service = app(\App\Services\SmsAudienceFilterService::class);
 
-        $results = $type === 'customers'
-            ? $service->filterCustomers($filters)
-            : $service->filterLeads($filters);
+        $results = match ($type) {
+            'team' => $service->filterTeam($filters),
+            'customers' => $service->filterCustomers($filters),
+            default => $service->filterLeads($filters),
+        };
 
         $stats = $service->getSummaryStats($results, $type);
 
         // Build preview list (first 50 for the recipient table)
         $preview = $results->take(50)->map(function ($record) use ($type) {
+            if ($type === 'team') {
+                return [
+                    'id' => $record->id,
+                    'name' => $record->full_name,
+                    'phone' => $record->phone_number ?? '',
+                    'segment' => $record->segment,
+                    'status' => !empty($record->phone_number) ? 'ok' : 'missing',
+                ];
+            }
             if ($type === 'leads') {
                 return [
                     'id' => $record->id,
@@ -315,9 +333,10 @@ class SmsController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:100',
-            'recipient_type' => 'required|in:leads,customers',
+            'recipient_type' => 'required|in:leads,customers,team',
             'filter_criteria' => 'required|array',
         ]);
+        $this->guardTeam($request->recipient_type);
 
         $group = \App\Models\SmsFilterGroup::create([
             'name' => $request->name,
@@ -335,6 +354,7 @@ class SmsController extends Controller
     public function getFilterGroups(Request $request)
     {
         $type = $request->input('type', 'leads');
+        $this->guardTeam($type);
         $groups = \App\Models\SmsFilterGroup::where('recipient_type', $type)
             ->orderBy('id', 'desc')
             ->get();
@@ -359,7 +379,11 @@ class SmsController extends Controller
     public function audienceFilterConfig(Request $request)
     {
         $type = $request->input('type', 'leads');
+        $this->guardTeam($type);
 
+        if ($type === 'team') {
+            return response()->json($this->getTeamFilterConfig());
+        }
         if ($type === 'leads') {
             return response()->json($this->getLeadFilterConfig());
         }
@@ -465,6 +489,95 @@ class SmsController extends Controller
                 ['id' => 'gender',            'label' => 'Gender',                'color' => '#d1a12f', 'kind' => 'chip', 'options' => $genders],
                 ['id' => 'district',          'label' => 'District',              'color' => '#2f8fd1', 'kind' => 'chip', 'options' => $districts],
                 ['id' => 'age',               'label' => 'Age (Years)',           'color' => '#d1568f', 'kind' => 'op',   'opType' => 'numeric',  'options' => []],
+            ],
+        ];
+    }
+    /** The Doctors / Referrers / Employees audience is for managers: it needs its own permission. */
+    protected function guardTeam(?string $type): void
+    {
+        if ($type === 'team' && !auth()->user()->hasAccess('compose_&_send.team')) {
+            abort(403, 'You do not have permission to send SMS to doctors, referrers or employees.');
+        }
+    }
+
+    /**
+     * One message to one doctor, referrer, employee or branch manager (the SMS button on their pages).
+     */
+    public function quickSend(Request $request)
+    {
+        $data = $request->validate([
+            'person_type' => 'required|in:doctor,employee',
+            'person_id'   => 'required|integer',
+            'message'     => 'required|string|max:500',
+        ]);
+
+        if ($data['person_type'] === 'doctor') {
+            $doctor = \App\Models\Doctor::findOrFail($data['person_id']);
+            $phone = $doctor->contact_number;
+            $logType = ($doctor->referrer_type ?? 'doctor') === 'doctor' ? 'doctor' : 'referrer';
+        } else {
+            $user = \App\Models\User::findOrFail($data['person_id']);
+            $phone = $user->mobile_no;
+            $logType = $user->type === 'vendor' ? 'branch' : 'employee';
+        }
+
+        $phone = trim((string) $phone);
+        if ($phone === '') {
+            return response()->json(['success' => false, 'message' => 'This person has no mobile number saved.'], 422);
+        }
+        if (\App\Services\SmsAutomationService::isOptedOut($phone)) {
+            return response()->json(['success' => false, 'message' => 'This number has opted out of SMS.'], 422);
+        }
+
+        $before = (int) SmsLog::max('id');
+        $this->smsService->sendAndLogSms($phone, $data['message'], $logType, (int) $data['person_id'], null, \App\Enums\SmsType::MANUAL);
+        $log = SmsLog::where('id', '>', $before)->latest('id')->first();
+        $status = $log ? ($log->status instanceof \App\Enums\SmsStatus ? $log->status->value : $log->status) : null;
+        $ok = $status === \App\Enums\SmsStatus::SENT->value;
+
+        return response()->json([
+            'success' => $ok,
+            'message' => $ok ? 'SMS sent.' : 'The SMS gateway did not accept the message. See the Send Log for details.',
+        ], $ok ? 200 : 502);
+    }
+
+    protected function getTeamFilterConfig(): array
+    {
+        $doctorCounts = \App\Models\Doctor::where('status', 1)->selectRaw('referrer_type, count(*) c')->groupBy('referrer_type')->pluck('c', 'referrer_type');
+        $employees = \App\Models\User::where('status', 1)->where(fn ($q) => $q->whereNull('type')->orWhere('type', '!=', 'vendor'))->count();
+        $branches = \App\Models\User::where('status', 1)->where('type', 'vendor')->count();
+
+        $groupOptions = [
+            ['v' => 'doctor', 'l' => 'Doctors'],
+            ['v' => 'quack', 'l' => 'Field referrers (quack)'],
+            ['v' => 'agent', 'l' => 'Agents'],
+            ['v' => 'employee', 'l' => 'Employees'],
+            ['v' => 'branch', 'l' => 'Branch managers'],
+        ];
+
+        $roles = \App\Models\Role::orderBy('name')->get(['id', 'name'])->map(fn ($r) => ['v' => (string) $r->id, 'l' => $r->name])->all();
+
+        $people = [];
+        foreach (\App\Models\Doctor::where('status', 1)->orderBy('name')->get(['id', 'name', 'referrer_type']) as $d) {
+            $people[] = ['v' => 'doctor:' . $d->id, 'l' => $d->name . ' (' . ucfirst((string) ($d->referrer_type ?: 'doctor')) . ')'];
+        }
+        foreach (\App\Models\User::where('status', 1)->orderBy('name')->get(['id', 'name', 'type']) as $u) {
+            $people[] = ['v' => 'user:' . $u->id, 'l' => $u->name . ($u->type === 'vendor' ? ' (Branch)' : ' (Employee)')];
+        }
+
+        $quick = [
+            ['id' => 'qf_doctors', 'label' => 'All doctors', 'count' => (int) ($doctorCounts['doctor'] ?? 0), 'filters' => [['field' => 'group', 'op' => 'in', 'values' => ['doctor']]]],
+            ['id' => 'qf_referrers', 'label' => 'All field referrers & agents', 'count' => (int) (($doctorCounts['quack'] ?? 0) + ($doctorCounts['agent'] ?? 0)), 'filters' => [['field' => 'group', 'op' => 'in', 'values' => ['quack', 'agent']]]],
+            ['id' => 'qf_employees', 'label' => 'All employees', 'count' => $employees, 'filters' => [['field' => 'group', 'op' => 'in', 'values' => ['employee']]]],
+            ['id' => 'qf_branches', 'label' => 'Branch managers', 'count' => $branches, 'filters' => [['field' => 'group', 'op' => 'in', 'values' => ['branch']]]],
+        ];
+
+        return [
+            'quick_filters' => $quick,
+            'categories' => [
+                ['id' => 'group', 'label' => 'Who', 'color' => '#0e9a8f', 'kind' => 'chip', 'options' => $groupOptions],
+                ['id' => 'role', 'label' => 'Employee role', 'color' => '#7a6bd0', 'kind' => 'chip', 'options' => $roles],
+                ['id' => 'person', 'label' => 'Pick individuals', 'color' => '#e8564d', 'kind' => 'chip', 'options' => $people],
             ],
         ];
     }

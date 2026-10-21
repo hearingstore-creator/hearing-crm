@@ -422,6 +422,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('sms', [SmsController::class, 'index'])->name('sms.index');
     Route::post('sms/recipients', [SmsController::class, 'getRecipients']);
     Route::post('sms/send', [SmsController::class, 'sendCampaign'])->name('sms.send');
+    Route::post('sms/quick-send', [SmsController::class, 'quickSend'])->name('sms.quick-send');
     Route::get('sms-log', [SmsController::class, 'logIndex'])->name('sms.log');
     Route::get('sms-analytics', [SmsController::class, 'analytics'])->name('sms.analytics');
     Route::post('sms/opt-outs', [SmsController::class, 'optOutStore'])->name('sms.opt-outs.store');

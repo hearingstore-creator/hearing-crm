@@ -51,6 +51,9 @@
                     <div class="ab-type-switch" id="abTypeSwitch">
                         <button class="ab-type-btn active" data-type="leads"><i class="fas fa-user-plus mr-1"></i> Leads</button>
                         <button class="ab-type-btn" data-type="customers"><i class="fas fa-users mr-1"></i> Customers</button>
+                        @if (auth()->user()->hasAccess('compose_&_send.team'))
+                            <button class="ab-type-btn" data-type="team" title="Doctors, referrers and employees"><i class="fas fa-user-md mr-1"></i> Team &amp; Doctors</button>
+                        @endif
                     </div>
                 </div>
                 <div class="ab-section">
@@ -188,8 +191,8 @@
                     </div>
                 </div>
 
-                {{-- Follow-up Auto-Creation --}}
-                <div class="crm-form-section">
+                {{-- Follow-up Auto-Creation (lead follow-ups: not offered for doctors / employees) --}}
+                <div class="crm-form-section" id="abFollowUpSection">
                     <div class="crm-form-section-header">
                         <div class="section-icon" style="background: var(--success-500);"><i class="fas fa-calendar-plus"></i></div>
                         <h6>Auto-Create Follow-up</h6>

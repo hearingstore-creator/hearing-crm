@@ -66,7 +66,7 @@ class SmsService
             ];
 
             $recipientData[] = [
-                'recipient_type' => $recipient instanceof Customer ? 'customer' : 'lead',
+                'recipient_type' => $recipient instanceof \App\Support\SmsPerson ? $recipient->sms_recipient_type : ($recipient instanceof Customer ? 'customer' : 'lead'),
                 'recipient_id' => $recipient->id,
                 'phone_number' => $phone,
                 'message'      => $message,
@@ -131,6 +131,11 @@ class SmsService
         if ($type === 'lead_ids') {   // Deals list → Send SMS: exactly the people that were ticked
             return Lead::withoutGlobalScopes()->whereNull('deleted_at')
                 ->whereIn('id', $campaign->filter_criteria['lead_ids'] ?? [])->get();
+        }
+        if ($type === 'team') {   // doctors, referrers, employees
+            $criteria = $campaign->filter_criteria ?? [];
+
+            return app(SmsAudienceFilterService::class)->filterTeam(array_is_list($criteria) ? $criteria : []);
         }
         if (in_array($type, ['leads', 'customers'], true)) {
             $criteria = $campaign->filter_criteria ?? [];
@@ -328,6 +333,13 @@ class SmsService
             ];
         }
 
+        if ($recipient instanceof \App\Support\SmsPerson) {
+            return [
+                'name'          => $recipient->full_name,
+                'company_phone' => $companyPhone,
+            ];
+        }
+
         if ($recipient instanceof Lead) {
             return [
                 'name'          => $recipient->full_name ?? '',
@@ -341,7 +353,7 @@ class SmsService
     /**
      * Send single SMS via gateway and log the result
      */
-    public function sendAndLogSms(string $phone, string $message, string $recipientType, int $recipientId, string $csmsId = null): void
+    public function sendAndLogSms(string $phone, string $message, string $recipientType, int $recipientId, string $csmsId = null, SmsType $type = SmsType::AUTOMATED): void
     {
         $csmsId = $csmsId ?? 'SMS-' . time() . '-' . rand(1000, 9999);
 
@@ -356,7 +368,7 @@ class SmsService
                 'recipient_id'    => $recipientId,
                 'phone_number'    => $phone,
                 'message'         => $message,
-                'type'            => SmsType::AUTOMATED->value,
+                'type'            => $type->value,
                 'status'          => $success ? SmsStatus::SENT->value : SmsStatus::FAILED->value,
                 'gateway_response' => $response,
                 'error_message'   => !$success ? ($decoded['error_message'] ?? 'Unknown error') : null,
@@ -368,7 +380,7 @@ class SmsService
                 'recipient_id'    => $recipientId,
                 'phone_number'    => $phone,
                 'message'         => $message,
-                'type'            => SmsType::AUTOMATED->value,
+                'type'            => $type->value,
                 'status'          => SmsStatus::FAILED->value,
                 'error_message'   => $e->getMessage(),
                 'sent_at'         => now(),

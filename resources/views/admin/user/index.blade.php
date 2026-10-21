@@ -23,6 +23,7 @@
 @endpush
 
 @section('content')
+@php $canSmsTeam = auth()->user()->hasAccess('compose_&_send.team') && ! auth()->user()->branchId(); @endphp
 <div class="container-fluid" style="padding: 0 24px;">
 
     <div class="crm-page-header crm-animate-in">
@@ -119,6 +120,9 @@
                             </td>
                             <td style="font-size:12.5px;">
                                 <a href="{{ route('user.show', $user->id) }}" class="pp-link" title="What can they do">Access</a>
+                                @if ($canSmsTeam ?? false)
+                                    · <a href="#" class="pp-link btn-quick-sms" data-type="employee" data-id="{{ $user->id }}" data-name="{{ $user->name }}" data-phone="{{ $user->mobile_no }}" title="Send SMS">SMS</a>
+                                @endif
                                 @if (isset($manageable[$user->id]))
                                     · <a href="{{ route('user.edit', $user->id) }}" class="pp-link">Edit</a>
                                     @if (! $mine)
@@ -153,4 +157,7 @@
     </div>
 
 </div>
+@if ($canSmsTeam ?? false)
+    @include('admin.sms.partials.quick-send')
+@endif
 @endsection
