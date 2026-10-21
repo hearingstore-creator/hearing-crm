@@ -29,11 +29,17 @@ class SmsLog extends Model
         'automation_trigger',
         'sms_parts',
         'retried_at',
+        'csms_id',
+        'gateway_ref',
+        'delivery_status',
+        'delivery_detail',
+        'delivery_checked_at',
     ];
 
     protected $casts = [
         'sent_at' => 'datetime',
         'retried_at' => 'datetime',
+        'delivery_checked_at' => 'datetime',
     ];
 
     public function getTypeLabelAttribute(): string

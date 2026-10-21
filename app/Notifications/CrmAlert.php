@@ -20,6 +20,7 @@ class CrmAlert extends Notification
         'ticket_reopened' => ['Ticket reopened', 'A solved or closed ticket was reopened.', 'fa-undo'],
         'task_due'        => ['Tasks due', 'A task is due tomorrow or overdue.', 'fa-tasks'],
         'support_digest'  => ['Support work today', 'Your tickets and tasks due, every morning.', 'fa-headset'],
+        'sms_balance'     => ['SMS balance low', 'The SMS gateway credit is at or below the warning level (owners).', 'fa-battery-quarter'],
     ];
 
     public function __construct(

@@ -103,12 +103,16 @@ class SmsAutomationController extends Controller
         $data = $request->validate([
             'mode' => 'required|in:all,essential,off',
             'cost_per_sms' => 'nullable|numeric|min:0|max:100',
+            'low_balance' => 'nullable|numeric|min:0|max:100000000',
         ]);
 
         $setting = \App\Models\Setting::findOrFail(1);
         $setting->sms_automation_mode = $data['mode'];
         if (isset($data['cost_per_sms'])) {
             $setting->sms_cost_per_sms = $data['cost_per_sms'];
+        }
+        if ($request->has('low_balance')) {
+            $setting->sms_low_balance = $request->filled('low_balance') ? $data['low_balance'] : null;
         }
         $setting->save();
 

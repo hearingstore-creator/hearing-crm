@@ -274,6 +274,36 @@
             </div>
         </div>
 
+        {{-- Delivery reports and monthly cost --}}
+        <div class="col-lg-12">
+            <div class="crm-info-card crm-animate-in delay-2" style="margin-bottom:20px;">
+                <div class="crm-info-card-header">
+                    <div style="display:flex;align-items:center;gap:var(--space-3);">
+                        <div class="info-icon" style="background:var(--success-500);"><i class="fas fa-check-double"></i></div>
+                        <h6>Delivery and monthly cost</h6>
+                    </div>
+                </div>
+                <div class="crm-info-card-body" style="padding:12px 20px;">
+                    <div style="display:flex; flex-wrap:wrap; gap:28px; margin-bottom:14px;">
+                        <div><div style="font-size:11px;color:var(--page-text-muted);">Delivered (30 days)</div><div style="font-size:22px;font-weight:700;color:var(--success-600);">{{ number_format($delivery['delivered']) }}</div></div>
+                        <div><div style="font-size:11px;color:var(--page-text-muted);">Not delivered</div><div style="font-size:22px;font-weight:700;color:var(--danger-600);">{{ number_format($delivery['failed']) }}</div></div>
+                        <div><div style="font-size:11px;color:var(--page-text-muted);">Awaiting report</div><div style="font-size:22px;font-weight:700;">{{ number_format($delivery['pending']) }}</div></div>
+                        <div><div style="font-size:11px;color:var(--page-text-muted);">Not checked / unclear</div><div style="font-size:22px;font-weight:700;color:var(--page-text-muted);">{{ number_format($delivery['unchecked']) }}</div></div>
+                        <div><div style="font-size:11px;color:var(--page-text-muted);">Delivery rate</div><div style="font-size:22px;font-weight:700;">{{ $delivery['rate'] !== null ? $delivery['rate'] . '%' : '—' }}</div></div>
+                    </div>
+                    <table class="table table-sm" style="font-size:12.5px;">
+                        <thead><tr><th>Month</th><th class="text-right">Messages</th><th class="text-right">SMS parts</th><th class="text-right">Cost ≈</th></tr></thead>
+                        <tbody>
+                            @foreach (array_reverse($months) as $m)
+                                <tr><td>{{ $m['label'] }}</td><td class="text-right">{{ number_format($m['messages']) }}</td><td class="text-right">{{ number_format($m['parts']) }}</td><td class="text-right">৳{{ number_format($m['cost'], 2) }}</td></tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    <small class="text-muted">Cost uses the per-SMS price set in the Automation tab; the gateway invoice is the final figure. Delivery shows only messages the gateway has reported on.</small>
+                </div>
+            </div>
+        </div>
+
         {{-- Recent Campaigns --}}
         <div class="col-lg-7">
             <div class="crm-info-card crm-animate-in delay-2" style="margin-bottom:20px;">
@@ -307,6 +337,10 @@
                             <div class="campaign-stat">
                                 <div class="campaign-stat-val" style="color:var(--danger-600);">{{ $campaign->failed_count }}</div>
                                 <div class="campaign-stat-label">Failed</div>
+                            </div>
+                            <div class="campaign-stat" title="{{ $campaignCost[$campaign->id]['parts'] ?? 0 }} SMS parts">
+                                <div class="campaign-stat-val" style="color:var(--page-text);">৳{{ number_format($campaignCost[$campaign->id]['cost'] ?? 0, 2) }}</div>
+                                <div class="campaign-stat-label">Cost ≈</div>
                             </div>
                             <div>
                                 @php

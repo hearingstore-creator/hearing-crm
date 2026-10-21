@@ -12,6 +12,52 @@ use Illuminate\Support\Facades\DB;
  */
 class SmsUsage
 {
+    /** SMS parts and cost for each of the last N months (oldest first). */
+    public function monthly(int $months = 6): array
+    {
+        $rate = (float) (Setting::find(1)?->sms_cost_per_sms ?? 0.35);
+        $rows = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $start = now()->startOfMonth()->subMonths($i);
+            $q = DB::table('sms_logs')->whereNull('deleted_at')->where('status', 'sent')->whereBetween('created_at', [$start, $start->copy()->endOfMonth()]);
+            $messages = (int) (clone $q)->count();
+            $parts = (int) (clone $q)->sum('sms_parts');
+            $rows[] = ['label' => $start->format('M Y'), 'messages' => $messages, 'parts' => $parts, 'cost' => round($parts * $rate, 2)];
+        }
+
+        return $rows;
+    }
+
+    /** @return array<int, array{messages: int, parts: int, cost: float}> keyed by campaign id */
+    public function campaignCosts(array $campaignIds): array
+    {
+        if (!$campaignIds) {
+            return [];
+        }
+        $rate = (float) (Setting::find(1)?->sms_cost_per_sms ?? 0.35);
+
+        return DB::table('sms_logs')->whereNull('deleted_at')->where('status', 'sent')->whereIn('sms_campaign_id', $campaignIds)
+            ->selectRaw('sms_campaign_id, count(*) as messages, sum(sms_parts) as parts')->groupBy('sms_campaign_id')->get()
+            ->mapWithKeys(fn ($r) => [(int) $r->sms_campaign_id => ['messages' => (int) $r->messages, 'parts' => (int) $r->parts, 'cost' => round((int) $r->parts * $rate, 2)]])
+            ->all();
+    }
+
+    /** Delivery outcome of messages the gateway accepted in the last 30 days (only those we could ask about). */
+    public function delivery(): array
+    {
+        $base = fn () => DB::table('sms_logs')->whereNull('deleted_at')->where('status', 'sent')->whereNotNull('csms_id')->where('created_at', '>=', now()->subDays(30));
+        $counts = $base()->selectRaw("coalesce(delivery_status, 'none') as d, count(*) as c")->groupBy('d')->pluck('c', 'd');
+        $known = (int) ($counts['delivered'] ?? 0) + (int) ($counts['failed'] ?? 0);
+
+        return [
+            'delivered' => (int) ($counts['delivered'] ?? 0),
+            'failed'    => (int) ($counts['failed'] ?? 0),
+            'pending'   => (int) ($counts['pending'] ?? 0),
+            'unchecked' => (int) ($counts['none'] ?? 0) + (int) ($counts['unknown'] ?? 0),
+            'rate'      => $known > 0 ? round(((int) ($counts['delivered'] ?? 0)) / $known * 100, 1) : null,
+        ];
+    }
+
     public function summary(): array
     {
         $rate = (float) (Setting::find(1)?->sms_cost_per_sms ?? 0.35);

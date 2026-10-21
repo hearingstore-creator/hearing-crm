@@ -58,6 +58,24 @@ class SMS {
         return $this->callApi($url, json_encode($params));
     }
 
+    /** Remaining credit on the SSL Wireless account (POST /api/v3/balance). */
+    public function balance()
+    {
+        $params = ["api_token" => config('sms.api_token'), "sid" => config('sms.sender_id')];
+        $url = trim(config('sms.api_url'), '/') . "/api/v3/balance";
+
+        return $this->callApi($url, json_encode($params));
+    }
+
+    /** Delivery status of one message by the csms_id we sent it with (POST /api/v3/sms-status). */
+    public function status($csmsId)
+    {
+        $params = ["api_token" => config('sms.api_token'), "sid" => config('sms.sender_id'), "csms_id" => $csmsId];
+        $url = trim(config('sms.api_url'), '/') . "/api/v3/sms-status";
+
+        return $this->callApi($url, json_encode($params));
+    }
+
     public function callApi($url, $params)
     {
         $ch = curl_init(); // Initialize cURL

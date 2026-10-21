@@ -45,6 +45,11 @@
                         <input type="number" step="0.001" min="0" max="100" name="cost_per_sms" id="costPerSms" value="{{ $usage['rate'] }}" class="form-control form-control-sm" style="width:90px;">
                         <small class="text-muted">used only for the cost figures below</small>
                     </div>
+                    <div style="font-size:12px; margin-top:8px; display:flex; align-items:center; gap:6px;">
+                        <label for="lowBalance" class="mb-0">Warn me when the gateway balance is at or below:</label>
+                        <input type="number" step="0.01" min="0" name="low_balance" id="lowBalance" value="{{ $gateway['threshold'] ?? '' }}" class="form-control form-control-sm" style="width:110px;" placeholder="e.g. 500">
+                        <small class="text-muted">same unit as the gateway shows; empty = no warning</small>
+                    </div>
                 </form>
                 @else
                     <strong>{{ $modeInfo[$usage['mode']][0] }}</strong>

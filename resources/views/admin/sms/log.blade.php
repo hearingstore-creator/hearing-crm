@@ -129,6 +129,13 @@
             </form>
             @endcan
         @endif
+        @can('permission', 'compose_&_send.index')
+        <form action="{{ route('sms.log.refresh-delivery') }}" method="POST" style="padding:8px 16px; border-bottom:1px solid var(--gray-100); display:flex; justify-content:space-between; align-items:center;">
+            @csrf
+            <span style="font-size:12px; color:var(--page-text-muted);">Delivery reports are fetched from the gateway every hour for the last 3 days.</span>
+            <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fas fa-sync-alt mr-1"></i>Check delivery now</button>
+        </form>
+        @endcan
         {{-- Filter Bar --}}
         <form method="GET">
             <div class="log-filter-bar">
@@ -155,6 +162,15 @@
                         <option value="{{ $type->value }}" {{ request('type') == $type->value ? 'selected' : '' }}>
                             {{ $type->label() }}
                         </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="log-filter-group">
+                    <label>Delivery</label>
+                    <select name="delivery">
+                        <option value="">Any</option>
+                        @foreach(['delivered' => 'Delivered', 'failed' => 'Not delivered', 'pending' => 'Awaiting report', 'none' => 'Not checked'] as $dv => $dl)
+                        <option value="{{ $dv }}" {{ request('delivery') == $dv ? 'selected' : '' }}>{{ $dl }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -229,6 +245,10 @@
                             </span>
                             @if($log->follow_up_created)
                                 <span class="log-followup-badge ml-1">+FU</span>
+                            @endif
+                            @if($log->delivery_status)
+                                @php $dl = ['delivered' => ['success', 'Delivered'], 'failed' => ['danger', 'Not delivered'], 'pending' => ['secondary', 'Awaiting report'], 'unknown' => ['light', 'Unclear']][$log->delivery_status] ?? ['light', ucfirst($log->delivery_status)]; @endphp
+                                <span class="badge badge-{{ $dl[0] }} ml-1" style="font-size:10px;" title="{{ $log->delivery_detail }}">{{ $dl[1] }}</span>
                             @endif
                             @if(($log->status instanceof \App\Enums\SmsStatus ? $log->status->value : $log->status) === 'failed' && ! $log->retried_at)
                                 @can('permission', 'compose_&_send.create')

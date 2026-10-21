@@ -19,6 +19,22 @@
             <div class="stat-icon-mini" style="background: var(--warning-100); color: var(--warning-600);"><i class="fas fa-robot"></i></div>
             <div class="stat-info"><div class="stat-count">{{ $automations->where('is_active', true)->count() }}</div><div class="stat-label" style="font-size:11px;color:var(--page-text-muted);">Active Automations</div></div>
         </div>
+        @if (isset($gateway))
+        <div class="crm-stat-card" onclick="void(0)" style="cursor:default;" id="smsBalanceCard">
+            <div class="stat-icon-mini" style="background: {{ $gateway['low'] ? 'var(--danger-100, #FEE2E2)' : 'var(--success-100)' }}; color: {{ $gateway['low'] ? 'var(--danger-600, #DC2626)' : 'var(--success-600)' }};"><i class="fas fa-wallet"></i></div>
+            <div class="stat-info">
+                <div class="stat-count" id="smsBalanceValue">{{ $gateway['balance'] !== null ? number_format((float) $gateway['balance'], 2) : '—' }}</div>
+                <div class="stat-label" style="font-size:11px;color:var(--page-text-muted);">
+                    Gateway balance
+                    <a href="#" id="smsBalanceRefresh" title="Ask the gateway now" style="margin-left:4px;"><i class="fas fa-sync-alt"></i></a>
+                </div>
+                <div style="font-size:10px;color:var(--page-text-muted);" id="smsBalanceNote">
+                    @if ($gateway['checked_at']) checked {{ $gateway['checked_at']->copy()->timezone('Asia/Dhaka')->format('d M, g:i A') }} @else not checked yet @endif
+                    @if ($gateway['low']) · <strong style="color:var(--danger-600,#DC2626);">low</strong> @endif
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 
     @if (isset($scheduled) && $scheduled->count())
@@ -429,3 +445,22 @@
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+$('#smsBalanceRefresh').on('click', function (e) {
+    e.preventDefault();
+    var icon = $(this).find('i').addClass('fa-spin');
+    $.ajax({ url: '{{ route('sms.gateway-balance') }}', method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' } })
+        .done(function (r) {
+            $('#smsBalanceValue').text(r.balance);
+            $('#smsBalanceNote').text('checked ' + r.checked_at + (r.low ? ' · low' : ''));
+        })
+        .fail(function (xhr) {
+            var r = xhr.responseJSON || {};
+            $('#smsBalanceNote').text(r.message || 'Could not reach the gateway.').attr('title', r.raw || '');
+        })
+        .always(function () { icon.removeClass('fa-spin'); });
+});
+</script>
+@endpush

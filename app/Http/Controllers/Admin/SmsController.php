@@ -28,6 +28,7 @@ class SmsController extends Controller
         $this->middleware('permission:compose_&_send.create')->only(['saveFilterGroup', 'deleteFilterGroup']);
         $this->middleware('permission:compose_&_send.team')->only(['quickSend']);
         $this->middleware('permission:compose_&_send.create')->only(['cancelScheduled', 'testSend', 'resend', 'retryFailed']);
+        $this->middleware('permission:compose_&_send.index')->only(['gatewayBalance', 'refreshDelivery']);
     }
 
     /**
@@ -56,8 +57,15 @@ class SmsController extends Controller
 
         $usage = app(\App\Services\SmsUsage::class)->summary();
         $scheduled = SmsCampaign::where('status', 'scheduled')->orderBy('scheduled_at')->get();
+        $setting = \App\Models\Setting::find(1);
+        $gateway = [
+            'balance'    => $setting?->sms_balance_last,
+            'checked_at' => $setting?->sms_balance_checked_at,
+            'threshold'  => $setting?->sms_low_balance,
+            'low'        => $setting?->sms_balance_last !== null && $setting?->sms_low_balance !== null && (float) $setting->sms_balance_last <= (float) $setting->sms_low_balance,
+        ];
 
-        return view('admin.sms.index', compact('stats', 'templates', 'recentLogs', 'activeCampaigns', 'automations', 'optOuts', 'usage', 'scheduled'));
+        return view('admin.sms.index', compact('stats', 'templates', 'recentLogs', 'activeCampaigns', 'automations', 'optOuts', 'usage', 'scheduled', 'gateway'));
     }
 
     /** Add a number to the SMS opt-out list. */
@@ -236,6 +244,9 @@ class SmsController extends Controller
             ->when($request->filled('recipient'), function ($q) use ($request) {
                 $q->where('recipient_type', $request->recipient);
             })
+            ->when($request->filled('delivery'), function ($q) use ($request) {
+                $request->delivery === 'none' ? $q->whereNull('delivery_status') : $q->where('delivery_status', $request->delivery);
+            })
             ->when($request->filled('date_from'), function ($q) use ($request) {
                 $q->whereDate('sent_at', '>=', $request->date_from);
             })
@@ -265,7 +276,12 @@ class SmsController extends Controller
         $data['follow_ups_pending'] = \App\Models\LeadFollowUp::where('status', 'pending')->count();
         $data['follow_ups_completed'] = \App\Models\LeadFollowUp::where('status', 'completed')->count();
 
-        return view('admin.sms.analytics', compact('data', 'campaigns', 'period'));
+        $usageReport = app(\App\Services\SmsUsage::class);
+        $months = $usageReport->monthly(6);
+        $campaignCost = $usageReport->campaignCosts($campaigns->pluck('id')->all());
+        $delivery = $usageReport->delivery();
+
+        return view('admin.sms.analytics', compact('data', 'campaigns', 'period', 'months', 'campaignCost', 'delivery'));
     }
 
     // =====================================================
@@ -508,6 +524,31 @@ class SmsController extends Controller
             ],
         ];
     }
+    /** Ask the gateway for the credit left and remember it (the "Check balance" button). */
+    public function gatewayBalance(\App\Services\SmsGateway $gateway)
+    {
+        $r = $gateway->checkAndRecord();
+        $setting = \App\Models\Setting::find(1);
+
+        return response()->json([
+            'success'    => $r['ok'],
+            'balance'    => $r['balance'] !== null ? number_format($r['balance'], 2) : null,
+            'checked_at' => $setting?->sms_balance_checked_at?->copy()->timezone('Asia/Dhaka')->format('d M, g:i A'),
+            'low'        => $r['ok'] && $setting?->sms_low_balance !== null && $r['balance'] <= (float) $setting->sms_low_balance,
+            'message'    => $r['ok'] ? 'Balance updated.' : ($r['error'] . ' The gateway only answers from the server addresses it has whitelisted.'),
+            'raw'        => $r['ok'] ? null : mb_substr(preg_replace('/"api_token"\s*:\s*"[^"]*"/', '"api_token":"***"', $r['raw']), 0, 300),
+        ], $r['ok'] ? 200 : 502);
+    }
+
+    /** Ask the gateway about the messages whose delivery is not known yet. */
+    public function refreshDelivery(\App\Services\SmsGateway $gateway)
+    {
+        $r = $gateway->refreshDeliveries(100);
+        $msg = "Asked about {$r['checked']} message(s): {$r['delivered']} delivered, {$r['failed']} failed, {$r['pending']} still pending, {$r['unknown']} unclear.";
+
+        return redirect()->back()->with($r['error'] ? 'warning' : 'success', $r['error'] ? "Stopped: {$r['error']}. " . $msg : $msg);
+    }
+
     /** Cancel a campaign that is still waiting for its send time. */
     public function cancelScheduled(int $id)
     {
