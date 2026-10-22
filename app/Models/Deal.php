@@ -22,6 +22,7 @@ class Deal extends Model
         'value', 'expected_close_date', 'temperature', 'position', 'stage_entered_at', 'won_at', 'lost_at',
         'lost_reason_id', 'lost_to', 'lost_note', 'sale_master_id', 'source', 'utm_source', 'utm_medium', 'utm_campaign',
         'campaign_id', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'landing_page',
+        'score', 'score_reasons', 'scored_at', 'assigned_rule_id', 'first_contact_due_at', 'first_contact_at', 'sla_alerted_at', 'sla_reassigned',
     ];
 
     protected $casts = [
@@ -31,6 +32,11 @@ class Deal extends Model
         'stage_entered_at'    => 'datetime',
         'won_at'              => 'datetime',
         'lost_at'             => 'datetime',
+        'score_reasons'       => 'array',
+        'scored_at'           => 'datetime',
+        'first_contact_due_at' => 'datetime',
+        'first_contact_at'    => 'datetime',
+        'sla_alerted_at'      => 'datetime',
     ];
 
     protected static function booted(): void

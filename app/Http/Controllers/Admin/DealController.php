@@ -32,7 +32,7 @@ class DealController extends Controller
     private const PER_COLUMN = 25;
     private const PER_LIST = 50;
     private const BULK_MAX = 200;
-    private const LIST_SORTS = ['created', 'value', 'stage', 'next', 'name', 'age'];
+    private const LIST_SORTS = ['created', 'value', 'stage', 'next', 'name', 'age', 'score'];
 
     public function __construct(private DealService $deals)
     {
@@ -851,6 +851,7 @@ class DealController extends Controller
     {
         match ($sort) {
             'value' => $query->orderBy('deals.value', $dir),
+            'score' => $query->orderByRaw('deals.score IS NULL')->orderBy('deals.score', $dir),
             'age'   => $query->orderBy('deals.stage_entered_at', $dir === 'asc' ? 'desc' : 'asc'),
             'stage' => $query->orderBy(PipelineStage::select('sort_order')->whereColumn('pipeline_stages.id', 'deals.stage_id'), $dir),
             'name'  => $query->orderBy(\App\Models\Lead::withoutGlobalScopes()->select('full_name')->whereColumn('leads.id', 'deals.lead_id'), $dir),

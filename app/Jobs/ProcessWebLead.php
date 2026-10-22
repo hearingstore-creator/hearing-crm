@@ -104,7 +104,12 @@ class ProcessWebLead implements ShouldQueue
                     $lead->phone_number, 'lead', $lead->id, ['name' => $lead->full_name, 'customer_name' => $lead->full_name], 'lead-welcome:' . $lead->id);
             }
 
-            $deals->addActivity($deal, ActivityType::CALL, DealService::dueInOfficeHours($sla)->toDateTimeString(),
+            // First-contact deadline (SLA) of an inbound lead: alerts and, by rule, reassignment run from it
+            $due = DealService::dueInOfficeHours($sla);
+            if (!$deal->first_contact_due_at && !$deal->first_contact_at) {
+                $deal->forceFill(['first_contact_due_at' => $due])->saveQuietly();
+            }
+            $deals->addActivity($deal, ActivityType::CALL, $due->toDateTimeString(),
                 "{$label} lead – call within {$sla} min" . ($s->page_url ? ' (' . $s->page_url . ')' : ''));
 
             $s->update(['status' => $status, 'lead_id' => $lead->id, 'deal_id' => $deal->id, 'error' => null, 'processed_at' => now()]);

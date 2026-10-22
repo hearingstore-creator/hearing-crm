@@ -434,3 +434,12 @@ body.is-dragging-deal .deal-dock { transform: translate(-50%, 0); pointer-events
 
 /* Drawer: result chips under a planned call */
 .dd-results { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+/* Lead score badge (LeadScorer): hot / warm / cold */
+.dc-score { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: help; margin-right: 4px; flex-shrink: 0; }
+.dc-score.s-hot { background: #fee2e2; color: #b91c1c; }
+.dc-score.s-warm { background: #fef3c7; color: #b45309; }
+.dc-score.s-cold { background: #e2e8f0; color: #475569; }
+[data-theme="dark"] .dc-score.s-hot { background: rgba(239, 68, 68, .2); color: #fca5a5; }
+[data-theme="dark"] .dc-score.s-warm { background: rgba(245, 158, 11, .2); color: #fcd34d; }
+[data-theme="dark"] .dc-score.s-cold { background: rgba(148, 163, 184, .2); color: #cbd5e1; }

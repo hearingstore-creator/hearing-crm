@@ -10,7 +10,7 @@ class CrmAlert extends Notification
     /** key => [label, description, icon] */
     public const CATEGORIES = [
         'deal_assigned' => ['Deals assigned to me', 'A deal is transferred or assigned to you.', 'fa-user-check'],
-        'web_lead_sla'  => ['Website lead not called', 'A website lead is still waiting for the first call.', 'fa-globe'],
+        'web_lead_sla'  => ['New lead not contacted', 'A website, ad, WhatsApp or other inbound lead is still waiting for the first contact.', 'fa-globe'],
         'daily_digest'  => ['Good morning summary', 'Your activities for the day, every morning.', 'fa-sun'],
         'company_daily' => ['Yesterday at a glance', 'Company numbers for yesterday (owners).', 'fa-chart-line'],
         'ticket_assigned' => ['Tickets given to me', 'A support ticket is created for you or given to you.', 'fa-user-check'],

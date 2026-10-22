@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Pipeline extends Model
 {
-    protected $fillable = ['name', 'is_default', 'default_owner_id', 'is_active', 'office_open', 'office_close', 'weekly_holidays'];
+    protected $fillable = ['name', 'is_default', 'default_owner_id', 'is_active', 'office_open', 'office_close', 'weekly_holidays', 'scoring'];
 
-    protected $casts = ['is_default' => 'boolean', 'is_active' => 'boolean', 'weekly_holidays' => 'array'];
+    protected $casts = ['is_default' => 'boolean', 'is_active' => 'boolean', 'weekly_holidays' => 'array', 'scoring' => 'array'];
 
     public function stages()
     {

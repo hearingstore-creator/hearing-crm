@@ -51,7 +51,9 @@ class DealService
         if ($status === Deal::WON) {
             $this->ensureCustomer($lead);
         }
+        $this->route($deal, $lead, $attributes);
         $this->syncLead($lead);
+        $this->rescore($deal);
 
         return $deal;
     }
@@ -76,7 +78,9 @@ class DealService
             ], $attributes));
 
             $this->history($deal, null, $stage, null, $stage->status_key, 'New deal opened');
+            $this->route($deal, $lead, $attributes);
             $this->syncLead($lead);
+            $this->rescore($deal);
 
             return $deal;
         });
@@ -135,6 +139,7 @@ class DealService
             }
             $this->syncLead($deal->lead);
         });
+        $this->rescore($deal->fresh() ?? $deal);
     }
 
     public function markWon(Deal $deal, ?int $saleMasterId = null, ?string $note = null): Customer
@@ -396,8 +401,11 @@ class DealService
     public function addActivity(Deal $deal, ActivityType $type, ?string $when, ?string $note, ?int $assignee = null, bool $done = false): LeadFollowUp
     {
         $done = $done || $type === ActivityType::NOTE;
+        if ($done) {
+            $this->contacted($deal, $type->value);
+        }
 
-        return LeadFollowUp::create([
+        $activity = LeadFollowUp::create([
             'lead_id'         => $deal->lead_id,
             'deal_id'         => $deal->id,
             'activity_type'   => $type->value,
@@ -407,11 +415,49 @@ class DealService
             'status'          => $done ? 'completed' : 'pending',
             'completed_at'    => $done ? now() : null,
         ]);
+        $this->rescore($deal);
+
+        return $activity;
     }
 
     public function completeActivity(LeadFollowUp $activity, ?string $outcome = null): void
     {
         $activity->update(['status' => 'completed', 'completed_at' => now(), 'outcome_notes' => $outcome]);
+        if ($deal = Deal::withoutGlobalScopes()->find($activity->deal_id)) {
+            $this->contacted($deal, (string) ($activity->activity_type instanceof ActivityType ? $activity->activity_type->value : $activity->activity_type));
+            $this->rescore($deal);
+        }
+    }
+
+    /** A call, message or visit was done: the first-contact clock of an inbound lead stops. */
+    private function contacted(Deal $deal, string $type): void
+    {
+        if (in_array($type, ['call', 'visit', 'sms', 'whatsapp', 'email'], true) && !$deal->first_contact_at) {
+            DB::table('deals')->where('id', $deal->id)->whereNull('first_contact_at')->update(['first_contact_at' => now()]);
+            $deal->first_contact_at = now();
+        }
+    }
+
+    /** Assignment rules decide the owner of a new deal, unless the caller chose one. */
+    private function route(Deal $deal, Lead $lead, array $attributes): void
+    {
+        if (array_key_exists('owner_id', $attributes)) {
+            return;
+        }
+        $router = app(LeadRouter::class);
+        if ($router->shouldRoute()) {
+            $router->assign($deal, $lead);
+        }
+    }
+
+    /** Keep the lead score current; a scoring problem never blocks the work. */
+    public function rescore(Deal $deal): void
+    {
+        try {
+            app(LeadScorer::class)->refresh($deal);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
@@ -428,6 +474,7 @@ class DealService
         ]);
 
         $deal = Deal::withoutGlobalScopes()->findOrFail($activity->deal_id);
+        $this->contacted($deal, 'call');
         $message = $result->label() . ' logged.';
         $next = null;
 

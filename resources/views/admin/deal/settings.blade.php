@@ -147,7 +147,7 @@
         <div>
             {{-- Default owner --}}
             <div class="ps-card">
-                <div class="ps-card-head"><i class="fas fa-user-check" style="color: var(--success-600);"></i><div><h2>Default owner</h2><p>Owns new Head Office deals (lead form, import, website).</p></div></div>
+                <div class="ps-card-head"><i class="fas fa-user-check" style="color: var(--success-600);"></i><div><h2>Default owner</h2><p>Owns new Head Office deals that no assignment rule below picks up.</p></div></div>
                 <div class="ps-card-body">
                     <form method="POST" action="{{ url('admin/pipeline-settings/default-owner') }}" class="ps-reason">
                         @csrf @method('PUT')
@@ -161,6 +161,9 @@
                     <div class="deal-hint">Branch staff always own the deals they create.</div>
                 </div>
             </div>
+
+            {{-- Lead assignment rules and lead score --}}
+            @include('admin.deal.partials.lead-routing')
 
             {{-- Office hours --}}
             <div class="ps-card" id="office-hours-card">

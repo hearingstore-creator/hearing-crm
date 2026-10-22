@@ -116,6 +116,10 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::put('pipeline-settings/office-hours', [PipelineSettingsController::class, 'updateHours']);
     Route::post('pipeline-settings/holidays', [PipelineSettingsController::class, 'storeHoliday']);
     Route::delete('pipeline-settings/holidays/{id}', [PipelineSettingsController::class, 'destroyHoliday']);
+    Route::post('pipeline-settings/assignment-rules', [PipelineSettingsController::class, 'storeRule']);
+    Route::put('pipeline-settings/assignment-rules/{id}', [PipelineSettingsController::class, 'updateRule'])->whereNumber('id');
+    Route::delete('pipeline-settings/assignment-rules/{id}', [PipelineSettingsController::class, 'destroyRule'])->whereNumber('id');
+    Route::put('pipeline-settings/lead-score', [PipelineSettingsController::class, 'updateScoring']);
 
     // Header bell + deal reports
     Route::get('notifications/settings', [\App\Http\Controllers\Admin\NotificationController::class, 'settings'])->name('notifications.settings');

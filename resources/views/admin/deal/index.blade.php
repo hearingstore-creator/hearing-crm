@@ -164,7 +164,7 @@
                             @if ($bulkAny)
                                 <th class="dl-check"><input type="checkbox" id="dl-check-all" aria-label="Select all on this page"></th>
                             @endif
-                            <th><a href="{{ $sortUrl('name') }}" id="sort-name">Person <i class="fas {{ $sortIcon('name') }}"></i></a></th>
+                            <th><a href="{{ $sortUrl('name') }}" id="sort-name">Person <i class="fas {{ $sortIcon('name') }}"></i></a> · <a href="{{ $sortUrl('score') }}" id="sort-score" title="Lead score">Score <i class="fas {{ $sortIcon('score') }}"></i></a></th>
                             <th><a href="{{ $sortUrl('stage') }}" id="sort-stage">Stage <i class="fas {{ $sortIcon('stage') }}"></i></a></th>
                             <th>Interest</th>
                             <th class="text-right"><a href="{{ $sortUrl('value') }}" id="sort-value">Value <i class="fas {{ $sortIcon('value') }}"></i></a></th>
@@ -199,6 +199,7 @@
                                                 {{ $lead->full_name ?? '—' }}
                                                 @if ($temp)<span class="dc-temp t-{{ $temp->value }}" title="{{ $temp->label() }}"><i class="{{ $temp->icon() }}"></i></span>@endif
                                                 @if ($tier)<i class="fas fa-crown dl-crown" title="{{ $tier->name }} member"></i>@endif
+                                                @include('admin.deal._score', ['deal' => $deal])
                                             </span>
                                             <span class="dl-sub">{{ $lead->phone_number ?? '' }}</span>
                                         </div>

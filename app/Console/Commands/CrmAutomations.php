@@ -20,7 +20,8 @@ use Illuminate\Support\Facades\DB;
  * Lead automations, run by the scheduler (routes/console.php). Every action is logged in automation_logs,
  * so running a task twice never repeats an alert, SMS or deal.
  *
- *   php artisan crm:automations sla          – website lead not called within its SLA → alert owner + Super Admin
+ *   php artisan crm:automations sla          – inbound lead not contacted by its deadline → alert owner + Super Admin, or next person by rule
+ *   php artisan crm:automations scores       – recalculate lead scores of open deals
  *   php artisan crm:automations appointments – SMS reminder for tomorrow's appointments
  *   php artisan crm:automations reengage     – "Not ready" lost 90+ days ago → new deal + call
  *   php artisan crm:automations points       – SMS 7 days before membership points expire
@@ -33,9 +34,9 @@ use Illuminate\Support\Facades\DB;
  */
 class CrmAutomations extends Command
 {
-    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays'];
+    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays', 'scores'];
 
-    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays} {--dry : show what would happen, change nothing}';
+    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays|scores} {--dry : show what would happen, change nothing}';
     protected $description = 'Run one lead automation';
 
     public function __construct(private CrmNotifier $notifier, private DealService $deals, private SmsAutomationService $sms)
@@ -57,30 +58,69 @@ class CrmAutomations extends Command
         return self::SUCCESS;
     }
 
-    /** Website leads whose first call is overdue. */
+    /**
+     * Inbound leads (website, Facebook / Instagram, WhatsApp, Google, webhook, missed call) not contacted by their deadline:
+     * the owner and Super Admin are alerted once; when the assignment rule says so, the deal moves on to the next person (once).
+     */
     private function sla(): int
     {
-        $overdue = LeadFollowUp::with(['deal.lead:id,full_name,phone_number', 'assignedUser'])
-            ->where('status', 'pending')->where('activity_type', ActivityType::CALL->value)
-            ->where('follow_up_notes', 'like', 'Website lead – call within%')
-            ->where('follow_up_date', '<', now())
-            ->where('follow_up_date', '>', now()->subDays(2))   // older ones are covered by the digest
+        $late = Deal::withoutGlobalScopes()->with(['lead:id,full_name,phone_number', 'owner'])
+            ->whereNull('deleted_at')->where('status', Deal::OPEN)
+            ->whereNotNull('first_contact_due_at')->whereNull('first_contact_at')
+            ->where('first_contact_due_at', '<', now())
+            ->where('first_contact_due_at', '>', now()->subDays(2))   // older ones are covered by the digest
             ->get();
 
+        $router = app(\App\Services\LeadRouter::class);
         $n = 0;
-        foreach ($overdue as $a) {
-            if (!$a->deal || $a->deal->status !== Deal::OPEN || !$this->claim("sla:activity:{$a->id}", 'sla')) {
+        foreach ($late as $deal) {
+            $minutes = (int) $deal->first_contact_due_at->diffInMinutes(now());
+
+            $rule = $deal->assigned_rule_id ? \App\Models\LeadAssignmentRule::find($deal->assigned_rule_id) : null;
+            if ($rule && $rule->reassign_after_minutes && $minutes >= $rule->reassign_after_minutes && !$deal->sla_reassigned) {
+                if ($this->option('dry')) {
+                    $this->line("Reassign deal {$deal->id}");
+                    $n++;
+                    continue;
+                }
+                if ($router->reassign($deal)) {
+                    $deal->forceFill(['sla_reassigned' => 1])->saveQuietly();
+                    $n++;
+                    continue;
+                }
+            }
+
+            if ($deal->sla_alerted_at || !$this->claim("sla:deal:{$deal->id}", 'sla')) {
                 continue;
             }
-            $late = (int) \Illuminate\Support\Carbon::parse($a->follow_up_date)->diffInMinutes(now());
-            $this->notifier->send($this->notifier->superAdmins()->push($a->assignedUser), new CrmAlert(
-                'Website lead waiting ' . $late . ' min',
-                ($a->deal->lead->full_name ?? 'Lead') . ' · ' . ($a->deal->lead->phone_number ?? '') . ' has not been called yet.',
-                url('admin/deals?deal=' . $a->deal_id),
+            $source = \App\Enums\SourceOfEntry::tryFrom((string) $deal->source)?->label() ?? 'New';
+            $this->notifier->send($this->notifier->superAdmins()->push($deal->owner), new CrmAlert(
+                $source . ' lead waiting ' . $minutes . ' min',
+                ($deal->lead->full_name ?? 'Lead') . ' · ' . ($deal->lead->phone_number ?? '') . ' has not been contacted yet' . ($deal->owner ? ' (' . $deal->owner->name . ')' : '') . '.',
+                url('admin/deals?deal=' . $deal->id),
                 'fa-stopwatch', 'danger', 'web_lead_sla',
             ));
+            $deal->forceFill(['sla_alerted_at' => now()])->saveQuietly();
             $n++;
         }
+
+        return $n;
+    }
+
+    /** Recalculate the lead score of open deals (time-based reasons: quiet for 14 days, overdue step, stuck in a stage). */
+    private function scores(): int
+    {
+        $scorer = app(\App\Services\LeadScorer::class);
+        $n = 0;
+        Deal::withoutGlobalScopes()->whereNull('deleted_at')->where('status', Deal::OPEN)->orderBy('id')
+            ->chunkById(200, function ($deals) use ($scorer, &$n) {
+                foreach ($deals as $deal) {
+                    if (!$this->option('dry')) {
+                        $scorer->refresh($deal);
+                    }
+                    $n++;
+                }
+            });
 
         return $n;
     }
