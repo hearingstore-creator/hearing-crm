@@ -23,10 +23,13 @@ use Illuminate\Support\Facades\DB;
  */
 class DealService
 {
-    /** Open the first deal for a newly created lead (lead form, import, later website). */
+    /**
+     * Open the first deal for a newly created lead (lead form, import, website).
+     * Default pipeline, unless $attributes['pipeline_id'] names another usable one.
+     */
     public function openInitialDeal(Lead $lead, array $attributes = []): Deal
     {
-        $pipeline = Pipeline::default();
+        [$pipeline, $attributes] = $this->pipelineFrom($attributes);
         [$stage, $status] = $this->stageForStatus($pipeline, $lead->lead_status);
 
         $deal = Deal::create(array_merge([
@@ -59,10 +62,10 @@ class DealService
         return $deal;
     }
 
-    /** New opportunity for an existing person (returning customer, second ear, repair...). */
+    /** New opportunity for an existing person (returning customer, second ear, repair...); pipeline as above. */
     public function openNewDeal(Lead $lead, array $attributes = []): Deal
     {
-        $pipeline = Pipeline::default();
+        [$pipeline, $attributes] = $this->pipelineFrom($attributes);
         $stage = $pipeline->activeStages()->first();
 
         return DB::transaction(function () use ($lead, $pipeline, $stage, $attributes) {
@@ -143,6 +146,30 @@ class DealService
         });
         $this->rescore($deal->fresh() ?? $deal);
         $this->sequences(fn (SequenceService $s) => $s->onStageEntered($deal->fresh() ?? $deal));
+    }
+
+    /**
+     * Move an open deal to another pipeline: it lands in that pipeline's first stage, with a history entry.
+     * Sequences started by the new stage begin; running ones set to stop on a stage change stop on their next step.
+     */
+    public function moveToPipeline(Deal $deal, Pipeline $to, ?string $note = null): void
+    {
+        if ((int) $deal->pipeline_id === (int) $to->id) {
+            return;
+        }
+        $from = $deal->stage;
+        $fromName = $deal->pipeline?->name ?? 'another pipeline';
+        $first = $to->activeStages()->firstOrFail();
+
+        DB::transaction(function () use ($deal, $to, $from, $first, $fromName, $note) {
+            $deal->fill(['pipeline_id' => $to->id, 'stage_id' => $first->id, 'stage_entered_at' => now(), 'position' => 0])->save();
+            $this->history($deal, $from, $first, $from?->status_key, $first->status_key,
+                'Moved from ' . $fromName . ' to ' . $to->name . ($note ? ': ' . $note : ''));
+            $this->syncLead($deal->lead);
+        });
+        $deal->setRelation('stage', $first)->setRelation('pipeline', $to);
+        $this->rescore($deal);
+        $this->sequences(fn (SequenceService $s) => $s->onStageEntered($deal));
     }
 
     public function markWon(Deal $deal, ?int $saleMasterId = null, ?string $note = null): Customer
@@ -247,7 +274,8 @@ class DealService
      */
     public function syncFromLeadForm(Lead $lead, ?string $oldStatus, ?int $oldVendorId): void
     {
-        $deal = $lead->deals()->open()->first();
+        // The lead form's status belongs to the default pipeline; repair / institutional deals are left alone
+        $deal = $lead->deals()->open()->where('pipeline_id', Pipeline::default()->id)->first();
         $statusChanged = $oldStatus !== $lead->lead_status;
 
         if (!$deal) {
@@ -273,10 +301,14 @@ class DealService
         };
     }
 
-    /** Mirror the person's current deal to leads.lead_status / leads.vendor_id (dashboards, SMS filters). */
+    /**
+     * Mirror the person's current deal to leads.lead_status / leads.vendor_id (dashboards, SMS filters).
+     * Only default-pipeline deals count: a repair or institutional deal never changes the person's lead status.
+     */
     public function syncLead(Lead $lead): void
     {
-        $deals = Deal::withoutGlobalScopes()->with('stage')->where('lead_id', $lead->id)->whereNull('deleted_at')->latest('updated_at')->get();
+        $deals = Deal::withoutGlobalScopes()->with('stage')->where('lead_id', $lead->id)->whereNull('deleted_at')
+            ->where('pipeline_id', Pipeline::default()->id)->latest('updated_at')->get();
         $open = $deals->firstWhere('status', Deal::OPEN);
         $current = $open ?? $deals->first();
         if (!$current) {
@@ -309,6 +341,18 @@ class DealService
             LeadStatus::STORE_APPOINTMENT->value => [$byKey(LeadStatus::TELE_COUNSEL->value) ?? $stages->first(), Deal::OPEN],
             default => [($leadStatus ? $byKey($leadStatus) : null) ?? $stages->first(), Deal::OPEN],
         };
+    }
+
+    /** @return array{0: Pipeline, 1: array} the pipeline named by $attributes['pipeline_id'] (or the default) + the other attributes */
+    private function pipelineFrom(array $attributes): array
+    {
+        $pipeline = Pipeline::usableOrDefault(isset($attributes['pipeline_id']) ? (int) $attributes['pipeline_id'] : null);
+        unset($attributes['pipeline_id']);
+        if (isset($attributes['stage_id']) && !$pipeline->activeStages()->whereKey($attributes['stage_id'])->exists()) {
+            unset($attributes['stage_id']);   // a stage of another pipeline never sneaks in
+        }
+
+        return [$pipeline, $attributes];
     }
 
     /** Default owner: branch users own what they create; otherwise the pipeline's default owner (HQ). */

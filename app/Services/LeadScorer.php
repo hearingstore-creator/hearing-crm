@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 class LeadScorer
 {
     private ?array $weights = null;
-    private ?array $stageOrder = null;
+    private array $stageOrder = [];   // per pipeline id
 
     public static function band(?int $score): ?string
     {
@@ -116,7 +116,7 @@ class LeadScorer
         }
 
         // how far they got
-        $order = $this->stageOrder();
+        $order = $this->stageOrder((int) $deal->pipeline_id);   // stages of other pipelines (deal moved) count as 0
         $reached = max(
             (int) ($order['ids'][$deal->stage_id] ?? 0),
             (int) DB::table('lead_status_histories')->where('deal_id', $deal->id)->whereNotNull('to_stage_id')->pluck('to_stage_id')
@@ -150,15 +150,16 @@ class LeadScorer
         return [max(0, min(100, $score)), $reasons];
     }
 
-    private function stageOrder(): array
+    /** Stage order of one pipeline. Only stages linked to a lead status (default pipeline) give assessment / trial points. */
+    private function stageOrder(int $pipelineId): array
     {
-        if ($this->stageOrder !== null) {
-            return $this->stageOrder;
+        if (isset($this->stageOrder[$pipelineId])) {
+            return $this->stageOrder[$pipelineId];
         }
-        $stages = DB::table('pipeline_stages')->get(['id', 'sort_order', 'status_key']);
+        $stages = DB::table('pipeline_stages')->where('pipeline_id', $pipelineId)->get(['id', 'sort_order', 'status_key']);
         $byKey = $stages->whereNotNull('status_key')->pluck('sort_order', 'status_key');
 
-        return $this->stageOrder = [
+        return $this->stageOrder[$pipelineId] = [
             'ids' => $stages->pluck('sort_order', 'id')->all(),
             'assessment' => $byKey['counsel'] ?? $byKey['store_appointment'] ?? null,
             'trial' => $byKey['trial'] ?? null,

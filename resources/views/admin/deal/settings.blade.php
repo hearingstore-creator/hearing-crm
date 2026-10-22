@@ -14,6 +14,7 @@
         'stage_restored' => 'restored stage', 'stages_reordered' => 'reordered the stages',
         'lost_reason_added' => 'added a lost reason', 'lost_reason_updated' => 'edited a lost reason',
         'default_owner_changed' => 'changed the default owner', 'office_hours_changed' => 'changed office hours', 'holiday_added' => 'added a public holiday', 'holiday_removed' => 'removed a public holiday',
+        'pipeline_added' => 'created the pipeline', 'pipeline_updated' => 'edited the pipeline', 'pipeline_archived' => 'archived the pipeline', 'pipeline_restored' => 'restored the pipeline',
     ];
     $fmt = fn ($v) => is_array($v) ? (implode(', ', array_map(fn ($x) => \App\Models\PipelineStage::GATE_FIELDS[$x] ?? $x, $v)) ?: 'none') : (is_bool($v) ? ($v ? 'yes' : 'no') : ($v ?? '—'));
 @endphp
@@ -24,14 +25,88 @@
     <div class="crm-page-header crm-animate-in">
         <div class="page-title-group">
             <h1><i class="fas fa-sliders-h" style="color: var(--accent-500); margin-right: 8px;"></i>Pipeline Settings</h1>
-            <p>{{ $pipeline->name }} · stages, stage gates, lost reasons and who owns new deals</p>
+            <p>{{ $pipeline->name }} · stages, stage gates{{ $isDefault ? ', lost reasons' : '' }} and who owns new deals</p>
         </div>
         <div class="header-actions">
-            <a href="{{ url('admin/deals') }}" class="btn btn-primary btn-sm" id="btn-back-board"><i class="fas fa-columns mr-1"></i>Open Deals Board</a>
+            <a href="{{ url('admin/deals?pipeline=' . $pipeline->id) }}" class="btn btn-primary btn-sm" id="btn-back-board"><i class="fas fa-columns mr-1"></i>Open Deals Board</a>
         </div>
     </div>
 
     @include('admin.alert_message')
+
+    {{-- Pipelines --}}
+    <div class="ps-card crm-animate-in" id="pipelines-card">
+        <div class="ps-card-head">
+            <i class="fas fa-project-diagram" style="color: var(--accent-500);"></i>
+            <div>
+                <h2>Pipelines</h2>
+                <p>Each pipeline has its own stages, stage gates and default owner. Only "{{ $pipelines->firstWhere('is_default', true)?->name }}" updates the old lead status.</p>
+            </div>
+        </div>
+        <div class="ps-card-body">
+            <div class="ps-pipeline-tabs" role="tablist" aria-label="Choose a pipeline">
+                @foreach ($pipelines as $pl)
+                    <a href="{{ url('admin/pipeline-settings?pipeline=' . $pl->id) }}" id="pipeline-tab-{{ $pl->id }}" role="tab"
+                       aria-selected="{{ $pl->id === $pipeline->id ? 'true' : 'false' }}"
+                       class="ps-pipeline-tab {{ $pl->id === $pipeline->id ? 'active' : '' }} {{ $pl->archived_at ? 'archived' : '' }}">
+                        {{ $pl->name }}
+                        @if ($pl->is_default)<span class="ps-badge">default</span>
+                        @elseif ($pl->archived_at)<span class="ps-badge">archived</span>
+                        @elseif (!$pl->is_active)<span class="ps-badge">off</span>@endif
+                        <small>{{ $pipelineOpen[$pl->id] ?? 0 }} open</small>
+                    </a>
+                @endforeach
+                <button type="button" class="btn btn-outline-primary btn-sm" id="pipeline-add-toggle" data-toggle="collapse" data-target="#pipeline-add-form" aria-expanded="false" aria-controls="pipeline-add-form">
+                    <i class="fas fa-plus mr-1"></i>New pipeline
+                </button>
+            </div>
+
+            <form method="POST" action="{{ url('admin/pipeline-settings/pipelines') }}" class="collapse ps-pipeline-form {{ $errors->has('name') && old('_pipeline_form') === 'add' ? 'show' : '' }}" id="pipeline-add-form">
+                @csrf
+                <input type="hidden" name="_pipeline_form" value="add">
+                <div><span class="ps-mini-lbl">Name</span><input type="text" name="name" class="form-control" maxlength="100" required placeholder="e.g. Cochlear implants" id="new-pipeline-name" value="{{ old('_pipeline_form') === 'add' ? old('name') : '' }}"></div>
+                <div><span class="ps-mini-lbl">Description</span><input type="text" name="description" class="form-control" maxlength="255" placeholder="Optional" id="new-pipeline-description"></div>
+                <div style="align-self: end;"><button type="submit" class="btn btn-primary btn-sm" id="new-pipeline-submit"><i class="fas fa-plus mr-1"></i>Create</button></div>
+                <div class="deal-hint" style="grid-column: 1 / -1;">It starts with a "New" and a "Contacted" stage, switched on. Rename or add stages after creating it.</div>
+            </form>
+
+            @if ($pipeline->archived_at)
+                <div class="ps-reason mt-3">
+                    <span style="flex: 1;"><b>{{ $pipeline->name }}</b> was archived on {{ $pipeline->archived_at->format('d M Y') }}. Its deals stay in reports.</span>
+                    <form method="POST" action="{{ url('admin/pipeline-settings/pipelines/' . $pipeline->id . '/restore') }}">
+                        @csrf
+                        <button type="submit" class="btn btn-secondary btn-sm" id="pipeline-restore"><i class="fas fa-undo mr-1"></i>Restore</button>
+                    </form>
+                </div>
+            @else
+                <form method="POST" action="{{ url('admin/pipeline-settings/pipelines/' . $pipeline->id) }}" class="ps-pipeline-form mt-3" id="pipeline-edit-form">
+                    @csrf @method('PUT')
+                    <div><span class="ps-mini-lbl">Name</span><input type="text" name="name" class="form-control" maxlength="100" required value="{{ old('_pipeline_form') === 'edit' ? old('name') : $pipeline->name }}" id="pipeline-name"></div>
+                    <div><span class="ps-mini-lbl">Description</span><input type="text" name="description" class="form-control" maxlength="255" value="{{ $pipeline->description }}" placeholder="Optional" id="pipeline-description"></div>
+                    <input type="hidden" name="_pipeline_form" value="edit">
+                    <div style="align-self: end; white-space: nowrap;">
+                        @if ($pipeline->is_default)
+                            <span class="ps-badge" title="The default pipeline is always on">always on</span>
+                        @else
+                            <label class="mb-0 mr-2" for="pipeline-active"><input type="checkbox" name="is_active" value="1" id="pipeline-active" @checked($pipeline->is_active)> Switched on</label>
+                        @endif
+                        <button type="submit" class="btn btn-primary btn-sm" id="pipeline-save"><i class="fas fa-save"></i></button>
+                    </div>
+                </form>
+                @if (old('_pipeline_form') === 'edit')@error('name')<div class="text-danger mt-1" style="font-size: 12.5px;">{{ $message }}</div>@enderror @endif
+                @unless ($pipeline->is_default)
+                    <form method="POST" action="{{ url('admin/pipeline-settings/pipelines/' . $pipeline->id . '/archive') }}" class="mt-2"
+                          onsubmit="return confirm('Archive this pipeline? It must have no open deals. You can restore it later.');">
+                        @csrf
+                        <button type="submit" class="btn btn-link btn-sm text-muted p-0" id="pipeline-archive"><i class="fas fa-archive mr-1"></i>Archive this pipeline</button>
+                    </form>
+                    @unless ($pipeline->is_active)
+                        <div class="deal-hint">Switched off: it is hidden on the Deals Board and new deals cannot be opened in it.</div>
+                    @endunless
+                @endunless
+            @endif
+        </div>
+    </div>
 
     <div class="ps-grid crm-animate-in delay-1">
         <div>
@@ -70,12 +145,16 @@
                                 </div>
                                 <div>
                                     <span class="ps-mini-lbl">Old lead status</span>
-                                    <select name="status_key" class="form-control" @disabled($stage->is_system) id="stage-status-{{ $stage->id }}">
-                                        <option value="">— none —</option>
-                                        @foreach ($statusKeys as $key => $label)
-                                            <option value="{{ $key }}" @selected($stage->status_key === $key)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
+                                    @if ($isDefault)
+                                        <select name="status_key" class="form-control" @disabled($stage->is_system) id="stage-status-{{ $stage->id }}">
+                                            <option value="">— none —</option>
+                                            @foreach ($statusKeys as $key => $label)
+                                                <option value="{{ $key }}" @selected($stage->status_key === $key)>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <div class="deal-hint" style="padding-top: 8px;">Not linked</div>
+                                    @endif
                                 </div>
                                 <div style="white-space: nowrap; align-self: end;">
                                     <span class="ps-badge" title="Open deals in this stage">{{ $openCounts[$stage->id] ?? 0 }} open</span>
@@ -102,6 +181,7 @@
                     {{-- Add stage --}}
                     <form method="POST" action="{{ url('admin/pipeline-settings/stages') }}" class="ps-stage" id="stage-add-form" style="--stage-color: var(--page-text-muted); border-style: dashed;">
                         @csrf
+                        <input type="hidden" name="pipeline_id" value="{{ $pipeline->id }}">
                         <div class="ps-stage-row">
                             <div><i class="fas fa-plus" style="color: var(--page-text-muted);"></i></div>
                             <div><span class="ps-mini-lbl">New stage name</span><input type="text" name="name" class="form-control" maxlength="60" required placeholder="e.g. Fitting" id="new-stage-name"></div>
@@ -110,16 +190,27 @@
                             <div><span class="ps-mini-lbl">Red after (days)</span><input type="number" name="rotting_days" class="form-control" value="7" min="1" max="365" id="new-stage-rot"></div>
                             <div>
                                 <span class="ps-mini-lbl">Old lead status</span>
-                                <select name="status_key" class="form-control" id="new-stage-status">
-                                    <option value="">— none —</option>
-                                    @foreach ($statusKeys as $key => $label)
-                                        <option value="{{ $key }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
+                                @if ($isDefault)
+                                    <select name="status_key" class="form-control" id="new-stage-status">
+                                        <option value="">— none —</option>
+                                        @foreach ($statusKeys as $key => $label)
+                                            <option value="{{ $key }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <div class="deal-hint" style="padding-top: 8px;">Not linked</div>
+                                @endif
                             </div>
                             <div style="align-self: end;"><button type="submit" class="btn btn-primary btn-sm" id="new-stage-submit"><i class="fas fa-plus mr-1"></i>Add</button></div>
                         </div>
-                        <div class="deal-hint mt-2">New stages are added at the end of the board. "Old lead status" keeps the existing lead list, dashboard and SMS filters in step.</div>
+                        <div class="deal-hint mt-2">
+                            New stages are added at the end of the board.
+                            @if ($isDefault)
+                                "Old lead status" keeps the existing lead list, dashboard and SMS filters in step.
+                            @else
+                                Deals in this pipeline do not change the person's lead status.
+                            @endif
+                        </div>
                     </form>
                 </div>
             </div>
@@ -151,6 +242,7 @@
                 <div class="ps-card-body">
                     <form method="POST" action="{{ url('admin/pipeline-settings/default-owner') }}" class="ps-reason">
                         @csrf @method('PUT')
+                        <input type="hidden" name="pipeline_id" value="{{ $pipeline->id }}">
                         <select name="default_owner_id" class="form-control" id="default-owner">
                             @foreach ($owners as $u)
                                 <option value="{{ $u->id }}" @selected($pipeline->default_owner_id == $u->id)>{{ $u->name }}</option>
@@ -162,6 +254,14 @@
                 </div>
             </div>
 
+            @unless ($isDefault)
+                <div class="ps-card" id="shared-settings-note">
+                    <div class="ps-card-body deal-hint">
+                        <i class="fas fa-info-circle mr-1"></i>Lead assignment rules, lead score, office hours, holidays and lost reasons are shared by every pipeline.
+                        Edit them under <a href="{{ url('admin/pipeline-settings') }}" id="shared-settings-link">{{ $pipelines->firstWhere('is_default', true)?->name }}</a>.
+                    </div>
+                </div>
+            @else
             {{-- Lead assignment rules and lead score --}}
             @include('admin.deal.partials.lead-routing')
 
@@ -236,6 +336,7 @@
                     </form>
                 </div>
             </div>
+            @endunless
 
             {{-- Change log --}}
             <div class="ps-card">
@@ -316,7 +417,7 @@
                     handle: '.ps-handle', draggable: 'form.ps-stage[data-id]', animation: 160, ghostClass: 'deal-ghost',
                     onEnd: function () {
                         var ids = $('#ps-stages form.ps-stage[data-id]').map(function () { return $(this).data('id'); }).get();
-                        $.ajax({ url: @json(url('admin/pipeline-settings/stages/reorder')), method: 'POST', data: { ids: ids, _token: @json(csrf_token()) }, headers: { Accept: 'application/json' } })
+                        $.ajax({ url: @json(url('admin/pipeline-settings/stages/reorder')), method: 'POST', data: { ids: ids, pipeline_id: @json($pipeline->id), _token: @json(csrf_token()) }, headers: { Accept: 'application/json' } })
                             .done(function (res) { showToast(res.message, 'ok'); })
                             .fail(function () { showToast('Could not save the order. Please reload.', 'err'); });
                     }

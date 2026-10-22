@@ -52,10 +52,11 @@ class SequenceService
     {
         // a person who comes back ends their "lost – check in later" follow-up
         $this->stopWhere(fn ($q) => $q->where('lead_id', $deal->lead_id)->where('deal_id', '!=', $deal->id)
+            ->whereIn('deal_id', Deal::withoutGlobalScopes()->select('id')->where('pipeline_id', $deal->pipeline_id))
             ->whereHas('sequence', fn ($s) => $s->where('trigger', 'deal_lost')), 'New enquiry from the same person');
 
         $source = $deal->source;
-        foreach (Sequence::where('is_active', true)->where('trigger', 'deal_created')->get() as $seq) {
+        foreach (Sequence::where('is_active', true)->where('trigger', 'deal_created')->forPipeline($deal->pipeline_id)->get() as $seq) {
             if (!$seq->trigger_sources || in_array($source, $seq->trigger_sources, true)) {
                 $this->start($seq, $deal);
             }
@@ -64,7 +65,7 @@ class SequenceService
 
     public function onStageEntered(Deal $deal): void
     {
-        foreach (Sequence::where('is_active', true)->where('trigger', 'stage_entered')->where('trigger_stage_id', $deal->stage_id)->get() as $seq) {
+        foreach (Sequence::where('is_active', true)->where('trigger', 'stage_entered')->forPipeline($deal->pipeline_id)->where('trigger_stage_id', $deal->stage_id)->get() as $seq) {
             $this->start($seq, $deal);
         }
     }
@@ -72,7 +73,7 @@ class SequenceService
     public function onDealLost(Deal $deal): void
     {
         $this->stopForDeal($deal, 'Deal lost', exceptLostSequences: true);
-        foreach (Sequence::where('is_active', true)->where('trigger', 'deal_lost')->get() as $seq) {
+        foreach (Sequence::where('is_active', true)->where('trigger', 'deal_lost')->forPipeline($deal->pipeline_id)->get() as $seq) {
             if (!$seq->trigger_lost_reasons || in_array((int) $deal->lost_reason_id, array_map('intval', $seq->trigger_lost_reasons), true)) {
                 $this->start($seq, $deal);
             }

@@ -47,6 +47,9 @@ class LeadRouter
             if ($rule->vendor_ids && !in_array($branch, array_map('intval', $rule->vendor_ids), true)) {
                 continue;
             }
+            if ($rule->pipeline_ids && !in_array((int) $deal->pipeline_id, array_map('intval', $rule->pipeline_ids), true)) {
+                continue;
+            }
             if ($userId = $this->choose($rule, $excludeUserIds)) {
                 return [$rule, $userId];
             }

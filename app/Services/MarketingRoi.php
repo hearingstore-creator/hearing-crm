@@ -179,8 +179,11 @@ class MarketingRoi
      */
     private function enquiries(): array
     {
-        $stageOrder = DB::table('pipeline_stages')->pluck('sort_order', 'id');
-        $keyOrder = DB::table('pipeline_stages')->whereNotNull('status_key')->pluck('sort_order', 'status_key');
+        // Appointment / trial are steps of the default (hearing care) pipeline; deals in other pipelines count as
+        // enquiries and sales, never as appointments or trials (their stage orders would not compare)
+        $defaultId = \App\Models\Pipeline::default()->id;
+        $stageOrder = DB::table('pipeline_stages')->where('pipeline_id', $defaultId)->pluck('sort_order', 'id');
+        $keyOrder = DB::table('pipeline_stages')->where('pipeline_id', $defaultId)->whereNotNull('status_key')->pluck('sort_order', 'status_key');
         $apptAt = $keyOrder['counsel'] ?? $keyOrder['store_appointment'] ?? PHP_INT_MAX;
         $trialAt = $keyOrder['trial'] ?? PHP_INT_MAX;
 
