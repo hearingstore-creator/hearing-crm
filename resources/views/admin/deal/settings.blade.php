@@ -6,6 +6,7 @@
 @push('css')
     <link rel="stylesheet" href="{{ asset('assets/css/crm-module.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/deal-board.css') }}?v={{ filemtime(public_path('assets/css/deal-board.css')) }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/pipeline-settings.css') }}?v={{ filemtime(public_path('assets/css/pipeline-settings.css')) }}">
 @endpush
 
 @php
@@ -20,19 +21,26 @@
 @endphp
 
 @section('content')
-<div class="container-fluid" style="padding: 0 24px;">
+<div class="container-fluid pst">
 
     <div class="crm-page-header crm-animate-in">
         <div class="page-title-group">
-            <h1><i class="fas fa-sliders-h" style="color: var(--accent-500); margin-right: 8px;"></i>Pipeline Settings</h1>
-            <p>{{ $pipeline->name }} · stages, stage gates{{ $isDefault ? ', lost reasons' : '' }} and who owns new deals</p>
+            <h1><i class="fas fa-sliders-h" aria-hidden="true"></i>Pipeline Settings</h1>
+            <p>Manage the stages, stage gates and owners of your existing pipelines. You are editing <b>{{ $pipeline->name }}</b>.</p>
         </div>
         <div class="header-actions">
-            <a href="{{ url('admin/deals?pipeline=' . $pipeline->id) }}" class="btn btn-primary btn-sm" id="btn-back-board"><i class="fas fa-columns mr-1"></i>Open Deals Board</a>
+            <a href="{{ url('admin/deals?pipeline=' . $pipeline->id) }}" class="btn btn-primary btn-sm" id="btn-back-board"><i class="fas fa-columns mr-1" aria-hidden="true"></i>Open Deals Board</a>
         </div>
     </div>
 
     @include('admin.alert_message')
+
+    <dl class="pst-stats crm-animate-in" id="pipeline-overview" aria-label="Overview of {{ $pipeline->name }}">
+        <div><dt>Stages on the board</dt><dd>{{ $stages->count() }}</dd></div>
+        <div><dt>Open deals here</dt><dd>{{ $pipelineOpen[$pipeline->id] ?? 0 }}</dd></div>
+        <div><dt>Archived stages</dt><dd>{{ $archived->count() }}</dd></div>
+        <div><dt>Active pipelines</dt><dd>{{ $pipelines->whereNull('archived_at')->count() }}</dd></div>
+    </dl>
 
     {{-- Pipelines --}}
     <div class="ps-card crm-animate-in" id="pipelines-card">
@@ -90,7 +98,7 @@
                         @else
                             <label class="mb-0 mr-2" for="pipeline-active"><input type="checkbox" name="is_active" value="1" id="pipeline-active" @checked($pipeline->is_active)> Switched on</label>
                         @endif
-                        <button type="submit" class="btn btn-primary btn-sm" id="pipeline-save"><i class="fas fa-save"></i></button>
+                        <button type="submit" class="btn btn-primary btn-sm" id="pipeline-save"><i class="fas fa-save mr-1" aria-hidden="true"></i>Save pipeline</button>
                     </div>
                 </form>
                 @if (old('_pipeline_form') === 'edit')@error('name')<div class="text-danger mt-1" style="font-size: 12.5px;">{{ $message }}</div>@enderror @endif
@@ -98,7 +106,7 @@
                     <form method="POST" action="{{ url('admin/pipeline-settings/pipelines/' . $pipeline->id . '/archive') }}" class="mt-2"
                           onsubmit="return confirm('Archive this pipeline? It must have no open deals. You can restore it later.');">
                         @csrf
-                        <button type="submit" class="btn btn-link btn-sm text-muted p-0" id="pipeline-archive"><i class="fas fa-archive mr-1"></i>Archive this pipeline</button>
+                        <button type="submit" class="btn btn-link btn-sm text-muted p-0 pst-danger-link" id="pipeline-archive"><i class="fas fa-archive mr-1"></i>Archive this pipeline</button>
                     </form>
                     @unless ($pipeline->is_active)
                         <div class="deal-hint">Switched off: it is hidden on the Deals Board and new deals cannot be opened in it.</div>
@@ -124,27 +132,27 @@
                         <form method="POST" action="{{ url('admin/pipeline-settings/stages/' . $stage->id) }}" class="ps-stage" data-id="{{ $stage->id }}" id="stage-form-{{ $stage->id }}" style="--stage-color: {{ $stage->color }};">
                             @csrf @method('PUT')
                             <div class="ps-stage-row">
-                                <div class="{{ $stage->is_system ? '' : 'ps-handle' }}" title="{{ $stage->is_system ? 'Always first' : 'Drag to reorder' }}">
-                                    <i class="fas {{ $stage->is_system ? 'fa-lock' : 'fa-grip-vertical' }}"></i>
+                                <div class="pst-st-handle {{ $stage->is_system ? '' : 'ps-handle' }}" title="{{ $stage->is_system ? 'Always first' : 'Drag to reorder' }}" @unless ($stage->is_system) role="img" aria-label="Drag to reorder {{ $stage->name }}" @endunless>
+                                    <i class="fas {{ $stage->is_system ? 'fa-lock' : 'fa-grip-vertical' }}" aria-hidden="true"></i>
                                 </div>
-                                <div>
-                                    <span class="ps-mini-lbl">Name</span>
+                                <div class="pst-st-name">
+                                    <label class="ps-mini-lbl" for="stage-name-{{ $stage->id }}">Stage {{ $loop->iteration }} name</label>
                                     <input type="text" name="name" class="form-control" value="{{ $stage->name }}" maxlength="60" required id="stage-name-{{ $stage->id }}">
                                 </div>
-                                <div>
-                                    <span class="ps-mini-lbl">Colour</span>
+                                <div class="pst-st-color">
+                                    <label class="ps-mini-lbl" for="stage-color-{{ $stage->id }}">Colour</label>
                                     <input type="color" name="color" class="form-control" value="{{ $stage->color }}" id="stage-color-{{ $stage->id }}">
                                 </div>
-                                <div>
-                                    <span class="ps-mini-lbl">Win %</span>
+                                <div class="pst-st-win">
+                                    <label class="ps-mini-lbl" for="stage-prob-{{ $stage->id }}">Win %</label>
                                     <input type="number" name="probability" class="form-control" value="{{ $stage->probability }}" min="0" max="100" required id="stage-prob-{{ $stage->id }}">
                                 </div>
-                                <div>
-                                    <span class="ps-mini-lbl">Red after (days)</span>
+                                <div class="pst-st-rot">
+                                    <label class="ps-mini-lbl" for="stage-rot-{{ $stage->id }}">Red after (days)</label>
                                     <input type="number" name="rotting_days" class="form-control" value="{{ $stage->rotting_days }}" min="1" max="365" placeholder="Never" id="stage-rot-{{ $stage->id }}">
                                 </div>
-                                <div>
-                                    <span class="ps-mini-lbl">Old lead status</span>
+                                <div class="pst-st-status">
+                                    <label class="ps-mini-lbl" for="stage-status-{{ $stage->id }}">Old lead status</label>
                                     @if ($isDefault)
                                         <select name="status_key" class="form-control" @disabled($stage->is_system) id="stage-status-{{ $stage->id }}">
                                             <option value="">— none —</option>
@@ -153,16 +161,17 @@
                                             @endforeach
                                         </select>
                                     @else
-                                        <div class="deal-hint" style="padding-top: 8px;">Not linked</div>
+                                        <div class="deal-hint pst-notlinked" id="stage-status-{{ $stage->id }}">Not linked</div>
                                     @endif
                                 </div>
-                                <div style="white-space: nowrap; align-self: end;">
+                                <div class="pst-st-actions">
+                                    @if ($stage->is_system)<span class="ps-badge" title="This stage is always first"><i class="fas fa-lock mr-1" aria-hidden="true"></i>Always first</span>@endif
                                     <span class="ps-badge" title="Open deals in this stage">{{ $openCounts[$stage->id] ?? 0 }} open</span>
-                                    <button type="submit" class="btn btn-primary btn-sm" id="stage-save-{{ $stage->id }}"><i class="fas fa-save"></i></button>
+                                    <button type="submit" class="btn btn-primary btn-sm" id="stage-save-{{ $stage->id }}" aria-label="Save stage {{ $stage->name }}"><i class="fas fa-save mr-1" aria-hidden="true"></i>Save</button>
                                     @unless ($stage->is_system)
-                                        <button type="button" class="btn btn-secondary btn-sm js-archive" id="stage-archive-{{ $stage->id }}"
-                                                data-id="{{ $stage->id }}" data-name="{{ $stage->name }}" data-open="{{ $openCounts[$stage->id] ?? 0 }}" title="Archive stage">
-                                            <i class="fas fa-archive"></i>
+                                        <button type="button" class="btn btn-secondary btn-sm js-archive pst-archive-btn" id="stage-archive-{{ $stage->id }}"
+                                                data-id="{{ $stage->id }}" data-name="{{ $stage->name }}" data-open="{{ $openCounts[$stage->id] ?? 0 }}" title="Archive stage" aria-label="Archive stage {{ $stage->name }}">
+                                            <i class="fas fa-archive" aria-hidden="true"></i>
                                         </button>
                                     @endunless
                                 </div>
@@ -183,13 +192,13 @@
                         @csrf
                         <input type="hidden" name="pipeline_id" value="{{ $pipeline->id }}">
                         <div class="ps-stage-row">
-                            <div><i class="fas fa-plus" style="color: var(--page-text-muted);"></i></div>
-                            <div><span class="ps-mini-lbl">New stage name</span><input type="text" name="name" class="form-control" maxlength="60" required placeholder="e.g. Fitting" id="new-stage-name"></div>
-                            <div><span class="ps-mini-lbl">Colour</span><input type="color" name="color" class="form-control" value="#6366f1" id="new-stage-color"></div>
-                            <div><span class="ps-mini-lbl">Win %</span><input type="number" name="probability" class="form-control" value="50" min="0" max="100" required id="new-stage-prob"></div>
-                            <div><span class="ps-mini-lbl">Red after (days)</span><input type="number" name="rotting_days" class="form-control" value="7" min="1" max="365" id="new-stage-rot"></div>
+                            <div class="pst-st-handle"><i class="fas fa-plus" aria-hidden="true"></i></div>
+                            <div><label class="ps-mini-lbl" for="new-stage-name">New stage name</label><input type="text" name="name" class="form-control" maxlength="60" required placeholder="e.g. Fitting" id="new-stage-name"></div>
+                            <div><label class="ps-mini-lbl" for="new-stage-color">Colour</label><input type="color" name="color" class="form-control" value="#6366f1" id="new-stage-color"></div>
+                            <div><label class="ps-mini-lbl" for="new-stage-prob">Win %</label><input type="number" name="probability" class="form-control" value="50" min="0" max="100" required id="new-stage-prob"></div>
+                            <div><label class="ps-mini-lbl" for="new-stage-rot">Red after (days)</label><input type="number" name="rotting_days" class="form-control" value="7" min="1" max="365" id="new-stage-rot"></div>
                             <div>
-                                <span class="ps-mini-lbl">Old lead status</span>
+                                <label class="ps-mini-lbl" for="new-stage-status">Old lead status</label>
                                 @if ($isDefault)
                                     <select name="status_key" class="form-control" id="new-stage-status">
                                         <option value="">— none —</option>
@@ -324,9 +333,9 @@
                     @foreach ($lostReasons as $reason)
                         <form method="POST" action="{{ url('admin/pipeline-settings/lost-reasons/' . $reason->id) }}" class="ps-reason" id="reason-form-{{ $reason->id }}">
                             @csrf @method('PUT')
-                            <input type="checkbox" name="is_active" value="1" @checked($reason->is_active) title="Active" id="reason-active-{{ $reason->id }}">
+                            <input type="checkbox" name="is_active" value="1" @checked($reason->is_active) title="Active" aria-label="Active: {{ $reason->name }}" id="reason-active-{{ $reason->id }}">
                             <input type="text" name="name" class="form-control" value="{{ $reason->name }}" maxlength="80" required id="reason-name-{{ $reason->id }}">
-                            <button type="submit" class="btn btn-secondary btn-sm" id="reason-save-{{ $reason->id }}"><i class="fas fa-save"></i></button>
+                            <button type="submit" class="btn btn-secondary btn-sm" id="reason-save-{{ $reason->id }}" aria-label="Save reason {{ $reason->name }}"><i class="fas fa-save" aria-hidden="true"></i></button>
                         </form>
                     @endforeach
                     <form method="POST" action="{{ url('admin/pipeline-settings/lost-reasons') }}" class="ps-reason mt-2">
@@ -431,5 +440,34 @@
                 setTimeout(function () { $t.fadeOut(250, function () { $t.remove(); }); }, 3000);
             }
         });
+    </script>
+    <script>
+        // Presentation only: stop accidental double submits and mark stage rows with unsaved edits.
+        (function () {
+            var root = document.querySelector('.pst');
+            if (!root) { return; }
+            document.addEventListener('submit', function (e) {
+                var form = e.target;
+                if (e.defaultPrevented || !root.contains(form) || form.dataset.pstBusy === '1') {
+                    if (form.dataset && form.dataset.pstBusy === '1') { e.preventDefault(); }
+                    return;
+                }
+                form.dataset.pstBusy = '1';
+                form.classList.add('pst-busy');
+                setTimeout(function () {
+                    form.querySelectorAll('button[type=submit]').forEach(function (b) { b.classList.add('disabled'); b.setAttribute('aria-disabled', 'true'); });
+                }, 0);
+            });
+            window.addEventListener('pageshow', function () {
+                root.querySelectorAll('form.pst-busy').forEach(function (f) {
+                    f.dataset.pstBusy = '0'; f.classList.remove('pst-busy');
+                    f.querySelectorAll('button[type=submit]').forEach(function (b) { b.classList.remove('disabled'); b.removeAttribute('aria-disabled'); });
+                });
+            });
+            root.querySelectorAll('form.ps-stage[data-id]').forEach(function (f) {
+                var mark = function () { f.classList.add('pst-dirty'); };
+                f.addEventListener('input', mark); f.addEventListener('change', mark);
+            });
+        })();
     </script>
 @endpush

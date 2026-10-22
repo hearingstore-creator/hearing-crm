@@ -1,0 +1,161 @@
+/* Pipeline Settings page — presentation only.
+   Every rule is scoped under .pst so no other page is affected. */
+
+.pst {
+    --pst-red: #c8102e;
+    --pst-red-dark: #a30d25;
+    --pst-red-soft: color-mix(in srgb, #c8102e 9%, transparent);
+    --pst-charcoal: #2d3138;
+    --pst-muted: #5b6573;               /* AA contrast on white */
+    --pst-line: var(--card-border, #e2e8f0);
+    --pst-surface: var(--card-bg, #fff);
+    --pst-radius: 12px;
+    padding: 0 24px 32px;
+    max-width: 1500px;
+}
+[data-theme="dark"] .pst, .dark .pst, body.dark-mode .pst { --pst-muted: #a3adbb; --pst-charcoal: #e5e7eb; --pst-red: #ef4455; --pst-red-dark: #dc2f41; }
+
+/* ── Header ── */
+.pst .crm-page-header { margin-bottom: 14px; }
+.pst .page-title-group h1 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; color: var(--page-text); display: flex; align-items: center; gap: 10px; }
+.pst .page-title-group h1 i { color: var(--pst-red); font-size: 18px; }
+.pst .page-title-group p { color: var(--pst-muted); font-size: 13.5px; max-width: 70ch; }
+.pst .page-title-group p b { color: var(--page-text); }
+
+/* ── Buttons (page-scoped) ── */
+.pst .btn { border-radius: 8px; font-weight: 600; transition: background-color .15s, border-color .15s, box-shadow .15s, color .15s; }
+.pst .btn-primary { background: var(--pst-red); border-color: var(--pst-red); color: #fff; }
+.pst .btn-primary:hover, .pst .btn-primary:focus { background: var(--pst-red-dark); border-color: var(--pst-red-dark); color: #fff; }
+.pst .btn-secondary { background: transparent; border: 1px solid var(--pst-line); color: var(--page-text); }
+.pst .btn-secondary:hover { background: var(--pst-red-soft); border-color: var(--pst-red); color: var(--pst-red); }
+.pst .btn-outline-primary { color: var(--pst-red); border-color: var(--pst-red); background: transparent; }
+.pst .btn-outline-primary:hover { background: var(--pst-red); color: #fff; }
+.pst .btn:focus-visible, .pst a:focus-visible, .pst .ps-pipeline-tab:focus-visible,
+.pst .form-control:focus-visible, .pst input:focus-visible, .pst select:focus-visible {
+    outline: 2px solid var(--pst-red); outline-offset: 2px; box-shadow: none;
+}
+.pst .form-control:focus { border-color: var(--pst-red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pst-red) 18%, transparent); }
+.pst .btn.disabled, .pst .btn:disabled { opacity: .55; pointer-events: none; }
+.pst .pst-danger-link { color: var(--pst-muted) !important; text-decoration: none; font-weight: 600; }
+.pst .pst-danger-link:hover { color: var(--pst-red) !important; text-decoration: underline; }
+.pst .pst-archive-btn:hover { background: var(--pst-red-soft); border-color: var(--pst-red); color: var(--pst-red); }
+
+/* ── Overview strip ── */
+.pst .pst-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 18px; background: var(--pst-surface); border: 1px solid var(--pst-line); border-radius: var(--pst-radius); overflow: hidden; }
+.pst .pst-stats > div { padding: 12px 18px; border-left: 1px solid var(--pst-line); }
+.pst .pst-stats > div:first-child { border-left: 0; }
+.pst .pst-stats dt { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--pst-muted); margin: 0 0 2px; }
+.pst .pst-stats dd { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.2; color: var(--page-text); font-variant-numeric: tabular-nums; }
+
+/* ── Cards ── */
+.pst .ps-card { border-radius: var(--pst-radius); box-shadow: none; border-color: var(--pst-line); overflow: hidden; }
+.pst .ps-card-head { padding: 14px 18px; background: color-mix(in srgb, var(--pst-charcoal) 3%, transparent); gap: 12px; }
+.pst .ps-card-head > i { width: 34px; height: 34px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; font-size: 14px; color: var(--pst-charcoal) !important; background: color-mix(in srgb, var(--pst-charcoal) 8%, transparent); }
+.pst .ps-card-head h2 { font-size: 15px; font-weight: 700; }
+.pst .ps-card-head p { color: var(--pst-muted); font-size: 12.5px; margin-top: 1px; }
+.pst .ps-card-body { padding: 16px 18px; }
+.pst .deal-hint { color: var(--pst-muted); font-size: 12.5px; }
+
+/* ── Labels and fields ── */
+.pst .ps-mini-lbl { font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--pst-muted); margin-bottom: 4px; }
+.pst .form-control { border-radius: 8px; border-color: var(--pst-line); }
+
+/* ── Pipeline tabs ── */
+.pst .ps-pipeline-tabs { gap: 8px; }
+.pst .ps-pipeline-tab { border-radius: 8px; padding: 7px 12px; font-weight: 600; transition: border-color .15s, background-color .15s; }
+.pst .ps-pipeline-tab:hover { border-color: var(--pst-red); }
+.pst .ps-pipeline-tab.active { border-color: var(--pst-red); background: var(--pst-red-soft); box-shadow: inset 0 -2px 0 var(--pst-red); }
+.pst .ps-pipeline-tab small { color: var(--pst-muted); }
+.pst .ps-badge { font-weight: 600; color: var(--pst-muted); background: color-mix(in srgb, var(--pst-charcoal) 8%, transparent); white-space: nowrap; }
+.pst .ps-pipeline-form { align-items: end; }
+.pst .ps-pipeline-form .ps-mini-lbl { display: block; }
+
+/* ── Stages ── */
+.pst #ps-stages { counter-reset: none; }
+.pst .ps-stage { position: relative; padding: 14px 16px 14px 18px; border-radius: 10px; border-color: var(--pst-line); border-left-width: 5px; margin-bottom: 12px; transition: border-color .15s, box-shadow .15s; }
+.pst .ps-stage:hover { box-shadow: 0 2px 10px -6px rgba(0, 0, 0, .35); }
+.pst .ps-stage:focus-within { border-color: var(--pst-red); border-left-color: var(--stage-color, var(--pst-red)); }
+.pst .ps-stage.pst-dirty::after { content: "Unsaved changes"; position: absolute; top: 8px; right: 12px; font-size: 11px; font-weight: 700; color: var(--pst-red); }
+.pst .ps-stage-row {
+    display: grid; align-items: end; gap: 12px 14px;
+    grid-template-columns: 28px repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+        "handle name name name actions"
+        ".      color win rot status";
+}
+.pst .pst-st-handle { grid-area: handle; align-self: center; padding-top: 16px; }
+.pst .pst-st-name { grid-area: name; min-width: 0; }
+.pst .pst-st-color { grid-area: color; }
+.pst .pst-st-win { grid-area: win; }
+.pst .pst-st-rot { grid-area: rot; }
+.pst .pst-st-status { grid-area: status; min-width: 0; }
+.pst .pst-st-actions { grid-area: actions; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center; }
+.pst .pst-st-color input[type=color] { height: 34px; padding: 2px 4px; cursor: pointer; }
+.pst .pst-notlinked { padding: 7px 0; }
+.pst .ps-handle { cursor: grab; border-radius: 6px; padding: 8px 0; color: var(--pst-muted); }
+.pst .ps-handle:hover { background: var(--pst-red-soft); color: var(--pst-red); }
+.pst .ps-handle:active { cursor: grabbing; }
+.pst .pst-st-handle:not(.ps-handle) { color: var(--pst-muted); text-align: center; }
+.pst .ps-gates { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--pst-line); }
+.pst .ps-gates .lbl { color: var(--pst-muted); }
+.pst .deal-pills span { border-radius: 8px; color: var(--page-text); }
+.pst .deal-pills label:hover span { border-color: var(--pst-red); }
+.pst .deal-pills input:checked + span { background: var(--pst-red); border-color: var(--pst-red); color: #fff; }
+.pst .deal-pills input:checked + span::before { content: "\2713\00a0"; font-weight: 800; }   /* not colour alone */
+.pst .deal-pills input:focus-visible + span { outline: 2px solid var(--pst-red); outline-offset: 2px; display: inline-block; }
+.pst .deal-pills input { display: block; position: absolute; opacity: 0; pointer-events: none; }
+.pst .deal-pills label { position: relative; }
+.pst #stage-add-form { background: color-mix(in srgb, var(--pst-charcoal) 2.5%, transparent); }
+.pst #stage-add-form .ps-stage-row {
+    grid-template-columns: 28px minmax(0, 2fr) 70px 90px 110px minmax(0, 1.5fr) auto;
+    grid-template-areas: none;
+}
+.pst #stage-add-form .ps-stage-row > * { grid-area: auto; }
+
+/* ── Lost reasons / owner rows ── */
+.pst .ps-reason { padding: 6px 8px; border: 1px solid var(--pst-line); border-radius: 10px; margin-bottom: 8px; }
+.pst .ps-reason .form-control { flex: 1; min-width: 0; }
+.pst .ps-reason input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--pst-red); flex: none; }
+.pst #pipelines-card .ps-reason { background: var(--pst-red-soft); border-color: transparent; }
+
+/* ── Office hours (shared markup, scoped recolour) ── */
+.pst #office-hours-card .oh-day input:checked + span { background: var(--pst-red); box-shadow: none; }
+.pst #office-hours-card .oh-day input:checked + span::before { content: "\2713\00a0"; font-weight: 800; }
+.pst #office-hours-card .oh-date { background: var(--pst-charcoal); color: #fff; }
+.pst #office-hours-card .oh-remove:hover { color: var(--pst-red); }
+.pst #office-hours-card .oh-day:hover span { border-color: var(--pst-red); }
+
+/* ── Change log ── */
+.pst .ps-log { padding: 10px 0 10px 14px; border-left: 2px solid var(--pst-line); border-bottom: 0; margin-left: 4px; position: relative; }
+.pst .ps-log::before { content: ""; position: absolute; left: -5px; top: 15px; width: 8px; height: 8px; border-radius: 50%; background: var(--pst-charcoal); opacity: .5; }
+.pst .ps-log .when { color: var(--pst-muted); }
+
+/* ── Responsive ── */
+@media (max-width: 1200px) {
+    .pst .ps-stage-row { grid-template-columns: 28px repeat(2, minmax(0, 1fr)); grid-template-areas: "handle name name" ". color win" ". rot status" ". actions actions"; }
+    .pst .pst-st-actions { justify-content: flex-start; }
+    .pst #stage-add-form .ps-stage-row { grid-template-columns: 28px repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 991px) {
+    .pst { padding: 0 16px 24px; }
+    .pst .pst-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pst .pst-stats > div:nth-child(3) { border-left: 0; }
+    .pst .pst-stats > div:nth-child(n+3) { border-top: 1px solid var(--pst-line); }
+    .pst .crm-page-header { flex-wrap: wrap; gap: 10px; }
+}
+@media (max-width: 575px) {
+    .pst { padding: 0 12px 20px; }
+    .pst .ps-stage-row, .pst #stage-add-form .ps-stage-row { grid-template-columns: 1fr; grid-template-areas: none; }
+    .pst .ps-stage-row > * { grid-area: auto !important; }
+    .pst .pst-st-handle { display: none; }
+    .pst .pst-st-actions .btn { flex: 1 1 auto; }
+    .pst .ps-card-head, .pst .ps-card-body { padding-left: 14px; padding-right: 14px; }
+    .pst .ps-reason { flex-wrap: wrap; }
+    .pst .page-title-group h1 { font-size: 19px; }
+    #office-hours-card .oh-add { grid-template-columns: 1fr; }
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+    .pst *, .pst *::before, .pst *::after { transition: none !important; animation: none !important; }
+}
