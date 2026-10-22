@@ -604,6 +604,7 @@ class Helper
      * @param string $invoiceNo
      * @param ?string $refInvoiceNo
      * @param ?string $type
+     * @param array $extra Optional Debit Voucher columns (voucher_no, payee_name, payment_method, bank_name, transaction_no, attachment_path)
      * @return bool
      */
     public static function expenseLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type, array $extra = []): bool
@@ -617,7 +618,6 @@ class Helper
         if (auth()->check() && auth()->user()->branchId()) {
             $ledger->vendor_id = auth()->user()->branchId();
         } else {
-     * @param array $extra Optional Debit Voucher columns (voucher_no, payee_name, payment_method, bank_name, transaction_no, attachment_path)
             $ledger->vendor_id = null;
         }
 
@@ -629,6 +629,11 @@ class Helper
         $ledger->amount_type = self::$expense;
         $ledger->type = $type;
         $ledger->ref_invoice_no = $refInvoiceNo;
+        foreach (['voucher_no', 'payee_name', 'payment_method', 'bank_name', 'transaction_no', 'attachment_path', 'status'] as $col) {
+            if (!empty($extra[$col])) {
+                $ledger->{$col} = $extra[$col];
+            }
+        }
         $ledger->save();
 
         return true;
@@ -641,12 +646,8 @@ class Helper
      * @param string $invoiceNo
      * @param ?string $refInvoiceNo
      * @param ?string $type
+     * @param array $extra Optional voucher columns (voucher_no, payee_name, payment_method, bank_name, transaction_no, attachment_path, status)
      * @return bool
-        foreach (['voucher_no', 'payee_name', 'payment_method', 'bank_name', 'transaction_no', 'attachment_path', 'status'] as $col) {
-            if (!empty($extra[$col])) {
-                $ledger->{$col} = $extra[$col];
-            }
-        }
      */
     public static function incomeLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type, array $extra = []): bool
     {
@@ -659,7 +660,6 @@ class Helper
         if (auth()->check() && auth()->user()->branchId()) {
             $ledger->vendor_id = auth()->user()->branchId();
         } else {
-     * @param array $extra Optional voucher columns (voucher_no, payee_name, payment_method, bank_name, transaction_no, attachment_path, status)
             $ledger->vendor_id = null;
         }
 
@@ -671,6 +671,11 @@ class Helper
         $ledger->amount_type = self::$income;
         $ledger->type = $type;
         $ledger->ref_invoice_no = $refInvoiceNo;
+        foreach (['voucher_no', 'payee_name', 'payment_method', 'bank_name', 'transaction_no', 'attachment_path', 'status'] as $col) {
+            if (!empty($extra[$col])) {
+                $ledger->{$col} = $extra[$col];
+            }
+        }
         $ledger->save();
 
         return true;
@@ -684,11 +689,6 @@ class Helper
     {
         $user = auth()->user();
         if (!$user || $user->canViewAllBranches()) {
-        foreach (['voucher_no', 'payee_name', 'payment_method', 'bank_name', 'transaction_no', 'attachment_path', 'status'] as $col) {
-            if (!empty($extra[$col])) {
-                $ledger->{$col} = $extra[$col];
-            }
-        }
             return null;
         }
 
