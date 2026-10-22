@@ -64,6 +64,7 @@ class DealReportController extends Controller
             'members'   => $this->members($deals),
             'forecast'  => $this->forecast($request, $isHq, $stages),
             'trials'    => $this->trials($from, $to, $isHq ? null : auth()->user()->branchId()),
+            'feedback'  => \App\Services\RetentionService::summary($from, $to, $isHq ? null : auth()->user()->branchId()),
         ]);
     }
 

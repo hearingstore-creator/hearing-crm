@@ -234,6 +234,9 @@ class LeadController extends Controller
             $leads['lead_uid'] = Lead::generateUid();
             $leads['lead_status'] = LeadStatus::NEW->value; // mirrored from the deal below
             $leads['vendor_id'] = auth()->user()->branchId() ?: $request->vendor_id;
+            $leads['marketing_consent'] = $request->boolean('marketing_consent');
+            $leads['consent_at'] = $request->boolean('marketing_consent') ? now() : null;
+            $leads['consent_source'] = $request->boolean('marketing_consent') ? 'Told staff (' . auth()->user()->name . ')' : null;
             if (!empty($leads['campaign_id'])) {
                 $leads['utm_campaign'] = \App\Models\MarketingCampaign::find($leads['campaign_id'])?->code;
             }

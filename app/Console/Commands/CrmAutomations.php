@@ -24,6 +24,8 @@ use Illuminate\Support\Facades\DB;
  *   php artisan crm:automations scores       – recalculate lead scores of open deals
  *   php artisan crm:automations sequences    – run due follow-up sequence steps (SMS, email, WhatsApp, call tasks)
  *   php artisan crm:automations trials       – take-home trials: close the bought ones, alert overdue returns
+ *   php artisan crm:automations retention    – upgrade reminders (and deals), yearly service SMS, satisfaction surveys
+ *   php artisan crm:automations conversions  – send recent sales to Meta (Conversions API)
  *   php artisan crm:automations appointments – SMS reminder for tomorrow's appointments
  *   php artisan crm:automations reengage     – "Not ready" lost 90+ days ago → new deal + call
  *   php artisan crm:automations points       – SMS 7 days before membership points expire
@@ -36,9 +38,9 @@ use Illuminate\Support\Facades\DB;
  */
 class CrmAutomations extends Command
 {
-    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays', 'scores', 'sequences', 'trials'];
+    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays', 'scores', 'sequences', 'trials', 'retention', 'conversions'];
 
-    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays|scores|sequences|trials} {--dry : show what would happen, change nothing}';
+    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays|scores|sequences|trials|retention|conversions} {--dry : show what would happen, change nothing}';
     protected $description = 'Run one lead automation';
 
     public function __construct(private CrmNotifier $notifier, private DealService $deals, private SmsAutomationService $sms)
@@ -109,6 +111,32 @@ class CrmAutomations extends Command
         return $n;
     }
 
+    /** Upgrade reminders, yearly service SMS, satisfaction surveys. */
+    private function retention(): int
+    {
+        if ($this->option('dry')) {
+            return 0;
+        }
+        $r = app(\App\Services\RetentionService::class)->run();
+        $this->line("Upgrade SMS {$r['upgrades']}, upgrade deals {$r['deals']}, service SMS {$r['service']}, surveys {$r['surveys']}");
+
+        return array_sum($r);
+    }
+
+    /** Sales back to Meta (Conversions API). */
+    private function conversions(): int
+    {
+        if ($this->option('dry')) {
+            return 0;
+        }
+        $r = app(\App\Services\ConversionFeedback::class)->sendMeta();
+        if (!empty($r['skipped'])) {
+            $this->line('Meta: ' . $r['skipped']);
+        }
+
+        return $r['sent'];
+    }
+
     /** Take-home trials: bought ones close, overdue returns alert the owner (once). */
     private function trials(): int
     {
@@ -154,7 +182,7 @@ class CrmAutomations extends Command
             return 0;
         }
 
-        $tomorrow = Carbon::today('Asia/Dhaka')->addDay()->format('Y-m-d');
+        $tomorrow = Carbon::today(config('app.timezone'))->addDay()->format('Y-m-d');
 
         $rows = DB::table('appointments as a')
             ->leftJoin('customers as c', 'c.id', '=', 'a.customer_id')
@@ -383,7 +411,7 @@ class CrmAutomations extends Command
             return 0;
         }
 
-        $today = Carbon::today('Asia/Dhaka');
+        $today = Carbon::today(config('app.timezone'));
         $rows = DB::table('sale_masters as s')
             ->join('customers as c', 'c.id', '=', 's.customer_id')
             ->join('leads as l', 'l.id', '=', 'c.lead_id')
@@ -419,7 +447,7 @@ class CrmAutomations extends Command
             return 0;
         }
 
-        $today = Carbon::today('Asia/Dhaka');
+        $today = Carbon::today(config('app.timezone'));
         $rows = DB::table('customers as c')
             ->join('leads as l', 'l.id', '=', 'c.lead_id')
             ->whereNull('c.deleted_at')

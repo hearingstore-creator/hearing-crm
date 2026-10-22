@@ -72,6 +72,7 @@ class SettingController extends Controller
         $setting->fill($requestAll);
 
         if ($setting->save()) {
+            \App\Support\Region::forget();
             return redirect()->back()->with('success', 'Updated Successfully');
         }
 

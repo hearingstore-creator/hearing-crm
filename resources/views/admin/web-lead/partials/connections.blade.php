@@ -75,6 +75,38 @@
     </section>
 </div>
 
+@php
+    $capiReady = (bool) (config('connectors.meta.pixel_id') && config('connectors.meta.capi_token'));
+    $sentBack = \Illuminate\Support\Facades\DB::table('conversion_events')->selectRaw('platform, status, COUNT(*) as n')->groupBy('platform', 'status')->get();
+    $googleKey = config('connectors.google.export_key');
+@endphp
+<section class="crm-table-card crm-animate-in delay-2" style="padding:16px 18px; margin-bottom:16px;" id="wl-conn-feedback">
+    <h2 class="wl-h"><i class="fas fa-undo-alt"></i> Sending sales back to the ad platforms</h2>
+    <p style="font-size:12.5px;" class="mb-2">So Meta and Google learn which leads buy, and show your ads to more people like them.</p>
+    <table class="table table-sm mb-2" style="font-size:12.5px;">
+        <tr><td>Meta Conversions API <span class="wl-muted">(META_PIXEL_ID, META_CAPI_TOKEN)</span></td>
+            <td>{!! $ok($capiReady, 'On – every hour', 'Off') !!}
+                <span class="wl-muted">· sent {{ $sentBack->where('platform', 'meta')->where('status', 'sent')->sum('n') }}, failed {{ $sentBack->where('platform', 'meta')->where('status', 'failed')->sum('n') }}</span></td></tr>
+        <tr><td>Google Ads offline conversions</td>
+            <td>
+                @if ($googleKey)
+                    <code id="wl-g-conv">{{ url('exports/google-ads-conversions.csv') }}?key={{ $googleKey }}</code>
+                    <button type="button" class="btn btn-secondary btn-sm py-0 js-copy" data-copy="#wl-g-conv">Copy</button>
+                @else
+                    {!! $ok(false, '', 'Set GOOGLE_CONVERSIONS_KEY for a scheduled link') !!}
+                @endif
+                <a href="{{ url('exports/google-ads-conversions.csv') }}" class="ml-2">Download CSV</a>
+            </td></tr>
+    </table>
+    <details style="font-size:12.5px;">
+        <summary style="cursor:pointer; font-weight:600;">How to connect</summary>
+        <ol style="padding-left:18px; margin-top:6px;">
+            <li>Meta: Events Manager → your dataset (pixel) → Settings → Conversions API → generate an access token. Put the dataset id in <code>META_PIXEL_ID</code> and the token in <code>META_CAPI_TOKEN</code>. Sales of patients who came from Facebook, Instagram or WhatsApp are sent as "Purchase" (phone and email are sent hashed, never in plain text).</li>
+            <li>Google: Google Ads → Goals → Conversions → create an "Import from clicks" conversion named like <code>GOOGLE_OFFLINE_CONVERSION_NAME</code> ({{ config('connectors.google.conversion_name') }}). Then Uploads → Schedules → HTTPS, with the link above. Only sales whose patient clicked a Google ad (gclid) are listed.</li>
+        </ol>
+    </details>
+</section>
+
 <div class="crm-table-card crm-animate-in delay-2">
     <h2 class="wl-h" style="padding:14px 18px 0;"><i class="fas fa-stream"></i> Calls received (latest 60)</h2>
     <div style="overflow-x:auto;">

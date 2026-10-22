@@ -42,6 +42,11 @@ Route::get('/', function () {
 // Public website lead form (open directly or as a popup via embed.js)
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('f/{key}', [\App\Http\Controllers\PublicLeadFormController::class, 'show'])->name('public.form');
+    // One-question satisfaction survey from an SMS link
+    Route::get('s/{token}', [\App\Http\Controllers\PublicSurveyController::class, 'show'])->name('public.survey')->middleware('throttle:60,1');
+    Route::post('s/{token}', [\App\Http\Controllers\PublicSurveyController::class, 'answer'])->name('public.survey.answer')->middleware('throttle:10,1');
+    // Google Ads offline conversions (scheduled fetch by Google; key = GOOGLE_CONVERSIONS_KEY)
+    Route::get('exports/google-ads-conversions.csv', [\App\Http\Controllers\Api\ConversionExportController::class, 'google'])->name('exports.google-conversions')->middleware('throttle:30,1');
     // A quotation the patient opens from its private link, accepts or declines
     Route::get('q/{token}', [\App\Http\Controllers\PublicQuoteController::class, 'show'])->name('public.quote')->middleware('throttle:60,1');
     Route::post('q/{token}/accept', [\App\Http\Controllers\PublicQuoteController::class, 'accept'])->name('public.quote.accept')->middleware('throttle:10,1');
@@ -78,6 +83,9 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('/dashboard/today/chart/{chart}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'chart'])->name('dashboard.today.chart');
     Route::get('/dashboard/audience/{segment}', [\App\Http\Controllers\Admin\DashboardAudienceController::class, 'export'])->name('dashboard.audience.export');
     Route::resource('leads', 'LeadController');
+    // A person's data request: download everything, or erase them (Super Admin)
+    Route::get('leads/{id}/data-export', [\App\Http\Controllers\Admin\PersonDataController::class, 'export'])->whereNumber('id')->name('leads.data-export');
+    Route::post('leads/{id}/erase', [\App\Http\Controllers\Admin\PersonDataController::class, 'erase'])->whereNumber('id')->name('leads.erase');
     // Old add/edit follow-up forms retired: activities are added from the lead profile / Deals board
     Route::patch('leads/follow-ups/{id}/complete', [LeadController::class, 'completeFollowUp']);
     Route::post('leads-import', [LeadController::class, 'importLeads']);
@@ -384,18 +392,18 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
 
 
     Route::resource('income-expense-head', 'IncomeExpenseHeadController');
-    Route::resource('income', 'IncomeController');
-    Route::get('income-list', [IncomeController::class, 'incomeList'])->name('income.list');
-    Route::resource('expense', 'ExpenseController');
-
-    Route::get('employee-list', [EmployeeController::class, 'employeeList'])->name('employee.list');
     Route::get('voucher-book', [\App\Http\Controllers\Admin\VoucherBookController::class, 'index'])->name('voucher-book');
     Route::get('income/{id}/attachment', [IncomeController::class, 'attachment'])->name('income.attachment');
     Route::post('income/{id}/approve', [IncomeController::class, 'approve'])->name('income.approve');
     Route::post('expense/{id}/approve', [\App\Http\Controllers\Admin\ExpenseController::class, 'approve'])->name('expense.approve');
+    Route::resource('income', 'IncomeController');
+    Route::get('income-list', [IncomeController::class, 'incomeList'])->name('income.list');
+    Route::get('expense/{id}/attachment', [\App\Http\Controllers\Admin\ExpenseController::class, 'attachment'])->name('expense.attachment');
+    Route::resource('expense', 'ExpenseController');
+
+    Route::get('employee-list', [EmployeeController::class, 'employeeList'])->name('employee.list');
     Route::get('employee-search', [HomeController::class, 'employeeSearch'])->name('employee.search');
 
-    Route::get('expense/{id}/attachment', [\App\Http\Controllers\Admin\ExpenseController::class, 'attachment'])->name('expense.attachment');
 
     Route::resource('setting', 'SettingController');
 

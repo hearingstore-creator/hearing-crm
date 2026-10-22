@@ -60,12 +60,18 @@ class WebLeadIntake
         return null;
     }
 
-    /** Bangladesh mobile only: 01[3-9]XXXXXXXX (any of 017…, +88017…, 88017…). Returns 8801… or null. */
+    /**
+     * A mobile number this installation can text. Bangladesh: 01[3-9]XXXXXXXX only (017…, +88017…, 88017…) → 8801….
+     * Other countries: any number of 8–15 digits in international form.
+     */
     public function phone(string $raw): ?string
     {
         $phone = Helper::normalizePhone($raw);
+        if (\App\Support\Region::isBangladesh()) {
+            return $phone && preg_match('/^8801[3-9]\d{8}$/', $phone) ? $phone : null;
+        }
 
-        return $phone && preg_match('/^8801[3-9]\d{8}$/', $phone) ? $phone : null;
+        return $phone && preg_match('/^\d{8,15}$/', $phone) ? $phone : null;
     }
 
     /** Seconds to wait if a limit is hit, otherwise null (and the attempt is counted). */
@@ -120,6 +126,7 @@ class WebLeadIntake
             'referrer_url'     => $data['referrer_url'] ?? null,
             'source'           => $data['source'] ?? null,
             'external_id'      => $data['external_id'] ?? null,
+            'consent'          => isset($data['consent']) ? (bool) $data['consent'] : null,
             'page_url'         => $data['page_url'] ?? null,
             'ip'               => $data['client_ip'],
             'user_agent'       => $data['user_agent'] ?? null,

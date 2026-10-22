@@ -425,6 +425,7 @@
                             @error('campaign_id')
                                 <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
                             @enderror
+                            <label class="mt-2 mb-0" style="font-weight:400; font-size:13px;"><input type="checkbox" name="marketing_consent" value="1" id="marketing_consent" @checked(old('marketing_consent'))> Agrees to receive offers by SMS{{ \App\Support\Region::needsConsent() ? ' (needed for promotional SMS)' : '' }}</label>
                         </div>
                     </div>
                     <div class="col-md-4">

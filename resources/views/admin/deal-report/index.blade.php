@@ -188,6 +188,26 @@
         <p class="dr-sub" style="padding: 10px 18px 14px;">Spend, cost per lead and return per campaign: Marketing → Marketing Return.</p>
     </div>
 
+    <div class="crm-table-card crm-animate-in delay-3" style="margin-top: 16px;" id="dr-feedback">
+        <div class="crm-table-header">
+            <div class="table-title"><i class="fas fa-smile"></i> Patient feedback (NPS) · {{ $feedback['answers'] }} answers of {{ $feedback['sent'] }} surveys sent</div>
+        </div>
+        <div style="display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; padding: 0 18px 14px;">
+            <div>
+                <div style="font-size: 30px; font-weight: 800; color: {{ ($feedback['nps'] ?? 0) >= 30 ? '#059669' : (($feedback['nps'] ?? 0) >= 0 ? '#d97706' : '#dc2626') }};">{{ $feedback['nps'] !== null ? $feedback['nps'] : '—' }}</div>
+                <div class="dr-sub">NPS = % who give 9–10 minus % who give 0–6 (from −100 to 100)</div>
+                <div style="font-size:13px; margin-top:6px;">{{ $feedback['promoters'] }} happy · {{ $feedback['passives'] }} neutral · {{ $feedback['detractors'] }} unhappy</div>
+            </div>
+            <div>
+                @forelse ($feedback['comments'] as $c)
+                    <div style="font-size:13px; padding:4px 0; border-bottom:1px solid var(--gray-100);"><b>{{ $c['score'] }}/10</b> · {{ $c['comment'] }} <span class="dr-sub">{{ $c['date'] }}</span></div>
+                @empty
+                    <div class="dr-sub">No comments yet. Switch on "Satisfaction Survey" in SMS Center → Automation to start asking.</div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
     <div class="crm-table-card crm-animate-in delay-3" style="margin-top: 16px;" id="dr-trials">
         <div class="crm-table-header">
             <div class="table-title"><i class="fas fa-assistive-listening-systems"></i> Trials · {{ $trials['total'] }} patients tried a device, {{ $trials['won'] }} bought ({{ $trials['total'] ? round($trials['won'] / $trials['total'] * 100) : 0 }}%)</div>

@@ -63,12 +63,14 @@ class PublicLeadFormController extends Controller
             'fbclid'          => ['nullable', 'string', 'max:255'],
             'landing_page'    => ['nullable', 'string', 'max:500'],
             'referrer_url'    => ['nullable', 'string', 'max:500'],
+            'consent'         => [\App\Support\Region::needsConsent() ? 'accepted' : 'nullable', 'boolean'],
             'page_url'        => ['nullable', 'string', 'max:500'],
             'website'         => ['nullable', 'string', 'max:255'],
             't'               => ['required', 'string', 'max:100'],
             'cf-turnstile-response' => ['nullable', 'string', 'max:2048'],
         ], [
             'name.required'  => 'Please enter your name.',
+            'consent.accepted' => 'Please tick that you agree to be contacted.',
             'phone.required' => 'Please enter your mobile number.',
             'email.email'    => 'Please enter a valid email address.',
         ]);
@@ -84,7 +86,7 @@ class PublicLeadFormController extends Controller
 
         $phone = $this->intake->phone($data['phone']);
         if (!$phone) {
-            return response()->json(['ok' => false, 'message' => 'Please enter a valid Bangladeshi mobile number (e.g. 017XXXXXXXX).', 'errors' => ['phone' => ['Invalid mobile number.']]], 422);
+            return response()->json(['ok' => false, 'message' => (\App\Support\Region::isBangladesh() ? 'Please enter a valid Bangladeshi mobile number (e.g. 017XXXXXXXX).' : 'Please enter a valid mobile number with the country code.'), 'errors' => ['phone' => ['Invalid mobile number.']]], 422);
         }
 
         $ip = (string) $request->ip();

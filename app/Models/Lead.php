@@ -63,6 +63,10 @@ class Lead extends Model
         'fbclid',
         'landing_page',
         'referrer_url',
+        'marketing_consent',
+        'consent_at',
+        'consent_source',
+        'erased_at',
     ];
 
     protected $casts = [

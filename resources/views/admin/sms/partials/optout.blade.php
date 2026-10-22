@@ -33,7 +33,7 @@
                         <span style="font-family:monospace; min-width:110px;">{{ $r->phone_number }}</span>
                         <span style="flex:1;">{{ \Illuminate\Support\Str::limit($r->message, 120) }}</span>
                         @if ($r->action === 'stop')<span class="badge badge-danger" title="Added to the opt-out list">STOP</span>@endif
-                        <span class="text-muted" style="white-space:nowrap;">{{ $r->received_at?->copy()->timezone('Asia/Dhaka')->format('d M, g:i A') }}</span>
+                        <span class="text-muted" style="white-space:nowrap;">{{ $r->received_at?->copy()->timezone(config('app.timezone'))->format('d M, g:i A') }}</span>
                     </div>
                 @endforeach
             </div>

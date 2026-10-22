@@ -99,11 +99,24 @@ class Helper
         if (str_starts_with($digits, '00')) {
             $digits = substr($digits, 2);
         }
-        if (strlen($digits) === 11 && str_starts_with($digits, '01')) {
-            return '88' . $digits;
+        $prefix = \App\Support\Region::phonePrefix();
+        if ($prefix === '880') {
+            if (strlen($digits) === 11 && str_starts_with($digits, '01')) {
+                return '88' . $digits;
+            }
+            if (strlen($digits) === 10 && str_starts_with($digits, '1')) {
+                return '880' . $digits;
+            }
+
+            return substr($digits, 0, 20);
         }
-        if (strlen($digits) === 10 && str_starts_with($digits, '1')) {
-            return '880' . $digits;
+
+        // Other countries: a local number (leading 0, or short) gets the country code; an international one is kept
+        $international = str_starts_with(trim((string) $phone), '+') || str_starts_with((string) preg_replace('/\s+/', '', (string) $phone), '00');
+        if (!$international && !str_starts_with($digits, $prefix)) {
+            $digits = $prefix . ltrim($digits, '0');
+        } elseif (!$international && str_starts_with($digits, $prefix . '0')) {
+            $digits = $prefix . substr($digits, strlen($prefix) + 1);
         }
 
         return substr($digits, 0, 20);
@@ -682,19 +695,6 @@ class Helper
     }
 
     /**
-     * The branch a user is held to in reports: a branch login, or staff with a home branch,
-     * unless they may view all branches. Null = head office user who may pick any branch.
-     */
-    public static function reportBranchId(): ?int
-    {
-        $user = auth()->user();
-        if (!$user || $user->canViewAllBranches()) {
-            return null;
-        }
-
-        return $user->branchId();
-    }
-    /**
      * Next voucher number for a date, e.g. DV-20261022-0001 (prefix 'DV') or CV-... for credit vouchers.
      * Looks across all branches (no branch scope) so numbers never repeat.
      */
@@ -710,6 +710,19 @@ class Helper
         return $stem . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * The branch a user is held to in reports: a branch login, or staff with a home branch,
+     * unless they may view all branches. Null = head office user who may pick any branch.
+     */
+    public static function reportBranchId(): ?int
+    {
+        $user = auth()->user();
+        if (!$user || $user->canViewAllBranches()) {
+            return null;
+        }
+
+        return $user->branchId();
+    }
 
     /**
      * Middleware body for report controllers: a branch-bound user always gets their own branch

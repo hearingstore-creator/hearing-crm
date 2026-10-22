@@ -138,7 +138,7 @@ class PublicAppointmentController extends Controller
         // One visitor cannot block the calendar: few active holds, few holds per 10 minutes
         $clientIp = $request->input('client_ip');
         $limits = config('weblead.booking');
-        $activeHolds = AppointmentHold::where('ip_address', $clientIp)->where('expires_at', '>', Carbon::now('Asia/Dhaka'))->count();
+        $activeHolds = AppointmentHold::where('ip_address', $clientIp)->where('expires_at', '>', Carbon::now(config('app.timezone')))->count();
         if ($activeHolds >= $limits['active_holds_per_ip']) {
             return response()->json(['success' => false, 'message' => 'You already have a time slot on hold. Please finish that booking first.'], 429);
         }
@@ -170,7 +170,7 @@ class PublicAppointmentController extends Controller
         $duration = $service->duration_minutes ?: 45;
         $endTime = Carbon::parse($date . ' ' . $startTime)->addMinutes($duration)->format('H:i:s');
 
-        $tz = 'Asia/Dhaka';
+        $tz = config('app.timezone');
         $token = Str::random(40);
         $holdMinutes = (int) config('weblead.booking.hold_minutes', 10);
         $expiresAt = Carbon::now($tz)->addMinutes($holdMinutes);
@@ -256,7 +256,7 @@ class PublicAppointmentController extends Controller
         }
 
         $token = $request->input('hold_token');
-        $tz = 'Asia/Dhaka';
+        $tz = config('app.timezone');
         $now = Carbon::now($tz);
 
         $hold = AppointmentHold::where('token', $token)

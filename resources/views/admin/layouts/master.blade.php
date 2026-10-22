@@ -219,6 +219,7 @@
     <!-- Bootstrap 4 -->
     <script src="{{ asset('assets/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 
+    <script>window.CRM_CURRENCY = @json(\App\Support\Region::currencySymbol());</script>
     @stack('scripts')
     @stack('js')
     <script src="{{ asset('assets/plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js') }}"></script>
@@ -240,7 +241,7 @@
             
             const now = new Date();
             const options = { 
-                timeZone: 'Asia/Dhaka', 
+                timeZone: @json(config('app.timezone')), 
                 weekday: 'short', 
                 month: 'short', 
                 day: 'numeric', 

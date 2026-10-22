@@ -68,6 +68,7 @@ class ProcessWebLead implements ShouldQueue
             ], fn ($v) => $v !== null && $v !== []) + $touch;
             // first touch of the person (kept as it was when the lead already has one)
             $firstTouch = $touch + array_filter(['referrer_url' => $s->referrer_url], fn ($v) => $v !== null && $v !== '');
+            $consent = $s->consent ? ['marketing_consent' => true, 'consent_at' => $s->created_at, 'consent_source' => 'Website form'] : [];
 
             $lead = Lead::withoutGlobalScopes()->whereNull('deleted_at')
                 ->where('normalized_phone', $s->normalized_phone)->oldest('id')->first();
@@ -76,6 +77,9 @@ class ProcessWebLead implements ShouldQueue
             if ($lead) {
                 if (!$lead->campaign_id && !$lead->utm_source && !$lead->utm_campaign && $firstTouch) {
                     $lead->forceFill($firstTouch)->saveQuietly();
+                }
+                if ($consent && !$lead->marketing_consent) {
+                    $lead->forceFill($consent)->saveQuietly();
                 }
                 $deal = Deal::withoutGlobalScopes()->whereNull('deleted_at')->open()
                     ->where('lead_id', $lead->id)->latest('id')->first();
@@ -98,7 +102,7 @@ class ProcessWebLead implements ShouldQueue
                     'source_of_entry' => $source->value,
                     'lead_status'     => LeadStatus::NEW->value,
                     'lead_type'       => LeadType::NEW_CUSTOMER->value,
-                ] + $firstTouch);
+                ] + $firstTouch + $consent);
                 $deal = $deals->openInitialDeal($lead, $dealAttributes);
                 app(\App\Services\SmsAutomationService::class)->fireAfterCommit(\App\Enums\SmsAutomationTrigger::LEAD_CREATED,
                     $lead->phone_number, 'lead', $lead->id, ['name' => $lead->full_name, 'customer_name' => $lead->full_name], 'lead-welcome:' . $lead->id);

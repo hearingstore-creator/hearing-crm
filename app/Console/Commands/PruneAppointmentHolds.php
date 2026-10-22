@@ -13,7 +13,7 @@ class PruneAppointmentHolds extends Command
 
     public function handle(): int
     {
-        $now = Carbon::now('Asia/Dhaka');
+        $now = Carbon::now(config('app.timezone'));
         $deleted = AppointmentHold::where('expires_at', '<', $now)->delete();
 
         $this->info("Pruned {$deleted} expired appointment hold(s).");

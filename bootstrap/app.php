@@ -23,6 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth' => \App\Http\Middleware\Authenticate::class,
             'permission' => CheckPermission::class,
         ]);
+        // Another currency than taka (Settings → Region & privacy): shown on every page
+        $middleware->web(append: [\App\Http\Middleware\LocalCurrency::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
@@ -30,6 +32,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->booting(function () {
         // Set default string length for database schema
         Schema::defaultStringLength(191);
+
+        // Time zone of this installation (Settings → Region & privacy); Asia/Dhaka unless changed
+        $tz = \App\Support\Region::timezone();
+        if ($tz !== config('app.timezone')) {
+            config(['app.timezone' => $tz]);
+            date_default_timezone_set($tz);
+        }
         
         // Set paginator to use Bootstrap
         Paginator::useBootstrap();

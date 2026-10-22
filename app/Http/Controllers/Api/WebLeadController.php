@@ -51,6 +51,7 @@ class WebLeadController extends Controller
             'fbclid'          => ['nullable', 'string', 'max:255'],
             'landing_page'    => ['nullable', 'string', 'max:500'],
             'referrer_url'    => ['nullable', 'string', 'max:500'],
+            'consent'         => ['nullable', 'boolean'],
             'page_url'        => ['nullable', 'string', 'max:500'],
             'client_ip'       => ['required', 'ip'],
             'user_agent'      => ['nullable', 'string', 'max:500'],
@@ -65,7 +66,7 @@ class WebLeadController extends Controller
 
         $phone = $this->intake->phone($data['phone']);
         if (!$phone) {
-            return response()->json(['ok' => false, 'message' => 'Please enter a valid Bangladeshi mobile number.', 'errors' => ['phone' => ['Invalid mobile number.']]], 422);
+            return response()->json(['ok' => false, 'message' => (\App\Support\Region::isBangladesh() ? 'Please enter a valid Bangladeshi mobile number.' : 'Please enter a valid mobile number.'), 'errors' => ['phone' => ['Invalid mobile number.']]], 422);
         }
 
         if ($wait = $this->intake->rateLimited($form, $data['client_ip'], $phone)) {
