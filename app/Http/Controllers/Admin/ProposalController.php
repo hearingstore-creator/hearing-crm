@@ -218,12 +218,12 @@ class ProposalController extends Controller
             $proposal->proposal_date = $request->proposal_date;
             $proposal->valid_until = $request->valid_until;
             $proposal->doctor_id = $request->doctor_id ?: null;
-            $proposal->vendor_id = $request->vendor_id ?: (auth()->check() ? auth()->user()->branchId() : null);
+            $proposal->vendor_id = auth()->user()?->branchId() ?: ($request->vendor_id ?: null);
             $proposal->template_id = $request->template_id ?: null;
             $proposal->status = $request->status ?: ProposalStatus::DRAFT->value;
             $proposal->terms_and_conditions = $request->terms_and_conditions;
             $proposal->notes = $request->notes;
-            $proposal->content = $request->content;
+            $proposal->content = \App\Support\SafeHtml::clean($request->content) ?: null;
 
             // Recipient binding
             $rtype = $request->recipient_type;
@@ -434,7 +434,7 @@ class ProposalController extends Controller
             $proposal->proposal_date = $request->proposal_date;
             $proposal->valid_until = $request->valid_until;
             $proposal->doctor_id = $request->doctor_id ?: null;
-            if ($request->filled('vendor_id')) {
+            if ($request->filled('vendor_id') && !auth()->user()?->branchId()) {
                 $proposal->vendor_id = $request->vendor_id;
             }
             $proposal->template_id = $request->template_id ?: null;
@@ -443,7 +443,7 @@ class ProposalController extends Controller
             }
             $proposal->terms_and_conditions = $request->terms_and_conditions;
             $proposal->notes = $request->notes;
-            $proposal->content = $request->content;
+            $proposal->content = \App\Support\SafeHtml::clean($request->content) ?: null;
 
             // Recipient binding
             $rtype = $request->recipient_type;

@@ -106,6 +106,7 @@ class EmployeeController extends Controller
             [
                 'name' => ['required', 'string'],
                 'mobile_no' => ['required', 'string'],
+                'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             ],
             [
                 'designation_id.required' => 'The designation field is required.',
@@ -156,6 +157,7 @@ class EmployeeController extends Controller
         $this->validate($request, [
             'name' => ['required', 'string'],
             'mobile_no' => ['required', 'string'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
         $requestAll = $request->all();

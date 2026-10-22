@@ -694,7 +694,7 @@
         {{-- Rich-Text Content (if filled) --}}
         @if(!empty($proposal->content))
         <div style="font-size: 12px; line-height: 1.6; margin: 16px 0; background: #fafafa; border: 1px solid #e5e5e5; padding: 12px; border-radius: 6px;">
-            {!! $proposal->content !!}
+            {!! \App\Support\SafeHtml::clean($proposal->content) !!}
         </div>
         @endif
 

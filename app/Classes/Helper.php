@@ -71,7 +71,8 @@ class Helper
     public static function fileUpload(?UploadedFile $file, string $uploadPath): ?string
     {
         if ($file) {
-            $extension = $file->getClientOriginalExtension();
+            // The extension comes from the file's content, never from its name: these folders are public
+            $extension = self::safeUploadExtension($file);
             $name = Str::uuid() . '.' . $extension;
             $file->move(public_path($uploadPath), $name);
             $fileUrl = $uploadPath . $name;
@@ -80,6 +81,25 @@ class Helper
         }
         
         return null;
+    }
+
+    /** Image and PDF types a public upload folder may hold. */
+    public const SAFE_UPLOAD_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'ico', 'pdf'];
+
+    /**
+     * Extension detected from the uploaded file's content, from the allow-list only.
+     * A script renamed to .png, or an image renamed to .php, is refused or saved as the image it is.
+     */
+    public static function safeUploadExtension(UploadedFile $file): string
+    {
+        $extension = strtolower((string) $file->extension());
+        if (!in_array($extension, self::SAFE_UPLOAD_EXTENSIONS, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'file' => 'Only image or PDF files can be uploaded.',
+            ]);
+        }
+
+        return $extension;
     }
 
     /**

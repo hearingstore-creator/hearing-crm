@@ -299,9 +299,9 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('doctors-due/{id}', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'getDoctorDue'])->name('doctors.due');
     Route::get('doctors-period-unsettled', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'getPeriodUnsettled'])->name('doctors.period-unsettled');
     Route::post('doctors-payment/settle/{saleId}', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'settleReferral'])->name('doctors.payment.settle');
-    Route::resource('manufacturer-return', 'ManufacturerReturnController');
+    Route::resource('manufacturer-return', 'ManufacturerReturnController')->only(['index', 'store', 'show', 'destroy']);
 
-    Route::resource('customer-return', 'CustomerReturnController');
+    Route::resource('customer-return', 'CustomerReturnController')->only(['index', 'store', 'show', 'destroy']);
     Route::post('customer/add-return', [CustomerReturnController::class, 'customerAddReturn'])->name('customer.add-return');
     Route::get('customer-return-list', [CustomerReturnController::class, 'customerReturnList'])->name('customer-return.list');
 
@@ -344,7 +344,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     // Sales Returns & Credit Notes
     Route::get('sale-returns/items/by-sale', [\App\Http\Controllers\Admin\SaleReturnController::class, 'getSaleItems'])->name('sale-returns.items');
     Route::get('sale-returns/customer-invoices', [\App\Http\Controllers\Admin\SaleReturnController::class, 'getCustomerInvoices'])->name('sale-returns.customer-invoices');
-    Route::resource('sale-returns', \App\Http\Controllers\Admin\SaleReturnController::class);
+    Route::resource('sale-returns', \App\Http\Controllers\Admin\SaleReturnController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
 
     // Repair, Replacement & Warranty Module
     // Repair, Replacement & Warranty Module (Plan B with Plan A Legacy Switch)
@@ -396,7 +396,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('income/{id}/attachment', [IncomeController::class, 'attachment'])->name('income.attachment');
     Route::post('income/{id}/approve', [IncomeController::class, 'approve'])->name('income.approve');
     Route::post('expense/{id}/approve', [\App\Http\Controllers\Admin\ExpenseController::class, 'approve'])->name('expense.approve');
-    Route::resource('income', 'IncomeController');
+    Route::resource('income', 'IncomeController')->only(['index', 'create', 'store', 'show', 'destroy']);
     Route::get('income-list', [IncomeController::class, 'incomeList'])->name('income.list');
     Route::get('expense/{id}/attachment', [\App\Http\Controllers\Admin\ExpenseController::class, 'attachment'])->name('expense.attachment');
     Route::resource('expense', 'ExpenseController');
@@ -405,7 +405,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('employee-search', [HomeController::class, 'employeeSearch'])->name('employee.search');
 
 
-    Route::resource('setting', 'SettingController');
+    Route::resource('setting', 'SettingController')->only(['create', 'update']);
 
     Route::get('settings-hub', [\App\Http\Controllers\Admin\SettingsHubController::class, 'index'])->name('settings.hub');
     Route::get('activity-log/export', [\App\Http\Controllers\Admin\ActivityLogController::class, 'export'])->name('activity-log.export');

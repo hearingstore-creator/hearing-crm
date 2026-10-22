@@ -36,6 +36,12 @@
         <!-- <env name="DB_DATABASE" value=":memory:"/> -->
         <!-- Separate database: RefreshDatabase drops every table, so never point tests at crm_local -->
         <env name="DB_DATABASE" value="crm_testing" force="true"/>
+        <env name="DB_HOST" value="127.0.0.1" force="true"/>
+        <env name="SMS_API_TOKEN" value="" force="true"/>
+        <env name="SMS_API_URL" value="http://sms.invalid" force="true"/>
+        <env name="META_PAGE_TOKEN" value="" force="true"/>
+        <env name="WHATSAPP_TOKEN" value="" force="true"/>
+        <env name="TWILIO_TOKEN" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

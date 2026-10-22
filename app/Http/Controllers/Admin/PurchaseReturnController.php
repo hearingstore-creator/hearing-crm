@@ -621,7 +621,7 @@ class PurchaseReturnController extends Controller
             $attachmentPath = $return->attachment;
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
-                $filename = 'pr_' . $return->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $filename = 'pr_' . $return->id . '_' . time() . '.' . Helper::safeUploadExtension($file);
                 $file->move(public_path('uploads/purchase_returns'), $filename);
                 $attachmentPath = 'uploads/purchase_returns/' . $filename;
             }

@@ -1443,7 +1443,7 @@ class RepairController extends Controller
                 @mkdir($uploadDir, 0777, true);
             }
 
-            $filename = 'repair_' . $job->id . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $filename = 'repair_' . $job->id . '_' . time() . '_' . uniqid() . '.' . Helper::safeUploadExtension($file);
             $file->move($uploadDir, $filename);
 
             RepairAttachment::create([
@@ -1538,7 +1538,7 @@ class RepairController extends Controller
                 if (!file_exists($uploadDir)) {
                     @mkdir($uploadDir, 0777, true);
                 }
-                $filename = 'void_' . $job->id . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $filename = 'void_' . $job->id . '_' . time() . '_' . uniqid() . '.' . Helper::safeUploadExtension($file);
                 $file->move($uploadDir, $filename);
 
                 RepairAttachment::create([

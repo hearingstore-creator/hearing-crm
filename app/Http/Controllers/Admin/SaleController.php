@@ -51,7 +51,8 @@ class SaleController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('permission:sale_list.index')->only(['index']);
+        $this->middleware('permission:sale_list.index')->only(['index', 'saleList']);
+        $this->middleware('permission:patient_due_list.index|sale_list.index')->only(['dueList']);
         $this->middleware('permission:add_sale.create')->only(['create', 'store']);
         $this->middleware('permission:sale_list.edit')->only(['edit', 'update']);
         $this->middleware('permission:sale_list.view')->only(['show']);
@@ -306,6 +307,10 @@ class SaleController extends Controller
             'delivery_date_time' => ['nullable', 'date'],
             'lab_name' => ['nullable', 'string', 'max:255'],
             'delivery_status' => ['nullable', 'in:' . implode(',', array_column(DeliveryStatus::cases(), 'value'))],
+            // Totals come from the form: at least make sure they are amounts
+            'total_amount' => ['required', 'numeric', 'min:0'],
+            'paid' => ['nullable', 'numeric', 'min:0'],
+            'total_discount' => ['nullable', 'numeric', 'min:0'],
         ];
 
         if (! empty($requestProductIds)) {
@@ -808,6 +813,10 @@ class SaleController extends Controller
             'delivery_date_time' => ['nullable', 'date'],
             'lab_name' => ['nullable', 'string', 'max:255'],
             'delivery_status' => ['nullable', 'in:' . implode(',', array_column(DeliveryStatus::cases(), 'value'))],
+            // Totals come from the form: at least make sure they are amounts
+            'total_amount' => ['required', 'numeric', 'min:0'],
+            'paid' => ['nullable', 'numeric', 'min:0'],
+            'total_discount' => ['nullable', 'numeric', 'min:0'],
         ];
 
         if (! empty($requestProductIds)) {
@@ -1176,7 +1185,7 @@ class SaleController extends Controller
                     Helper::syncSaleReferrals($saleMaster, $request, $type);
                 } else {
                     DoctorLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', '!=', 'Payment')->delete();
-                    SaleReferral::where('sale_master_id', $saleMaster->id)->delete();
+                    \App\Models\SaleReferral::where('sale_master_id', $saleMaster->id)->delete();
                 }
 
                 // Process redeem points (create, update, or give back when set to 0 on the edit form)

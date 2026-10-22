@@ -13,6 +13,8 @@ tar -czf $Bundle `
     --exclude=./storage --exclude=./public/file --exclude=./public/storage `
     --exclude=./public/wp-demo.html --exclude=./bootstrap/cache/*.php `
     --exclude=./*.zip --exclude=./*.bat --exclude=./scratch `
+    --exclude=./_rel --exclude=*.bak --exclude=*.bak2 --exclude=./recovered_chat_history.md `
+    --exclude=./phpunit.*.xml --exclude=./.phpunit.cache --exclude=./.claude `
     -C $Root .
 if ($LASTEXITCODE -ne 0) { throw 'Packaging failed.' }
 Write-Host ("    {0:N1} MB" -f ((Get-Item $Bundle).Length / 1MB))
