@@ -27,6 +27,8 @@ class SmsCampaign extends Model
         'follow_up_assigned_user',
         'follow_up_mode',
         'scheduled_at',
+        'approved_by',
+        'approval_note',
     ];
 
     protected $casts = [

@@ -29,6 +29,7 @@ class SmsController extends Controller
         $this->middleware('permission:compose_&_send.team')->only(['quickSend']);
         $this->middleware('permission:compose_&_send.create')->only(['cancelScheduled', 'testSend', 'resend', 'retryFailed']);
         $this->middleware('permission:compose_&_send.index')->only(['gatewayBalance', 'refreshDelivery']);
+        $this->middleware('permission:compose_&_send.approve')->only(['approveCampaign', 'rejectCampaign']);
     }
 
     /**
@@ -57,6 +58,8 @@ class SmsController extends Controller
 
         $usage = app(\App\Services\SmsUsage::class)->summary();
         $scheduled = SmsCampaign::where('status', 'scheduled')->orderBy('scheduled_at')->get();
+        $pendingApproval = SmsCampaign::where('status', 'pending_approval')->orderBy('id')->get();
+        $replies = \Illuminate\Support\Facades\Schema::hasTable('sms_inbound') ? \App\Models\SmsInbound::latest('id')->limit(30)->get() : collect();
         $setting = \App\Models\Setting::find(1);
         $gateway = [
             'balance'    => $setting?->sms_balance_last,
@@ -65,7 +68,7 @@ class SmsController extends Controller
             'low'        => $setting?->sms_balance_last !== null && $setting?->sms_low_balance !== null && (float) $setting->sms_balance_last <= (float) $setting->sms_low_balance,
         ];
 
-        return view('admin.sms.index', compact('stats', 'templates', 'recentLogs', 'activeCampaigns', 'automations', 'optOuts', 'usage', 'scheduled', 'gateway'));
+        return view('admin.sms.index', compact('stats', 'templates', 'recentLogs', 'activeCampaigns', 'automations', 'optOuts', 'usage', 'scheduled', 'gateway', 'pendingApproval', 'replies'));
     }
 
     /** Add a number to the SMS opt-out list. */
@@ -169,6 +172,24 @@ class SmsController extends Controller
             return redirect('admin/sms')->with('warning', "This campaign would reach {$recipientCount} people. Campaigns above {$threshold} recipients must be sent by a Super Admin.");
         }
         $parts = self::smsParts($request->message_body);
+
+        // A large broadcast to doctors / referrers / staff needs a second pair of eyes (unless the sender may approve it)
+        $teamLimit = (int) config('crm.sms_team_approval_threshold', 20);
+        if ($campaign->recipient_type === 'team' && $recipientCount > $teamLimit && !auth()->user()->hasAccess('compose_&_send.approve')) {
+            $campaign->update(['status' => \App\Enums\SmsCampaignStatus::PENDING_APPROVAL->value, 'total_recipients' => $recipientCount]);
+            try {
+                $notifier = app(\App\Services\CrmNotifier::class);
+                $notifier->send($notifier->superAdmins(), new \App\Notifications\CrmAlert(
+                    'SMS broadcast awaiting approval',
+                    auth()->user()->name . " wants to send \"{$campaign->name}\" to {$recipientCount} doctors / staff.",
+                    url('admin/sms'), 'fa-user-check', 'warning', 'sms_approval'
+                ));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('SMS approval alert skipped: ' . $e->getMessage());
+            }
+
+            return redirect('admin/sms')->with('success', "\"{$campaign->name}\" goes to {$recipientCount} doctors / staff, so it is waiting for a manager's approval. Nothing has been sent yet.");
+        }
 
         // A scheduled campaign waits: `php artisan sms:send-scheduled` (every minute) starts it at the chosen time
         if ($campaign->scheduled_at) {
@@ -547,6 +568,42 @@ class SmsController extends Controller
         $msg = "Asked about {$r['checked']} message(s): {$r['delivered']} delivered, {$r['failed']} failed, {$r['pending']} still pending, {$r['unknown']} unclear.";
 
         return redirect()->back()->with($r['error'] ? 'warning' : 'success', $r['error'] ? "Stopped: {$r['error']}. " . $msg : $msg);
+    }
+
+    /** A manager approves a waiting broadcast: it is sent now (or at its chosen time). */
+    public function approveCampaign(int $id)
+    {
+        $campaign = SmsCampaign::where('status', 'pending_approval')->findOrFail($id);
+        if ($campaign->created_by && (int) $campaign->created_by === (int) auth()->id() && !auth()->user()->isSuperAdmin()) {
+            return redirect('admin/sms')->with('warning', 'Someone else has to approve a broadcast you wrote.');
+        }
+
+        $scheduledLater = $campaign->scheduled_at && $campaign->scheduled_at->gt(now());
+        $campaign->update([
+            'status' => $scheduledLater ? \App\Enums\SmsCampaignStatus::SCHEDULED->value : \App\Enums\SmsCampaignStatus::SENDING->value,
+            'approved_by' => auth()->id(),
+        ]);
+
+        if (!$scheduledLater) {
+            $job = \App\Jobs\SendSmsCampaign::dispatch($campaign->id, $campaign->created_by);
+            if ($sendAt = self::quietHoursSendAt()) {
+                $job->delay($sendAt);
+            }
+        }
+
+        return redirect('admin/sms')->with('success', "\"{$campaign->name}\" approved" . ($scheduledLater ? ' and scheduled.' : ' and being sent.'));
+    }
+
+    public function rejectCampaign(Request $request, int $id)
+    {
+        $campaign = SmsCampaign::where('status', 'pending_approval')->findOrFail($id);
+        $campaign->update([
+            'status' => \App\Enums\SmsCampaignStatus::REJECTED->value,
+            'approved_by' => auth()->id(),
+            'approval_note' => mb_substr((string) $request->input('note'), 0, 250) ?: null,
+        ]);
+
+        return redirect('admin/sms')->with('success', "\"{$campaign->name}\" was rejected. Nothing was sent.");
     }
 
     /** Cancel a campaign that is still waiting for its send time. */

@@ -10,6 +10,8 @@ return [
 
     // SMS campaigns: above this many recipients only Super Admin may send
     'sms_campaign_admin_threshold' => (int) env('SMS_CAMPAIGN_ADMIN_THRESHOLD', 500),
+    // A broadcast to doctors, referrers or staff with more recipients than this needs approval from someone holding compose_&_send.approve
+    'sms_team_approval_threshold' => (int) env('SMS_TEAM_APPROVAL_THRESHOLD', 20),
     // Quiet hours (Bangladesh time): campaigns sent in this window wait until the end hour
     'sms_quiet_from_hour' => (int) env('SMS_QUIET_FROM_HOUR', 21),
     'sms_quiet_until_hour' => (int) env('SMS_QUIET_UNTIL_HOUR', 9),

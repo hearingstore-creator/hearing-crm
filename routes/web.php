@@ -425,6 +425,8 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('sms/quick-send', [SmsController::class, 'quickSend'])->name('sms.quick-send');
     Route::post('sms/test-send', [SmsController::class, 'testSend'])->name('sms.test-send');
     Route::post('sms/gateway-balance', [SmsController::class, 'gatewayBalance'])->name('sms.gateway-balance');
+    Route::post('sms/campaigns/{id}/approve', [SmsController::class, 'approveCampaign'])->name('sms.campaigns.approve');
+    Route::post('sms/campaigns/{id}/reject', [SmsController::class, 'rejectCampaign'])->name('sms.campaigns.reject');
     Route::post('sms-log/refresh-delivery', [SmsController::class, 'refreshDelivery'])->name('sms.log.refresh-delivery');
     Route::delete('sms/campaigns/{id}/cancel', [SmsController::class, 'cancelScheduled'])->name('sms.campaigns.cancel');
     Route::post('sms-log/retry-failed', [SmsController::class, 'retryFailed'])->name('sms.log.retry-failed');

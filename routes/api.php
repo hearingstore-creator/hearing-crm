@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Route;
 // Website lead capture – server-to-server, HMAC signed (see WebLeadController)
 Route::post('v1/leads', [WebLeadController::class, 'store'])->name('api.leads.store');
 
+// Replies to our SMS, pushed by the gateway. Switched off until SMS_INBOUND_SECRET is set (see SmsInboundController)
+Route::match(['get', 'post'], 'v1/sms/inbound', [\App\Http\Controllers\Api\SmsInboundController::class, 'receive'])->name('api.sms.inbound')->middleware('throttle:120,1,sms-inbound');
+
 // Public Website Appointment Booking API
 // Lookups are public; hold/book are signed server-to-server calls with per-visitor limits in the controller.
 // Each throttle has its own counter (3rd argument); the global 'api' limit is the overall ceiling.

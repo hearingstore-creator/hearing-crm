@@ -18,4 +18,7 @@ return [
     'api_url' => env('SMS_API_URL', null),
 
     'sender_id' => env('SMS_SENDER_ID', null),
+
+    // Shared secret for replies sent back by the gateway (POST /api/v1/sms/inbound). Empty = the endpoint is switched off.
+    'inbound_secret' => env('SMS_INBOUND_SECRET', null),
 ];

@@ -642,7 +642,7 @@ return [
                 [
                     'name' => 'Compose & Send',
                     'route' => 'admin/sms',
-                    'actions' => ['index', 'create', 'team']
+                    'actions' => ['index', 'create', 'team', 'approve']
                 ],
                 [
                     'name' => 'Templates',

@@ -37,6 +37,25 @@
         @endif
     </div>
 
+    @if (isset($pendingApproval) && $pendingApproval->count())
+        <div class="crm-table-card" style="margin-bottom: 16px; padding: 12px 16px; border-left:4px solid var(--warning-500);">
+            <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--page-text-muted); margin-bottom:6px;"><i class="fas fa-user-check mr-1"></i>Waiting for approval</div>
+            @foreach ($pendingApproval as $camp)
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:6px 0; border-top:1px solid var(--gray-100); font-size:13px;">
+                    <span><strong>{{ $camp->name }}</strong> <span class="text-muted">· {{ $camp->total_recipients }} doctors / staff · "{{ \Illuminate\Support\Str::limit($camp->message_body, 70) }}"</span></span>
+                    @if (auth()->user()->hasAccess('compose_&_send.approve'))
+                        <span style="display:flex; gap:6px; white-space:nowrap;">
+                            <form action="{{ route('sms.campaigns.approve', $camp->id) }}" method="POST">@csrf<button class="btn btn-success btn-sm" type="submit" onclick="return confirm('Send this message to {{ $camp->total_recipients }} people?');">Approve &amp; send</button></form>
+                            <form action="{{ route('sms.campaigns.reject', $camp->id) }}" method="POST" onsubmit="this.note.value = prompt('Reason (optional)') || ''">@csrf<input type="hidden" name="note"><button class="btn btn-outline-danger btn-sm" type="submit">Reject</button></form>
+                        </span>
+                    @else
+                        <span class="badge badge-warning">Waiting for a manager</span>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     @if (isset($scheduled) && $scheduled->count())
         <div class="crm-table-card" style="margin-bottom: 16px; padding: 12px 16px;">
             <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--page-text-muted); margin-bottom:6px;"><i class="far fa-clock mr-1"></i>Scheduled campaigns</div>
