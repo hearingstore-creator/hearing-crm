@@ -56,6 +56,7 @@ class DealController extends Controller
             'pipeline'     => $pipeline,
             'pipelines'    => Pipeline::usable()->get(['id', 'name', 'is_default']),
             'stages'       => $stages,
+            'trialModels'  => \App\Models\Product::withoutGlobalScopes()->leftJoin('brands as b', 'b.id', '=', 'products.brand_id')->whereNotNull('products.model')->where('products.model', '!=', '')->orderBy('b.brand_name')->orderBy('products.model')->limit(500)->get(['products.id', 'products.model', 'b.brand_name'])->mapWithKeys(fn ($p) => [$p->id => trim(($p->brand_name ? $p->brand_name . ' ' : '') . $p->model)]),
             'status'       => $status,
             'filters'      => $request->only(['q', 'branch', 'owner', 'temperature', 'source']),
             'branches'     => \App\Classes\Helper::branchOptions(),
@@ -410,6 +411,8 @@ class DealController extends Controller
                 ->where('lead_id', $deal->lead_id)->whereDate('appointment_date', '>=', today()->subDays(30))
                 ->orderBy('appointment_date')->limit(20)->get(),
             'enrollments' => \App\Models\SequenceEnrollment::with('sequence:id,name')->where('deal_id', $deal->id)->latest('id')->limit(5)->get(),
+            'trials'      => \App\Models\DealTrial::where('deal_id', $deal->id)->latest('id')->get(),
+            'trialModels' => \App\Models\Product::withoutGlobalScopes()->leftJoin('brands as b', 'b.id', '=', 'products.brand_id')->whereNotNull('products.model')->where('products.model', '!=', '')->orderBy('b.brand_name')->orderBy('products.model')->limit(500)->get(['products.id', 'products.model', 'b.brand_name'])->mapWithKeys(fn ($p) => [$p->id => trim(($p->brand_name ? $p->brand_name . ' ' : '') . $p->model)]),
             'sequenceOptions' => \App\Models\Sequence::orderByDesc('is_active')->orderBy('name')->whereHas('steps')->get(['id', 'name', 'is_active']),
             'services'   => $this->abilities()['appointment']
                 ? \App\Models\AppointmentService::where('status', 1)->orderBy('name')->get(['id', 'name']) : collect(),

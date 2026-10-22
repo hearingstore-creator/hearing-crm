@@ -228,12 +228,15 @@ class LeadController extends Controller
         return DB::transaction(function () use ($request, $stage, $gate, $referrer) {
             $leads = $request->except([
                 'activity_type', 'due_at', 'activity_note', 'assigned_user', 'stage_id', 'loss_reason', 'loss_to_whom',
-                'note', 'walk_in', 'appointment_at', 'trial_product', 'trial_return_date', 'value', '_token', 'referred_by',
+                'note', 'walk_in', 'appointment_at', 'trial_product', 'trial_return_date', 'trial_result', 'trial_product_id', 'value', '_token', 'referred_by',
             ]);
             $leads['referrer_customer_id'] = $referrer?->id;
             $leads['lead_uid'] = Lead::generateUid();
             $leads['lead_status'] = LeadStatus::NEW->value; // mirrored from the deal below
             $leads['vendor_id'] = auth()->user()->branchId() ?: $request->vendor_id;
+            $leads['marketing_consent'] = $request->boolean('marketing_consent');
+            $leads['consent_at'] = $request->boolean('marketing_consent') ? now() : null;
+            $leads['consent_source'] = $request->boolean('marketing_consent') ? 'Told staff (' . auth()->user()->name . ')' : null;
             if (!empty($leads['campaign_id'])) {
                 $leads['utm_campaign'] = \App\Models\MarketingCampaign::find($leads['campaign_id'])?->code;
             }

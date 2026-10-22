@@ -142,7 +142,7 @@ class SmsController extends Controller
         ]);
 
         $this->guardTeam($request->audience_type);
-        if ($request->filled('scheduled_at') && \Illuminate\Support\Carbon::parse($request->scheduled_at, 'Asia/Dhaka')->lte(now())) {
+        if ($request->filled('scheduled_at') && \Illuminate\Support\Carbon::parse($request->scheduled_at, config('app.timezone'))->lte(now())) {
             return redirect()->back()->withInput()->with('warning', 'Pick a time in the future for a scheduled campaign (Bangladesh time).');
         }
 
@@ -157,7 +157,7 @@ class SmsController extends Controller
             'follow_up_assigned_user' => $request->follow_up_assigned_user ?: auth()->id(),
             'follow_up_mode' => $request->follow_up_mode ?: null,
             'status' => $request->filled('scheduled_at') ? \App\Enums\SmsCampaignStatus::SCHEDULED->value : \App\Enums\SmsCampaignStatus::SENDING->value,
-            'scheduled_at' => $request->filled('scheduled_at') ? \Illuminate\Support\Carbon::parse($request->scheduled_at, 'Asia/Dhaka')->setTimezone(config('app.timezone')) : null,
+            'scheduled_at' => $request->filled('scheduled_at') ? \Illuminate\Support\Carbon::parse($request->scheduled_at, config('app.timezone'))->setTimezone(config('app.timezone')) : null,
         ]);
 
         // Cost guard: how many people, how many SMS parts each, and who may send that many
@@ -193,7 +193,7 @@ class SmsController extends Controller
 
         // A scheduled campaign waits: `php artisan sms:send-scheduled` (every minute) starts it at the chosen time
         if ($campaign->scheduled_at) {
-            $when = $campaign->scheduled_at->copy()->timezone('Asia/Dhaka')->format('g:i A, d M Y');
+            $when = $campaign->scheduled_at->copy()->timezone(config('app.timezone'))->format('g:i A, d M Y');
 
             return redirect('admin/sms')->with('success', "Campaign \"{$campaign->name}\" is scheduled for {$when}: {$recipientCount} recipients now, {$parts} SMS part" . ($parts > 1 ? 's' : '') . ' each. The audience is worked out again when it is sent.');
         }
@@ -219,7 +219,7 @@ class SmsController extends Controller
      */
     public static function quietHoursSendAt(): ?\Carbon\Carbon
     {
-        $now = now('Asia/Dhaka');
+        $now = now(config('app.timezone'));
         $from = (int) config('crm.sms_quiet_from_hour', 21);
         $until = (int) config('crm.sms_quiet_until_hour', 9);
         if ($now->hour < $from && $now->hour >= $until) {
@@ -554,7 +554,7 @@ class SmsController extends Controller
         return response()->json([
             'success'    => $r['ok'],
             'balance'    => $r['balance'] !== null ? number_format($r['balance'], 2) : null,
-            'checked_at' => $setting?->sms_balance_checked_at?->copy()->timezone('Asia/Dhaka')->format('d M, g:i A'),
+            'checked_at' => $setting?->sms_balance_checked_at?->copy()->timezone(config('app.timezone'))->format('d M, g:i A'),
             'low'        => $r['ok'] && $setting?->sms_low_balance !== null && $r['balance'] <= (float) $setting->sms_low_balance,
             'message'    => $r['ok'] ? 'Balance updated.' : ($r['error'] . ' The gateway only answers from the server addresses it has whitelisted.'),
             'raw'        => $r['ok'] ? null : mb_substr(preg_replace('/"api_token"\s*:\s*"[^"]*"/', '"api_token":"***"', $r['raw']), 0, 300),

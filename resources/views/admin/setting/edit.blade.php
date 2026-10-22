@@ -33,6 +33,37 @@
                                             </div>
                                         </div>
                                         <div class="form-group row">
+                                            <label class="col-sm-4 col-form-label">Region:</label>
+                                            <div class="col-sm-8" style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                                                <input type="text" class="form-control" name="currency_code" maxlength="3" value="{{ $setting->currency_code ?? 'BDT' }}" placeholder="Currency code (BDT)" aria-label="Currency code">
+                                                <input type="text" class="form-control" name="currency_symbol" maxlength="8" value="{{ $setting->currency_symbol ?? '৳' }}" placeholder="Symbol" aria-label="Currency symbol">
+                                                <input type="text" class="form-control" name="country_code" maxlength="2" value="{{ $setting->country_code ?? 'BD' }}" placeholder="Country (BD)" aria-label="Country code">
+                                                <input type="text" class="form-control" name="phone_prefix" maxlength="5" value="{{ $setting->phone_prefix ?? '880' }}" placeholder="Phone code (880)" aria-label="Phone country code">
+                                                <select name="timezone" class="form-control" style="grid-column: span 2;" aria-label="Time zone">
+                                                    @foreach (timezone_identifiers_list() as $tz)<option value="{{ $tz }}" @selected(($setting->timezone ?? 'Asia/Dhaka') === $tz)>{{ $tz }}</option>@endforeach
+                                                </select>
+                                                <input type="hidden" name="marketing_needs_consent" value="0">
+                                                <label class="mb-0" style="font-weight:400; grid-column: span 2;"><input type="checkbox" name="marketing_needs_consent" value="1" @checked($setting->marketing_needs_consent ?? false)> Promotional SMS only to people who agreed (consent)</label>
+                                                <small class="text-muted" style="grid-column: span 2;">For a new clinic's own installation. Changing the time zone on a running system shifts how stored times read.</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="upgrade_after_months" class="col-sm-4 col-form-label">Upgrade reminder after (months):</label>
+                                            <div class="col-sm-8">
+                                                <input type="number" min="6" max="240" class="form-control" id="upgrade_after_months" name="upgrade_after_months" value="{{ $setting->upgrade_after_months ?? 36 }}">
+                                                <input type="hidden" name="upgrade_opens_deal" value="0">
+                                                <label class="mb-0 mt-1" style="font-weight:400;"><input type="checkbox" name="upgrade_opens_deal" value="1" @checked($setting->upgrade_opens_deal ?? false)> Also open an "Upgrade" deal with a call for the seller</label>
+                                                <small class="text-muted d-block">The upgrade SMS itself is switched on in SMS Center → Automation.</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="nps_after_days" class="col-sm-4 col-form-label">Satisfaction survey after (days):</label>
+                                            <div class="col-sm-8">
+                                                <input type="number" min="1" max="90" class="form-control" id="nps_after_days" name="nps_after_days" value="{{ $setting->nps_after_days ?? 7 }}">
+                                                <small class="text-muted">Counted from delivery. Switch on "Satisfaction Survey" in SMS Center → Automation.</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
                                             <label for="return_window_days" class="col-sm-4 col-form-label">Return Window (days):</label>
                                             <div class="col-sm-8">
                                                 <input type="number" min="0" max="365" class="form-control" id="return_window_days"

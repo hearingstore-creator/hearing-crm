@@ -21,7 +21,7 @@
         for (var i = 0; i < B.stages.length; i++) { if (B.stages[i].id === id) { return B.stages[i]; } }
         return null;
     }
-    function money(v) { return '৳' + Math.round(+v || 0).toLocaleString('en-US'); }
+    function money(v) { return (window.CRM_CURRENCY || '৳') + Math.round(+v || 0).toLocaleString('en-US'); }
     function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
 
     function toast(msg, type) {

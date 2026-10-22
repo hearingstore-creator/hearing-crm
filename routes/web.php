@@ -42,6 +42,15 @@ Route::get('/', function () {
 // Public website lead form (open directly or as a popup via embed.js)
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('f/{key}', [\App\Http\Controllers\PublicLeadFormController::class, 'show'])->name('public.form');
+    // One-question satisfaction survey from an SMS link
+    Route::get('s/{token}', [\App\Http\Controllers\PublicSurveyController::class, 'show'])->name('public.survey')->middleware('throttle:60,1');
+    Route::post('s/{token}', [\App\Http\Controllers\PublicSurveyController::class, 'answer'])->name('public.survey.answer')->middleware('throttle:10,1');
+    // Google Ads offline conversions (scheduled fetch by Google; key = GOOGLE_CONVERSIONS_KEY)
+    Route::get('exports/google-ads-conversions.csv', [\App\Http\Controllers\Api\ConversionExportController::class, 'google'])->name('exports.google-conversions')->middleware('throttle:30,1');
+    // A quotation the patient opens from its private link, accepts or declines
+    Route::get('q/{token}', [\App\Http\Controllers\PublicQuoteController::class, 'show'])->name('public.quote')->middleware('throttle:60,1');
+    Route::post('q/{token}/accept', [\App\Http\Controllers\PublicQuoteController::class, 'accept'])->name('public.quote.accept')->middleware('throttle:10,1');
+    Route::post('q/{token}/decline', [\App\Http\Controllers\PublicQuoteController::class, 'decline'])->name('public.quote.decline')->middleware('throttle:10,1');
     Route::get('f/{key}/embed.js', [\App\Http\Controllers\PublicLeadFormController::class, 'embed'])->name('public.form.embed');
     Route::post('f/{key}', [\App\Http\Controllers\PublicLeadFormController::class, 'submit'])
         ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class)->name('public.form.submit');
@@ -74,6 +83,9 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('/dashboard/today/chart/{chart}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'chart'])->name('dashboard.today.chart');
     Route::get('/dashboard/audience/{segment}', [\App\Http\Controllers\Admin\DashboardAudienceController::class, 'export'])->name('dashboard.audience.export');
     Route::resource('leads', 'LeadController');
+    // A person's data request: download everything, or erase them (Super Admin)
+    Route::get('leads/{id}/data-export', [\App\Http\Controllers\Admin\PersonDataController::class, 'export'])->whereNumber('id')->name('leads.data-export');
+    Route::post('leads/{id}/erase', [\App\Http\Controllers\Admin\PersonDataController::class, 'erase'])->whereNumber('id')->name('leads.erase');
     // Old add/edit follow-up forms retired: activities are added from the lead profile / Deals board
     Route::patch('leads/follow-ups/{id}/complete', [LeadController::class, 'completeFollowUp']);
     Route::post('leads-import', [LeadController::class, 'importLeads']);
@@ -142,6 +154,9 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('sequences/{id}/toggle', [\App\Http\Controllers\Admin\SequenceController::class, 'toggle'])->whereNumber('id')->name('sequences.toggle');
     Route::delete('sequences/{id}', [\App\Http\Controllers\Admin\SequenceController::class, 'destroy'])->whereNumber('id')->name('sequences.destroy');
     Route::post('deals/{id}/sequence', [\App\Http\Controllers\Admin\SequenceController::class, 'enroll'])->whereNumber('id')->name('deals.sequence.start');
+    Route::post('deals/{id}/trials', [\App\Http\Controllers\Admin\DealTrialController::class, 'store'])->whereNumber('id')->name('deals.trials.store');
+    Route::post('deals/{id}/trials/take-home', [\App\Http\Controllers\Admin\DealTrialController::class, 'takeHome'])->whereNumber('id')->name('deals.trials.take-home');
+    Route::post('deal-trials/{id}/close', [\App\Http\Controllers\Admin\DealTrialController::class, 'close'])->whereNumber('id')->name('deals.trials.close');
     Route::post('sequence-enrollments/{id}/stop', [\App\Http\Controllers\Admin\SequenceController::class, 'stop'])->whereNumber('id')->name('deals.sequence.stop');
 
     // Marketing: campaigns, monthly spend (books the advertising expense), and the return report
@@ -213,6 +228,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('proposal/{id}/status', [\App\Http\Controllers\Admin\ProposalController::class, 'updateStatus'])->name('proposal.status');
     Route::post('proposal/{id}/convert-to-sale', [\App\Http\Controllers\Admin\ProposalController::class, 'convertToSale'])->name('proposal.convert');
     Route::post('proposal/{id}/email', [\App\Http\Controllers\Admin\ProposalController::class, 'sendEmail'])->name('proposal.email');
+    Route::post('proposal/{id}/share', [\App\Http\Controllers\Admin\ProposalController::class, 'share'])->name('proposal.share');
     Route::get('proposal/{id}/pdf', [\App\Http\Controllers\Admin\ProposalController::class, 'downloadPdf'])->name('proposal.pdf');
     Route::get('proposal-add-row-item', [\App\Http\Controllers\Admin\ProposalController::class, 'addRowItem'])->name('proposal.add-row');
     Route::resource('proposal', 'ProposalController');
@@ -288,9 +304,9 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('doctors-due/{id}', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'getDoctorDue'])->name('doctors.due');
     Route::get('doctors-period-unsettled', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'getPeriodUnsettled'])->name('doctors.period-unsettled');
     Route::post('doctors-payment/settle/{saleId}', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'settleReferral'])->name('doctors.payment.settle');
-    Route::resource('manufacturer-return', 'ManufacturerReturnController');
+    Route::resource('manufacturer-return', 'ManufacturerReturnController')->only(['index', 'store', 'show', 'destroy']);
 
-    Route::resource('customer-return', 'CustomerReturnController');
+    Route::resource('customer-return', 'CustomerReturnController')->only(['index', 'store', 'show', 'destroy']);
     Route::post('customer/add-return', [CustomerReturnController::class, 'customerAddReturn'])->name('customer.add-return');
     Route::get('customer-return-list', [CustomerReturnController::class, 'customerReturnList'])->name('customer-return.list');
 
@@ -333,7 +349,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     // Sales Returns & Credit Notes
     Route::get('sale-returns/items/by-sale', [\App\Http\Controllers\Admin\SaleReturnController::class, 'getSaleItems'])->name('sale-returns.items');
     Route::get('sale-returns/customer-invoices', [\App\Http\Controllers\Admin\SaleReturnController::class, 'getCustomerInvoices'])->name('sale-returns.customer-invoices');
-    Route::resource('sale-returns', \App\Http\Controllers\Admin\SaleReturnController::class);
+    Route::resource('sale-returns', \App\Http\Controllers\Admin\SaleReturnController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
 
     // Repair, Replacement & Warranty Module
     // Repair, Replacement & Warranty Module (Plan B with Plan A Legacy Switch)
@@ -381,15 +397,20 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
 
 
     Route::resource('income-expense-head', 'IncomeExpenseHeadController');
-    Route::resource('income', 'IncomeController');
+    Route::get('voucher-book', [\App\Http\Controllers\Admin\VoucherBookController::class, 'index'])->name('voucher-book');
+    Route::get('income/{id}/attachment', [IncomeController::class, 'attachment'])->name('income.attachment');
+    Route::post('income/{id}/approve', [IncomeController::class, 'approve'])->name('income.approve');
+    Route::post('expense/{id}/approve', [\App\Http\Controllers\Admin\ExpenseController::class, 'approve'])->name('expense.approve');
+    Route::resource('income', 'IncomeController')->only(['index', 'create', 'store', 'show', 'destroy']);
     Route::get('income-list', [IncomeController::class, 'incomeList'])->name('income.list');
+    Route::get('expense/{id}/attachment', [\App\Http\Controllers\Admin\ExpenseController::class, 'attachment'])->name('expense.attachment');
     Route::resource('expense', 'ExpenseController');
 
     Route::get('employee-list', [EmployeeController::class, 'employeeList'])->name('employee.list');
     Route::get('employee-search', [HomeController::class, 'employeeSearch'])->name('employee.search');
 
 
-    Route::resource('setting', 'SettingController');
+    Route::resource('setting', 'SettingController')->only(['create', 'update']);
 
     Route::get('settings-hub', [\App\Http\Controllers\Admin\SettingsHubController::class, 'index'])->name('settings.hub');
     Route::get('activity-log/export', [\App\Http\Controllers\Admin\ActivityLogController::class, 'export'])->name('activity-log.export');

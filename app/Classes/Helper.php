@@ -71,7 +71,8 @@ class Helper
     public static function fileUpload(?UploadedFile $file, string $uploadPath): ?string
     {
         if ($file) {
-            $extension = $file->getClientOriginalExtension();
+            // The extension comes from the file's content, never from its name: these folders are public
+            $extension = self::safeUploadExtension($file);
             $name = Str::uuid() . '.' . $extension;
             $file->move(public_path($uploadPath), $name);
             $fileUrl = $uploadPath . $name;
@@ -80,6 +81,25 @@ class Helper
         }
         
         return null;
+    }
+
+    /** Image and PDF types a public upload folder may hold. */
+    public const SAFE_UPLOAD_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'ico', 'pdf'];
+
+    /**
+     * Extension detected from the uploaded file's content, from the allow-list only.
+     * A script renamed to .png, or an image renamed to .php, is refused or saved as the image it is.
+     */
+    public static function safeUploadExtension(UploadedFile $file): string
+    {
+        $extension = strtolower((string) $file->extension());
+        if (!in_array($extension, self::SAFE_UPLOAD_EXTENSIONS, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'file' => 'Only image or PDF files can be uploaded.',
+            ]);
+        }
+
+        return $extension;
     }
 
     /**
@@ -99,11 +119,24 @@ class Helper
         if (str_starts_with($digits, '00')) {
             $digits = substr($digits, 2);
         }
-        if (strlen($digits) === 11 && str_starts_with($digits, '01')) {
-            return '88' . $digits;
+        $prefix = \App\Support\Region::phonePrefix();
+        if ($prefix === '880') {
+            if (strlen($digits) === 11 && str_starts_with($digits, '01')) {
+                return '88' . $digits;
+            }
+            if (strlen($digits) === 10 && str_starts_with($digits, '1')) {
+                return '880' . $digits;
+            }
+
+            return substr($digits, 0, 20);
         }
-        if (strlen($digits) === 10 && str_starts_with($digits, '1')) {
-            return '880' . $digits;
+
+        // Other countries: a local number (leading 0, or short) gets the country code; an international one is kept
+        $international = str_starts_with(trim((string) $phone), '+') || str_starts_with((string) preg_replace('/\s+/', '', (string) $phone), '00');
+        if (!$international && !str_starts_with($digits, $prefix)) {
+            $digits = $prefix . ltrim($digits, '0');
+        } elseif (!$international && str_starts_with($digits, $prefix . '0')) {
+            $digits = $prefix . substr($digits, strlen($prefix) + 1);
         }
 
         return substr($digits, 0, 20);
@@ -604,9 +637,10 @@ class Helper
      * @param string $invoiceNo
      * @param ?string $refInvoiceNo
      * @param ?string $type
+     * @param array $extra Optional Debit Voucher columns (voucher_no, payee_name, payment_method, bank_name, transaction_no, attachment_path)
      * @return bool
      */
-    public static function expenseLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type): bool
+    public static function expenseLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type, array $extra = []): bool
     {
         $ledger = new Ledger();
 
@@ -628,6 +662,11 @@ class Helper
         $ledger->amount_type = self::$expense;
         $ledger->type = $type;
         $ledger->ref_invoice_no = $refInvoiceNo;
+        foreach (['voucher_no', 'payee_name', 'payment_method', 'bank_name', 'transaction_no', 'attachment_path', 'status'] as $col) {
+            if (!empty($extra[$col])) {
+                $ledger->{$col} = $extra[$col];
+            }
+        }
         $ledger->save();
 
         return true;
@@ -640,9 +679,10 @@ class Helper
      * @param string $invoiceNo
      * @param ?string $refInvoiceNo
      * @param ?string $type
+     * @param array $extra Optional voucher columns (voucher_no, payee_name, payment_method, bank_name, transaction_no, attachment_path, status)
      * @return bool
      */
-    public static function incomeLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type): bool
+    public static function incomeLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type, array $extra = []): bool
     {
         $ledger = new Ledger();
 
@@ -664,9 +704,30 @@ class Helper
         $ledger->amount_type = self::$income;
         $ledger->type = $type;
         $ledger->ref_invoice_no = $refInvoiceNo;
+        foreach (['voucher_no', 'payee_name', 'payment_method', 'bank_name', 'transaction_no', 'attachment_path', 'status'] as $col) {
+            if (!empty($extra[$col])) {
+                $ledger->{$col} = $extra[$col];
+            }
+        }
         $ledger->save();
 
         return true;
+    }
+
+    /**
+     * Next voucher number for a date, e.g. DV-20261022-0001 (prefix 'DV') or CV-... for credit vouchers.
+     * Looks across all branches (no branch scope) so numbers never repeat.
+     */
+    public static function nextVoucherNo(string $prefix, string $date): string
+    {
+        $stem = $prefix . '-' . date('Ymd', strtotime($date)) . '-';
+        $last = Ledger::withoutGlobalScopes()
+            ->where('voucher_no', 'like', $stem . '%')
+            ->orderByDesc('voucher_no')
+            ->value('voucher_no');
+        $seq = $last ? ((int) substr($last, strlen($stem))) + 1 : 1;
+
+        return $stem . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
     }
 
     /**

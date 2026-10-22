@@ -245,6 +245,9 @@ class SequenceService
         if (SmsAutomationService::isOptedOut($phone)) {
             return ['skipped', 'Number opted out of SMS'];
         }
+        if (!\App\Support\Region::mayMarketTo('lead', (int) $lead->id)) {
+            return ['skipped', 'No marketing consent'];
+        }
         if (!app(SmsAutomationService::class)->underDailyCap()) {
             return ['skipped', 'Daily automatic SMS limit reached'];
         }

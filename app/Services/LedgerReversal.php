@@ -55,7 +55,7 @@ class LedgerReversal
             ]);
 
             $mirror = $original;
-            unset($mirror['id'], $mirror['deleted_at'], $mirror['deleted_by'], $mirror['updated_by']);
+            unset($mirror['id'], $mirror['deleted_at'], $mirror['deleted_by'], $mirror['updated_by'], $mirror['voucher_no']);
             $mirror['type'] = mb_substr($baseType . ' Reversal', 0, 191);
             $mirror['details'] = $note . ($row->details ? " | Original: {$row->details}" : '');
             $mirror['created_at'] = $now;

@@ -34,6 +34,9 @@ class SmsAutomationService
             if ($trigger->isPromotional() && self::isOptedOut($phone)) {
                 return false;
             }
+            if ($trigger->isPromotional() && !\App\Support\Region::mayMarketTo($recipientType, $recipientId)) {
+                return false;   // consent rule on and this person has not agreed
+            }
             if (!$this->underDailyCap()) {
                 Log::warning('Automation SMS daily cap reached', ['trigger' => $trigger->value]);
                 return false;

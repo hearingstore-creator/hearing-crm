@@ -54,6 +54,11 @@ class SmsService
                 continue;
             }
             $seen[$normalized] = true;
+            if (!($recipient instanceof \App\Support\SmsPerson)
+                && !\App\Support\Region::mayMarketTo($recipient instanceof Customer ? 'customer' : 'lead', (int) $recipient->id)) {
+                $skipped++;   // no marketing consent (consent rule on)
+                continue;
+            }
 
             $data = $this->buildRecipientData($recipient);
             $message = $this->replaceVariables($campaign->message_body, $data);

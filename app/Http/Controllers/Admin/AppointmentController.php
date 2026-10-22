@@ -479,7 +479,7 @@ class AppointmentController extends Controller
      */
     public function today(Request $request): View
     {
-        $tz = 'Asia/Dhaka';
+        $tz = config('app.timezone');
         $today = Carbon::today($tz)->format('Y-m-d');
 
         $branchId = $request->filled('branch_id') ? (int) $request->branch_id : (Helper::currentBranchId() ?? 2);
@@ -746,7 +746,7 @@ class AppointmentController extends Controller
         $service = AppointmentService::findOrFail($validated['service_id']);
         $duration = $service->duration_minutes ?: 45;
 
-        $tz = 'Asia/Dhaka';
+        $tz = config('app.timezone');
         $now = Carbon::now($tz);
         $minRem = $now->minute % 15;
         if ($minRem > 0) {
@@ -892,7 +892,7 @@ class AppointmentController extends Controller
             ->get(['id', 'name', 'type']);
 
         // Stats
-        $today = Carbon::today('Asia/Dhaka')->format('Y-m-d');
+        $today = Carbon::today(config('app.timezone'))->format('Y-m-d');
         $statsQuery = Appointment::whereNotNull('status');
         if ($branchId) {
             $statsQuery->where('branch_id', $branchId);

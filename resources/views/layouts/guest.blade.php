@@ -21,10 +21,14 @@
         
         <!-- Theme Toggle -->
         <script src="{{ asset('assets/js/theme-toggle.js') }}"></script>
+
+        @stack('styles')
     </head>
     <body>
         <div class="font-sans text-gray-900 antialiased">
             {{ $slot }}
         </div>
+
+        @stack('scripts')
     </body>
 </html>

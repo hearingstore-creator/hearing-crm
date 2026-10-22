@@ -215,6 +215,6 @@ class SmsGatewayReportsTest extends TestCase
         $this->assertEquals(2.0, $months[0]['cost']);
         $this->assertSame(3, $months[1]['parts']);
 
-        $this->actingAs($this->admin)->get('/admin/sms-analytics')->assertSuccessful()->assertSee('Delivery and monthly cost')->assertSee('Eid offer')->assertSee('৳1.50');
+        $this->actingAs($this->admin)->get('/admin/sms-analytics')->assertSuccessful()->assertSee('Delivery report')->assertSee('Monthly activity')->assertSee('Eid offer')->assertSee('৳1.50');
     }
 }

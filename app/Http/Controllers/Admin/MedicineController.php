@@ -149,6 +149,7 @@ class MedicineController extends Controller
                 'price' => ['required'],
                 'cost' => ['required'],
                 'status' => ['required'],
+                'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             ],
             [
                 'unit_id.required' => 'The unit field is required.',
@@ -206,6 +207,7 @@ class MedicineController extends Controller
                 'price' => ['required'],
                 'cost' => ['required'],
                 'status' => ['required'],
+                'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             ],
             [
                 'unit_id.required' => 'The unit field is required.',

@@ -156,7 +156,7 @@
 
         <div class="lf-field" data-field="phone">
             <label class="lf-label" for="lf-phone">Mobile number <span class="req">*</span></label>
-            <div class="lf-input"><input type="tel" id="lf-phone" name="phone" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX" required><i class="fas fa-mobile-screen"></i></div>
+            <div class="lf-input"><input type="tel" id="lf-phone" name="phone" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="{{ \App\Support\Region::isBangladesh() ? '01XXXXXXXXX' : '+' . \App\Support\Region::phonePrefix() . ' …' }}" required><i class="fas fa-mobile-screen"></i></div>
             <div class="lf-err"></div>
         </div>
 
@@ -179,6 +179,11 @@
         <div class="lf-field" data-field="message">
             <label class="lf-label" for="lf-message">Anything we should know? <em>(optional)</em></label>
             <div class="lf-input"><textarea id="lf-message" name="message" maxlength="2000" rows="3" placeholder="e.g. My father has trouble hearing on phone calls"></textarea></div>
+            <div class="lf-err"></div>
+        </div>
+
+        <div class="lf-field" data-field="consent">
+            <label class="lf-consent" style="display:flex; gap:8px; align-items:flex-start; font-size:13px;"><input type="checkbox" name="consent" value="1" id="lf-consent" @if (\App\Support\Region::needsConsent()) required @endif style="margin-top:3px;"><span>I agree to receive messages about hearing care and offers. I can say STOP at any time.@if (!\App\Support\Region::needsConsent()) <em>(optional)</em>@endif</span></label>
             <div class="lf-err"></div>
         </div>
 
@@ -235,7 +240,7 @@
         var name = document.getElementById('lf-name').value.trim(), phone = document.getElementById('lf-phone').value.replace(/[\s-]/g, '');
         var errs = {};
         if (name.length < 2) { errs.name = ['Please enter your name.']; }
-        if (!/^(\+?88)?01[3-9]\d{8}$/.test(phone)) { errs.phone = ['Please enter a valid mobile number (e.g. 017XXXXXXXX).']; }
+        if ({{ \App\Support\Region::isBangladesh() ? 'true' : 'false' }} ? !/^(\+?88)?01[3-9]\d{8}$/.test(phone) : !/^\+?\d{8,15}$/.test(phone)) { errs.phone = ['Please enter a valid mobile number{{ \App\Support\Region::isBangladesh() ? ' (e.g. 017XXXXXXXX)' : ' with the country code' }}.']; }
         if (Object.keys(errs).length) { showError('', errs); return; }
 
         var data = new FormData(form);

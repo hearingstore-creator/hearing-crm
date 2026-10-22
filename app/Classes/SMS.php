@@ -10,6 +10,9 @@ class SMS {
      */
     public function singleSms($msisdn, $messageBody, $csmsId)
     {
+        if ($this->driver() !== 'sslwireless') {
+            return $this->other('singleSms', [$msisdn, $messageBody, $csmsId]);
+        }
         $params = [
             "api_token" => config('sms.api_token'),
             "sid" => config('sms.sender_id'),
@@ -32,6 +35,9 @@ class SMS {
      */
     public function bulkSms(array $msisdn, $messageBody, $batchCsmsId)
     {
+        if ($this->driver() !== 'sslwireless') {
+            return $this->other('bulkSms', [$msisdn, $messageBody, $batchCsmsId]);
+        }
         $params = [
             "api_token" => config('sms.api_token'),
             "sid" => config('sms.sender_id'),
@@ -49,6 +55,9 @@ class SMS {
      */
     public function dynamicBulkSms(array $smsData)
     {
+        if ($this->driver() !== 'sslwireless') {
+            return $this->other('dynamicBulkSms', [$smsData]);
+        }
         $params = [
             "api_token" => config('sms.api_token'),
             "sid"       => config('sms.sender_id'),
@@ -61,6 +70,9 @@ class SMS {
     /** Remaining credit on the SSL Wireless account (POST /api/v3/balance). */
     public function balance()
     {
+        if ($this->driver() !== 'sslwireless') {
+            return $this->other('balance', []);
+        }
         $params = ["api_token" => config('sms.api_token'), "sid" => config('sms.sender_id')];
         $url = trim(config('sms.api_url'), '/') . "/api/v3/balance";
 
@@ -70,6 +82,9 @@ class SMS {
     /** Delivery status of one message by the csms_id we sent it with (POST /api/v3/sms-status). */
     public function status($csmsId)
     {
+        if ($this->driver() !== 'sslwireless') {
+            return $this->other('status', [$csmsId]);
+        }
         $params = ["api_token" => config('sms.api_token'), "sid" => config('sms.sender_id'), "csms_id" => $csmsId];
         $url = trim(config('sms.api_url'), '/') . "/api/v3/sms-status";
 
@@ -101,5 +116,81 @@ class SMS {
         curl_close($ch);
     
         return $response;
+    }
+    // ── other providers ──────────────────────────────────────────────────
+    // Answers are shaped like SSL Wireless replies, so the rest of the CRM (logs, delivery reports, balance) works the same.
+
+    protected function driver(): string
+    {
+        return (string) (config('sms.driver') ?: 'sslwireless');
+    }
+
+    protected function other(string $method, array $args)
+    {
+        return match ($this->driver()) {
+            'twilio' => $this->twilio($method, $args),
+            default => $this->logOnly($method, $args),
+        };
+    }
+
+    protected function logOnly(string $method, array $args)
+    {
+        \Illuminate\Support\Facades\Log::info('SMS (log driver) ' . $method, ['args' => $args]);
+
+        return match ($method) {
+            'balance' => json_encode(['status' => 'FAILED', 'error_message' => 'The log driver has no balance']),
+            'status' => json_encode(['status' => 'SUCCESS', 'smsinfo' => [['sms_status' => 'Delivered']]]),
+            'dynamicBulkSms' => json_encode(['status' => 'SUCCESS', 'smsinfo' => array_map(fn ($m) => ['csms_id' => $m['csms_id'], 'sms_status' => 'SUCCESS'], $args[0])]),
+            default => json_encode(['status' => 'SUCCESS', 'smsinfo' => [['sms_status' => 'SUCCESS', 'csms_id' => $args[2] ?? null]]]),
+        };
+    }
+
+    protected function twilio(string $method, array $args)
+    {
+        $sid = (string) config('sms.twilio.sid');
+        $token = (string) config('sms.twilio.token');
+        if ($sid === '' || $token === '') {
+            return json_encode(['status' => 'FAILED', 'error_message' => 'TWILIO_SID / TWILIO_TOKEN not set']);
+        }
+        $base = "https://api.twilio.com/2010-04-01/Accounts/{$sid}";
+        $http = fn () => \Illuminate\Support\Facades\Http::withBasicAuth($sid, $token)->timeout(15);
+
+        $send = function (string $to, string $body, ?string $csmsId) use ($http, $base) {
+            $digits = preg_replace('/\D/', '', (string) \App\Classes\Helper::normalizePhone($to));
+            $r = $http()->asForm()->post("{$base}/Messages.json", ['To' => '+' . $digits, 'From' => config('sms.twilio.from'), 'Body' => $body]);
+            if ($r->successful()) {
+                return ['csms_id' => $csmsId, 'sms_status' => 'SUCCESS', 'reference_id' => $r->json('sid')];
+            }
+
+            return ['csms_id' => $csmsId, 'sms_status' => 'FAILED', 'status_message' => $r->json('message') ?? ('HTTP ' . $r->status())];
+        };
+
+        switch ($method) {
+            case 'singleSms':
+                $info = $send((string) $args[0], (string) $args[1], $args[2] ?? null);
+                return json_encode($info['sms_status'] === 'SUCCESS'
+                    ? ['status' => 'SUCCESS', 'smsinfo' => [$info]]
+                    : ['status' => 'FAILED', 'error_message' => $info['status_message'], 'smsinfo' => [$info]]);
+            case 'bulkSms':
+                return json_encode(['status' => 'SUCCESS', 'smsinfo' => array_map(fn ($to) => $send((string) $to, (string) $args[1], null), (array) $args[0])]);
+            case 'dynamicBulkSms':
+                return json_encode(['status' => 'SUCCESS', 'smsinfo' => array_map(fn ($m) => $send((string) $m['msisdn'], (string) $m['text'], $m['csms_id'] ?? null), (array) $args[0])]);
+            case 'balance':
+                $r = $http()->get("{$base}/Balance.json");
+                return $r->successful()
+                    ? json_encode(['status' => 'SUCCESS', 'balance' => $r->json('balance'), 'currency' => $r->json('currency')])
+                    : json_encode(['status' => 'FAILED', 'error_message' => $r->json('message') ?? ('HTTP ' . $r->status())]);
+            case 'status':
+                $ref = \Illuminate\Support\Facades\DB::table('sms_logs')->where('csms_id', $args[0])->value('gateway_ref');
+                if (!$ref) {
+                    return json_encode(['status' => 'FAILED', 'error_message' => 'No Twilio message id for this SMS']);
+                }
+                $r = $http()->get("{$base}/Messages/{$ref}.json");
+                return $r->successful()
+                    ? json_encode(['status' => 'SUCCESS', 'smsinfo' => [['sms_status' => $r->json('status'), 'status_message' => $r->json('error_message')]]])
+                    : json_encode(['status' => 'FAILED', 'error_message' => $r->json('message') ?? ('HTTP ' . $r->status())]);
+        }
+
+        return json_encode(['status' => 'FAILED', 'error_message' => 'Unknown SMS call']);
     }
 }

@@ -59,7 +59,7 @@
     }
 
     var money = new Intl.NumberFormat('en-IN', {maximumFractionDigits: 0});
-    function fmt(v, format) { return (format === 'money' ? '৳' : '') + money.format(v || 0); }
+    function fmt(v, format) { return (format === 'money' ? (window.CRM_CURRENCY || '৳') : '') + money.format(v || 0); }
 
     var tileThemes = {
         sales_today:     { accent: '#10b981', halo: '#10b981' },
@@ -369,8 +369,8 @@
                                 font: { size: 11, family: 'Inter, system-ui, sans-serif' },
                                 color: '#64748b',
                                 callback: function (v) {
-                                    if (v >= 100000) return '৳' + (v / 100000).toFixed(1) + 'L';
-                                    if (v >= 1000) return '৳' + (v / 1000).toFixed(0) + 'k';
+                                    if (v >= 100000) return (window.CRM_CURRENCY || '৳') + (v / 100000).toFixed(1) + 'L';
+                                    if (v >= 1000) return (window.CRM_CURRENCY || '৳') + (v / 1000).toFixed(0) + 'k';
                                     return fmt(v, 'money');
                                 }
                             }
@@ -487,7 +487,7 @@
                             ctx.fillStyle = '#0f172a';
                             var formattedTotal = fmt(d.total, 'money');
                             if (d.total >= 100000) {
-                                formattedTotal = '৳' + (d.total / 100000).toFixed(2) + 'L';
+                                formattedTotal = (window.CRM_CURRENCY || '৳') + (d.total / 100000).toFixed(2) + 'L';
                             }
                             ctx.fillText(formattedTotal, x, y + 10);
                             ctx.restore();

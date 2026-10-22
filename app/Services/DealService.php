@@ -113,8 +113,10 @@ class DealService
                 $notes[] = 'Appointment: ' . date('d M Y h:i A', strtotime($gate['appointment_at']));
                 $this->addActivity($deal, ActivityType::VISIT, $gate['appointment_at'], 'Assessment appointment');
             }
-            if (!empty($gate['trial_product'])) {
-                $notes[] = 'Trial product: ' . $gate['trial_product'];
+            if (!empty($gate['trial_product']) || !empty($gate['trial_product_id'])) {
+                $trial = app(TrialService::class)->recordInSession($deal, isset($gate['trial_product_id']) ? (int) $gate['trial_product_id'] : null,
+                    $gate['trial_product'] ?? null, $gate['trial_result'] ?? null, $gate['note'] ?? null);
+                $notes[] = 'Trial product: ' . $trial->product_label . ($trial->result ? ' – ' . \App\Models\DealTrial::RESULTS[$trial->result] : '');
             }
             if (!empty($gate['trial_return_date'])) {
                 $notes[] = 'Trial return: ' . $gate['trial_return_date'];

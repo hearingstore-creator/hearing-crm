@@ -43,7 +43,7 @@ class LeadConnector
         $raw = trim((string) ($person['phone'] ?? ''));
         $phone = $raw !== '' ? $this->intake->phone($raw) : null;
         if (!$phone) {
-            $event->mark('failed', $raw === '' ? 'No phone number in the lead.' : "Not a Bangladeshi mobile number: {$raw}");
+            $event->mark('failed', $raw === '' ? 'No phone number in the lead.' : "Not a mobile number this CRM can use: {$raw}");
 
             return 'failed';
         }

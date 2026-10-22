@@ -29,7 +29,7 @@
                     <a href="#" id="smsBalanceRefresh" title="Ask the gateway now" style="margin-left:4px;"><i class="fas fa-sync-alt"></i></a>
                 </div>
                 <div style="font-size:10px;color:var(--page-text-muted);" id="smsBalanceNote">
-                    @if ($gateway['checked_at']) checked {{ $gateway['checked_at']->copy()->timezone('Asia/Dhaka')->format('d M, g:i A') }} @else not checked yet @endif
+                    @if ($gateway['checked_at']) checked {{ $gateway['checked_at']->copy()->timezone(config('app.timezone'))->format('d M, g:i A') }} @else not checked yet @endif
                     @if ($gateway['low']) · <strong style="color:var(--danger-600,#DC2626);">low</strong> @endif
                 </div>
             </div>
@@ -61,7 +61,7 @@
             <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--page-text-muted); margin-bottom:6px;"><i class="far fa-clock mr-1"></i>Scheduled campaigns</div>
             @foreach ($scheduled as $camp)
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--gray-100); font-size:13px;">
-                    <span><strong>{{ $camp->name }}</strong> <span class="text-muted">· {{ $camp->scheduled_at?->copy()->timezone('Asia/Dhaka')->format('g:i A, d M Y') }}</span></span>
+                    <span><strong>{{ $camp->name }}</strong> <span class="text-muted">· {{ $camp->scheduled_at?->copy()->timezone(config('app.timezone'))->format('g:i A, d M Y') }}</span></span>
                     <form action="{{ route('sms.campaigns.cancel', $camp->id) }}" method="POST" onsubmit="return confirm('Cancel this scheduled campaign? Nothing will be sent.');">
                         @csrf @method('DELETE')
                         <button class="btn btn-outline-danger btn-sm" type="submit">Cancel</button>
@@ -398,7 +398,7 @@
 
                             <div style="text-align:left; margin-bottom:14px;">
                                 <label style="font-weight:600;font-size:12px;margin-bottom:4px;">Send time (optional)</label>
-                                <input type="datetime-local" name="scheduled_at" id="abScheduledAt" class="form-control form-control-sm" min="{{ now('Asia/Dhaka')->format('Y-m-d\TH:i') }}">
+                                <input type="datetime-local" name="scheduled_at" id="abScheduledAt" class="form-control form-control-sm" min="{{ now(config('app.timezone'))->format('Y-m-d\TH:i') }}">
                                 <small class="text-muted">Leave empty to send now. Bangladesh time. The audience is worked out again at send time.</small>
                             </div>
 

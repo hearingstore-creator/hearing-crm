@@ -23,6 +23,9 @@ enum SmsAutomationTrigger: string
     case REFERRAL_EARNED = 'referral_earned';
     case REFERRAL_PAID = 'referral_paid';
     case BIRTHDAY = 'birthday';
+    case UPGRADE_DUE = 'upgrade_due';
+    case SERVICE_DUE = 'service_due';
+    case NPS_SURVEY = 'nps_survey';
     /** Legacy: never fired, hidden from the picker; kept so old rows still show a label. */
     case POINTS_MILESTONE = 'points_milestone';
 
@@ -49,13 +52,16 @@ enum SmsAutomationTrigger: string
             self::REFERRAL_EARNED => 'Referral Commission Earned',
             self::REFERRAL_PAID => 'Referral Commission Paid',
             self::BIRTHDAY => 'Birthday Greeting',
+            self::UPGRADE_DUE => 'Hearing Aid Upgrade',
+            self::SERVICE_DUE => 'Yearly Service Reminder',
+            self::NPS_SURVEY => 'Satisfaction Survey',
         };
     }
 
     /** Marketing-type messages: skipped for opted-out numbers. Service messages always go out. */
     public function isPromotional(): bool
     {
-        return in_array($this, [self::LEAD_CREATED, self::WARRANTY_EXPIRING, self::MEMBERSHIP_UPGRADE, self::POINTS_EXPIRING, self::CUSTOMER_FIRST_SALE, self::BIRTHDAY], true);
+        return in_array($this, [self::LEAD_CREATED, self::WARRANTY_EXPIRING, self::MEMBERSHIP_UPGRADE, self::POINTS_EXPIRING, self::CUSTOMER_FIRST_SALE, self::BIRTHDAY, self::UPGRADE_DUE], true);
     }
 
     /**
