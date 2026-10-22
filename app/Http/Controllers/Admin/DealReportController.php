@@ -33,6 +33,12 @@ class DealReportController extends Controller
         }
         $isHq = !auth()->user()->branchId();
         $group = in_array($request->group, ['branch', 'owner', 'source', 'campaign'], true) ? $request->group : 'campaign';
+        // One pipeline at a time: funnel, time in stage and forecast only make sense against one set of stages
+        $pipeline = ($request->filled('pipeline') ? Pipeline::find((int) $request->pipeline) : null) ?? Pipeline::default();
+        $request->merge(['pipeline' => $pipeline->id]);
+        $pipelines = Pipeline::where(fn ($q) => $q->whereNull('archived_at')->where('is_active', true))->orWhere('is_default', true)
+            ->orWhereIn('id', Deal::withoutGlobalScopes()->select('pipeline_id')->distinct())
+            ->orderByDesc('is_default')->orderBy('sort_order')->orderBy('id')->get(['id', 'name', 'is_default', 'archived_at']);
 
         $deals = $this->scoped($request, $isHq)
             ->whereBetween('deals.created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
@@ -40,14 +46,14 @@ class DealReportController extends Controller
                 'lead:id,full_name', 'lead.customer' => fn ($q) => $q->withoutGlobalScopes()->select('id', 'lead_id', 'created_at')])
             ->get();
         $ids = $deals->pluck('id');
-        $stages = Pipeline::default()->activeStages()->get(['id', 'name', 'sort_order', 'color', 'probability']);
+        $stages = $pipeline->activeStages()->get(['id', 'name', 'sort_order', 'color', 'probability']);
 
         $won = $deals->where('status', Deal::WON);
         $lost = $deals->where('status', Deal::LOST);
         $closed = $won->count() + $lost->count();
 
         return view('admin.deal-report.index', [
-            'from' => $from, 'to' => $to, 'group' => $group, 'isHq' => $isHq,
+            'from' => $from, 'to' => $to, 'group' => $group, 'isHq' => $isHq, 'pipeline' => $pipeline, 'pipelines' => $pipelines,
             'branches' => \App\Classes\Helper::branchOptions(),
             'summary' => [
                 'deals'    => $deals->count(),
@@ -70,7 +76,7 @@ class DealReportController extends Controller
 
     private function scoped(Request $request, bool $isHq): Builder
     {
-        $q = Deal::query();
+        $q = Deal::query()->where('deals.pipeline_id', (int) $request->pipeline);
         if (auth()->user()->isProfessional()) {
             $q->where('deals.owner_id', auth()->id());
         }

@@ -72,6 +72,22 @@
             <a href="{{ url('admin/leads/' . $deal->lead_id) }}" class="btn btn-secondary btn-sm" id="dd-profile"><i class="fas fa-user mr-1"></i>Profile</a>
         @endif
     </div>
+
+    @php $otherPipelines = $pipelines->where('id', '!=', $deal->pipeline_id); @endphp
+    @if ($deal->status === 'open' && $can['move'] && $otherPipelines->isNotEmpty())
+        <div class="dd-pipeline" id="dd-pipeline">
+            <span class="dd-meta"><i class="fas fa-project-diagram mr-1"></i>{{ $deal->pipeline->name ?? '' }}</span>
+            <label for="dd-pipeline-to" class="sr-only">Move to pipeline</label>
+            <select id="dd-pipeline-to" class="form-control form-control-sm" style="width: auto; display: inline-block;">
+                @foreach ($otherPipelines as $pl)
+                    <option value="{{ $pl->id }}">{{ $pl->name }}</option>
+                @endforeach
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm js-dd-pipeline" data-id="{{ $deal->id }}" id="dd-pipeline-move">Move to pipeline</button>
+        </div>
+    @elseif ($pipelines->count() > 1)
+        <div class="dd-pipeline"><span class="dd-meta"><i class="fas fa-project-diagram mr-1"></i>{{ $deal->pipeline->name ?? '' }}</span></div>
+    @endif
 </div>
 
 <ul class="dd-tabs" role="tablist">

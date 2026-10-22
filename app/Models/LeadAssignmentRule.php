@@ -13,7 +13,7 @@ class LeadAssignmentRule extends Model
         'fixed'       => 'First available in the list',
     ];
 
-    protected $fillable = ['name', 'sort_order', 'is_active', 'sources', 'inquiries', 'vendor_ids', 'include_manual', 'method', 'user_ids',
+    protected $fillable = ['name', 'sort_order', 'is_active', 'sources', 'inquiries', 'vendor_ids', 'pipeline_ids', 'include_manual', 'method', 'user_ids',
         'set_vendor_id', 'max_open', 'reassign_after_minutes', 'last_user_id', 'assigned_count', 'created_by', 'updated_by'];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class LeadAssignmentRule extends Model
         'sources' => 'array',
         'inquiries' => 'array',
         'vendor_ids' => 'array',
+        'pipeline_ids' => 'array',
         'user_ids' => 'array',
     ];
 }

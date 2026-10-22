@@ -115,8 +115,13 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('deals/{id}/lost', [DealController::class, 'lost'])->whereNumber('id')->name('deals.lost');
     Route::post('deals/{id}/reopen', [DealController::class, 'reopen'])->whereNumber('id')->name('deals.reopen');
     Route::post('deals/{id}/transfer', [DealController::class, 'transfer'])->whereNumber('id')->name('deals.transfer');
+    Route::post('deals/{id}/pipeline', [DealController::class, 'changePipeline'])->whereNumber('id')->name('deals.pipeline');
 
     Route::get('pipeline-settings', [PipelineSettingsController::class, 'index'])->name('pipeline.settings');
+    Route::post('pipeline-settings/pipelines', [PipelineSettingsController::class, 'storePipeline']);
+    Route::put('pipeline-settings/pipelines/{id}', [PipelineSettingsController::class, 'updatePipeline'])->whereNumber('id');
+    Route::post('pipeline-settings/pipelines/{id}/archive', [PipelineSettingsController::class, 'archivePipeline'])->whereNumber('id');
+    Route::post('pipeline-settings/pipelines/{id}/restore', [PipelineSettingsController::class, 'restorePipeline'])->whereNumber('id');
     Route::post('pipeline-settings/stages', [PipelineSettingsController::class, 'storeStage']);
     Route::post('pipeline-settings/stages/reorder', [PipelineSettingsController::class, 'reorder']);
     Route::put('pipeline-settings/stages/{id}', [PipelineSettingsController::class, 'updateStage']);

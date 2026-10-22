@@ -115,7 +115,12 @@ class SequenceController extends Controller
         return [
             'sequence'    => $sequence,
             'steps'       => $sequence->exists ? $sequence->steps : collect(),
-            'stages'      => \App\Models\Pipeline::default()->activeStages()->get(['id', 'name']),
+            // Stages of every pipeline in use (grouped in the form); the chosen stage decides the pipeline
+            'pipelines'   => \App\Models\Pipeline::whereNull('archived_at')->orderByDesc('is_default')->orderBy('sort_order')->orderBy('id')->get(['id', 'name', 'is_default']),
+            'stages'      => \App\Models\PipelineStage::whereNull('archived_at')
+                ->whereIn('pipeline_id', \App\Models\Pipeline::whereNull('archived_at')->select('id'))
+                ->orWhere('id', $sequence->trigger_stage_id)
+                ->orderBy('pipeline_id')->orderBy('sort_order')->get(['id', 'name', 'pipeline_id']),
             'lostReasons' => \App\Models\LostReason::where('is_active', true)->orderBy('sort_order')->get(['id', 'name']),
             'sources'     => \App\Enums\SourceOfEntry::cases(),
             'mailOn'      => !in_array(config('mail.default'), ['log', 'array'], true),
@@ -132,6 +137,7 @@ class SequenceController extends Controller
             'trigger_sources'        => ['nullable', 'array'],
             'trigger_sources.*'      => [Rule::in(array_column(\App\Enums\SourceOfEntry::cases(), 'value'))],
             'trigger_stage_id'       => ['nullable', 'required_if:trigger,stage_entered', 'integer', 'exists:pipeline_stages,id'],
+            'trigger_pipeline_id'    => ['nullable', 'integer', 'exists:pipelines,id'],
             'trigger_lost_reasons'   => ['nullable', 'array'],
             'trigger_lost_reasons.*' => ['integer', 'exists:lost_reasons,id'],
             'steps'                  => ['required', 'array', 'min:1', 'max:20'],
@@ -160,6 +166,12 @@ class SequenceController extends Controller
             'name' => $data['name'], 'description' => $data['description'] ?? null, 'trigger' => $data['trigger'],
             'trigger_sources' => $data['trigger'] === 'deal_created' ? (array_values($data['trigger_sources'] ?? []) ?: null) : null,
             'trigger_stage_id' => $data['trigger'] === 'stage_entered' ? $data['trigger_stage_id'] : null,
+            // a stage belongs to one pipeline; created / lost sequences use the chosen pipeline (empty = any)
+            'trigger_pipeline_id' => match ($data['trigger']) {
+                'stage_entered' => \App\Models\PipelineStage::whereKey($data['trigger_stage_id'])->value('pipeline_id'),
+                'deal_created', 'deal_lost' => $request->has('trigger_pipeline_id') ? ($data['trigger_pipeline_id'] ?? null) : \App\Models\Pipeline::default()->id,
+                default => null,
+            },
             'trigger_lost_reasons' => $data['trigger'] === 'deal_lost' ? (array_values(array_map('intval', $data['trigger_lost_reasons'] ?? [])) ?: null) : null,
             'stop_on_reply' => $request->boolean('stop_on_reply'),
             'stop_on_appointment' => $request->boolean('stop_on_appointment'),

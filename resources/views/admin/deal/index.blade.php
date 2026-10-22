@@ -27,6 +27,17 @@
             <p>{{ $pipeline->name }} · drag a deal to move it, or drop it on Won / Lost</p>
         </div>
         <div class="header-actions">
+            @if ($pipelines->count() > 1)
+                <form method="GET" action="{{ url('admin/deals') }}" id="pipeline-switch-form">
+                    @if ($status !== 'open')<input type="hidden" name="status" value="{{ $status }}">@endif
+                    <label for="pipeline-switch" class="sr-only">Pipeline</label>
+                    <select name="pipeline" id="pipeline-switch" class="form-control deal-pipeline-switch" onchange="this.form.submit()">
+                        @foreach ($pipelines as $pl)
+                            <option value="{{ $pl->id }}" @selected($pl->id === $pipeline->id)>{{ $pl->name }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            @endif
             <div class="deal-views" role="tablist" aria-label="Deal views">
                 <a href="{{ $viewUrl('open') }}" id="view-open" class="{{ $status === 'open' ? 'active' : '' }}"><i class="fas fa-columns"></i> Board</a>
                 <a href="{{ $viewUrl('list') }}" id="view-list" class="{{ $status === 'list' ? 'active' : '' }}"><i class="fas fa-list"></i> List</a>
@@ -38,7 +49,7 @@
                 <i class="fas fa-sun mr-1"></i>My Day @if ($myDue)<span class="my-day-badge">{{ $myDue }}</span>@endif
             </a>
             @if ($can['settings'])
-                <a href="{{ url('admin/pipeline-settings') }}" class="btn btn-secondary btn-sm" id="btn-pipeline-settings"><i class="fas fa-sliders-h mr-1"></i>Pipeline Settings</a>
+                <a href="{{ url('admin/pipeline-settings?pipeline=' . $pipeline->id) }}" class="btn btn-secondary btn-sm" id="btn-pipeline-settings"><i class="fas fa-sliders-h mr-1"></i>Pipeline Settings</a>
             @endif
             @if ($can['create'])
                 <a href="{{ route('leads.create') }}" class="btn btn-secondary btn-sm" id="btn-add-lead" title="Full lead form"><i class="fas fa-file-alt mr-1"></i>Full form</a>
@@ -579,6 +590,16 @@
                         <input type="text" name="full_name" id="qa-name" class="form-control" maxlength="255">
                     </div>
                 </div>
+                @if ($pipelines->count() > 1)
+                    <div class="form-group">
+                        <label for="qa-pipeline">Pipeline</label>
+                        <select name="pipeline_id" id="qa-pipeline" class="form-control">
+                            @foreach ($pipelines as $pl)
+                                <option value="{{ $pl->id }}" @selected($pl->id === $pipeline->id)>{{ $pl->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
                 <div class="form-group">
                     <label>Interest <i class="req text-danger">*</i></label>
                     <div class="deal-pills">

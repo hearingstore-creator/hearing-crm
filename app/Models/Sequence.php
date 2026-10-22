@@ -21,7 +21,7 @@ class Sequence extends Model
         'call'     => ['Call task for the owner', 'fas fa-phone'],
     ];
 
-    protected $fillable = ['name', 'description', 'is_active', 'trigger', 'trigger_sources', 'trigger_stage_id', 'trigger_lost_reasons',
+    protected $fillable = ['name', 'description', 'is_active', 'trigger', 'trigger_pipeline_id', 'trigger_sources', 'trigger_stage_id', 'trigger_lost_reasons',
         'stop_on_reply', 'stop_on_appointment', 'stop_on_stage_change', 'created_by', 'updated_by'];
 
     protected $casts = [
@@ -32,6 +32,17 @@ class Sequence extends Model
         'stop_on_appointment' => 'boolean',
         'stop_on_stage_change' => 'boolean',
     ];
+
+    /** Sequences that apply to deals in this pipeline (no pipeline set = any pipeline). */
+    public function scopeForPipeline($query, ?int $pipelineId)
+    {
+        return $query->where(fn ($q) => $q->whereNull('trigger_pipeline_id')->orWhere('trigger_pipeline_id', $pipelineId));
+    }
+
+    public function triggerPipeline()
+    {
+        return $this->belongsTo(Pipeline::class, 'trigger_pipeline_id');
+    }
 
     public function steps()
     {

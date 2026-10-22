@@ -23,6 +23,14 @@
         <label class="mr-2 mb-0" style="font-weight:400;"><input type="checkbox" name="vendor_ids[]" value="{{ $bid }}" @checked(in_array((int) $bid, array_map('intval', $r->vendor_ids ?? []), true))> {{ $bname }}</label>
     @endforeach
 </div>
+@php $rulePipelines = $r ? array_map('intval', $r->pipeline_ids ?? []) : [(int) $pipelines->firstWhere('is_default', true)?->id]; @endphp
+<div style="font-size:12.5px; margin-top:6px;">
+    <div class="mb-1"><b>and the deal is in</b> <span class="text-muted">(none ticked = any pipeline)</span></div>
+    @foreach ($pipelines as $pl)
+        @continue($pl->archived_at && !in_array($pl->id, $rulePipelines, true))
+        <label class="mr-2 mb-0" style="font-weight:400;"><input type="checkbox" name="pipeline_ids[]" value="{{ $pl->id }}" @checked(in_array($pl->id, $rulePipelines, true))> {{ $pl->name }}</label>
+    @endforeach
+</div>
 
 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:6px 10px; font-size:12.5px; margin-top:8px;">
     <div>

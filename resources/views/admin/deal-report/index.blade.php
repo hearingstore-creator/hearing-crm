@@ -13,7 +13,7 @@
 @php
     $money = fn ($v) => '৳' . number_format((float) $v);
     $groups = ['campaign' => 'Campaign', 'source' => 'Source', 'branch' => 'Branch', 'owner' => 'Owner'];
-    $groupUrl = fn ($g) => url('admin/deal-reports') . '?' . http_build_query(array_filter(array_merge(request()->only(['from', 'to', 'branch']), ['group' => $g])));
+    $groupUrl = fn ($g) => url('admin/deal-reports') . '?' . http_build_query(array_filter(array_merge(request()->only(['from', 'to', 'branch', 'pipeline']), ['group' => $g])));
     $maxDays = max(1, collect($timeInStage)->max('days') ?? 1);
     $maxLost = max(1, $lostReasons->max() ?? 1);
     $totalLost = max(1, $lostReasons->sum());
@@ -25,10 +25,17 @@
     <div class="crm-page-header crm-animate-in">
         <div class="page-title-group">
             <h1><i class="fas fa-chart-line" style="color: var(--accent-500); margin-right: 8px;"></i>Deal Reports</h1>
-            <p>Deals created {{ $from->format('d M Y') }} – {{ $to->format('d M Y') }}</p>
+            <p>{{ $pipeline->name }} · deals created {{ $from->format('d M Y') }} – {{ $to->format('d M Y') }}</p>
         </div>
         <form method="GET" class="dr-filters" id="dr-filters">
             <input type="hidden" name="group" value="{{ $group }}">
+            @if ($pipelines->count() > 1)
+                <select name="pipeline" id="dr-pipeline" class="form-control" aria-label="Pipeline">
+                    @foreach ($pipelines as $pl)
+                        <option value="{{ $pl->id }}" @selected($pl->id === $pipeline->id)>{{ $pl->name }}{{ $pl->archived_at ? ' (archived)' : '' }}</option>
+                    @endforeach
+                </select>
+            @endif
             <input type="date" name="from" id="dr-from" class="form-control" value="{{ $from->toDateString() }}" aria-label="From">
             <input type="date" name="to" id="dr-to" class="form-control" value="{{ $to->toDateString() }}" aria-label="To">
             @if ($isHq)

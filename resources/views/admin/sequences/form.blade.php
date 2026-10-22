@@ -60,6 +60,16 @@
             <select name="trigger" id="sq-trigger" class="form-control form-control-sm" style="max-width:340px;">
                 @foreach (\App\Models\Sequence::TRIGGERS as $k => $v)<option value="{{ $k }}" @selected($trigger === $k)>{{ $v }}</option>@endforeach
             </select>
+            @if ($pipelines->count() > 1)
+                <div class="mt-2" data-for="deal_created deal_lost">
+                    <label for="sq-pipeline" style="font-size:12px;" class="mb-1">For deals in</label>
+                    @php $seqPipeline = old('trigger_pipeline_id', $sequence->exists ? $sequence->trigger_pipeline_id : $pipelines->firstWhere('is_default', true)?->id); @endphp
+                    <select name="trigger_pipeline_id" id="sq-pipeline" class="form-control form-control-sm" style="max-width:340px;">
+                        <option value="">Any pipeline</option>
+                        @foreach ($pipelines as $pl)<option value="{{ $pl->id }}" @selected((int) $seqPipeline === $pl->id)>{{ $pl->name }}</option>@endforeach
+                    </select>
+                </div>
+            @endif
             <div class="sq-checks mt-2" data-for="deal_created">
                 <div style="font-size:12px;" class="mb-1">From these sources (none ticked = any):</div>
                 @foreach ($sources as $src)<label><input type="checkbox" name="trigger_sources[]" value="{{ $src->value }}" @checked(in_array($src->value, old('trigger_sources', $sequence->trigger_sources ?? []), true))> {{ $src->label() }}</label>@endforeach
@@ -67,7 +77,11 @@
             <div class="mt-2" data-for="stage_entered">
                 <select name="trigger_stage_id" class="form-control form-control-sm" style="max-width:340px;" aria-label="Stage">
                     <option value="">Choose the stage…</option>
-                    @foreach ($stages as $s)<option value="{{ $s->id }}" @selected((int) old('trigger_stage_id', $sequence->trigger_stage_id) === $s->id)>{{ $s->name }}</option>@endforeach
+                    @foreach ($stages->groupBy('pipeline_id') as $pipelineId => $group)
+                        <optgroup label="{{ $pipelines->firstWhere('id', $pipelineId)?->name }}">
+                            @foreach ($group as $s)<option value="{{ $s->id }}" @selected((int) old('trigger_stage_id', $sequence->trigger_stage_id) === $s->id)>{{ $s->name }}</option>@endforeach
+                        </optgroup>
+                    @endforeach
                 </select>
             </div>
             <div class="sq-checks mt-2" data-for="deal_lost">
@@ -110,7 +124,7 @@
 (function () {
     function showTrigger() {
         var t = document.getElementById('sq-trigger').value;
-        document.querySelectorAll('[data-for]').forEach(function (el) { el.style.display = el.getAttribute('data-for') === t ? '' : 'none'; });
+        document.querySelectorAll('[data-for]').forEach(function (el) { el.style.display = el.getAttribute('data-for').split(' ').indexOf(t) >= 0 ? '' : 'none'; });
     }
     function showChannel(row) {
         var ch = row.querySelector('.sq-channel').value;

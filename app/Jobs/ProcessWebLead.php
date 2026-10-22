@@ -81,8 +81,9 @@ class ProcessWebLead implements ShouldQueue
                 if ($consent && !$lead->marketing_consent) {
                     $lead->forceFill($consent)->saveQuietly();
                 }
+                // Web enquiries belong to the default pipeline: an open repair / institutional deal does not absorb them
                 $deal = Deal::withoutGlobalScopes()->whereNull('deleted_at')->open()
-                    ->where('lead_id', $lead->id)->latest('id')->first();
+                    ->where('lead_id', $lead->id)->where('pipeline_id', \App\Models\Pipeline::default()->id)->latest('id')->first();
                 if ($deal) {
                     $status = LeadSubmission::DUPLICATE;
                     $deals->addActivity($deal, ActivityType::NOTE, null, $this->noteText($s, $label . ' enquiry again'));
