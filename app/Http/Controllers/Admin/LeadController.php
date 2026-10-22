@@ -228,7 +228,7 @@ class LeadController extends Controller
         return DB::transaction(function () use ($request, $stage, $gate, $referrer) {
             $leads = $request->except([
                 'activity_type', 'due_at', 'activity_note', 'assigned_user', 'stage_id', 'loss_reason', 'loss_to_whom',
-                'note', 'walk_in', 'appointment_at', 'trial_product', 'trial_return_date', 'value', '_token', 'referred_by',
+                'note', 'walk_in', 'appointment_at', 'trial_product', 'trial_return_date', 'trial_result', 'trial_product_id', 'value', '_token', 'referred_by',
             ]);
             $leads['referrer_customer_id'] = $referrer?->id;
             $leads['lead_uid'] = Lead::generateUid();

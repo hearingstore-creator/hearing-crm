@@ -491,6 +491,10 @@
                                 <label for="gate_trial_product">Trial product <span style="color: var(--danger-500);">*</span></label>
                                 <input type="text" class="form-control @error('trial_product') is-invalid @enderror" id="gate_trial_product" name="trial_product" maxlength="150" value="{{ old('trial_product') }}" placeholder="e.g. Phonak Audeo L50">
                                 @error('trial_product')<span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>@enderror
+                                <select name="trial_result" class="form-control mt-2" aria-label="How the trial went">
+                                    <option value="">How did the trial go? (optional)</option>
+                                    @foreach (\App\Models\DealTrial::RESULTS as $rk => $rv)<option value="{{ $rk }}" @selected(old('trial_result') === $rk)>{{ $rv }}</option>@endforeach
+                                </select>
                             </div>
                         </div>
                         <div class="col-md-6" data-gate="trial_return_date">

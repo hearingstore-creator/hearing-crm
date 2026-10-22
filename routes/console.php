@@ -20,6 +20,7 @@ Schedule::command('crm:automations dues')->dailyAt('10:00')->withoutOverlapping(
 Schedule::command('crm:automations birthdays')->dailyAt('09:30')->withoutOverlapping();
 Schedule::command('crm:automations scores')->dailyAt('06:30')->withoutOverlapping();
 Schedule::command('crm:automations sequences')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('crm:automations trials')->hourly()->withoutOverlapping();
 Schedule::command('sms:send-scheduled')->everyMinute()->withoutOverlapping();
 Schedule::command('sms:check-delivery')->hourly()->withoutOverlapping();
 Schedule::command('sms:check-balance')->everyThreeHours()->withoutOverlapping();

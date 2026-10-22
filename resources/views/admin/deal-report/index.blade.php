@@ -185,7 +185,33 @@
                 </tbody>
             </table>
         </div>
-        <p class="dr-sub" style="padding: 10px 18px 14px;">Campaign ROI: add your ad spend next to "Won value" – spend isn't recorded in the CRM.</p>
+        <p class="dr-sub" style="padding: 10px 18px 14px;">Spend, cost per lead and return per campaign: Marketing → Marketing Return.</p>
+    </div>
+
+    <div class="crm-table-card crm-animate-in delay-3" style="margin-top: 16px;" id="dr-trials">
+        <div class="crm-table-header">
+            <div class="table-title"><i class="fas fa-assistive-listening-systems"></i> Trials · {{ $trials['total'] }} patients tried a device, {{ $trials['won'] }} bought ({{ $trials['total'] ? round($trials['won'] / $trials['total'] * 100) : 0 }}%)</div>
+        </div>
+        <div style="display:grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; padding: 0 18px 14px;">
+            <table class="crm-table">
+                <thead><tr><th>Model tried</th><th class="text-right">Patients</th><th class="text-right">Bought</th><th class="text-right">Trial → sale</th><th class="text-right">Take-home</th></tr></thead>
+                <tbody>
+                    @forelse ($trials['byModel'] as $m)
+                        <tr><td>{{ $m['model'] }}</td><td class="text-right">{{ $m['tried'] }}</td><td class="text-right">{{ $m['won'] }}</td><td class="text-right">{{ $m['rate'] !== null ? $m['rate'] . '%' : '—' }}</td><td class="text-right">{{ $m['takeHome'] ?: '' }}</td></tr>
+                    @empty
+                        <tr><td colspan="5" class="dr-empty">No trials recorded in this period. Pick the model and say how it went when a deal moves to Trial.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <div>
+                <div class="dr-sub" style="margin: 8px 0;">How the trials went</div>
+                @forelse ($trials['results'] as $key => $n)
+                    <div style="display:flex; justify-content:space-between; font-size:13px; padding:3px 0; border-bottom:1px solid var(--gray-100);"><span>{{ \App\Models\DealTrial::RESULTS[$key] ?? $key }}</span><b>{{ $n }}</b></div>
+                @empty
+                    <div class="dr-sub">No results recorded yet.</div>
+                @endforelse
+            </div>
+        </div>
     </div>
 </div>
 @endsection

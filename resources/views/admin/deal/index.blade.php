@@ -412,7 +412,12 @@
                 </div>
                 <div class="form-group" data-gate="trial_product">
                     <label for="gate-trial-product">Trial product <i class="req text-danger">*</i></label>
-                    <input type="text" name="trial_product" id="gate-trial-product" class="form-control" maxlength="150" placeholder="Brand, model">
+                    <input type="text" name="trial_product" id="gate-trial-product" class="form-control" maxlength="150" placeholder="Brand, model" list="gate-trial-models" autocomplete="off">
+                    <datalist id="gate-trial-models">@foreach ($trialModels ?? [] as $tm)<option value="{{ $tm }}"></option>@endforeach</datalist>
+                    <select name="trial_result" id="gate-trial-result" class="form-control mt-2" aria-label="How the trial went">
+                        <option value="">How did the trial go? (optional)</option>
+                        @foreach (\App\Models\DealTrial::RESULTS as $rk => $rv)<option value="{{ $rk }}">{{ $rv }}</option>@endforeach
+                    </select>
                 </div>
                 <div class="form-group" data-gate="trial_return_date">
                     <label for="gate-trial-return">Trial return date <i class="req text-danger">*</i></label>

@@ -386,7 +386,7 @@ class SaleController extends Controller
                     'serials'    => $serialNos[$key] ?? null,
                 ];
             }
-            app(StockGuard::class)->assertSaleLines($stockLines, auth()->user()->branchId() ?: null);
+            app(StockGuard::class)->assertSaleLines($stockLines, auth()->user()->branchId() ?: null, null, $request->customer_id ? (int) $request->customer_id : null);
 
             $saleMaster = new SaleMaster();
             $saleMaster->customer_id = $request->customer_id;
@@ -935,7 +935,7 @@ class SaleController extends Controller
                     'serials'    => $serialNos[$key] ?? null,
                 ];
             }
-            app(StockGuard::class)->assertSaleLines($stockLines, $saleMaster->vendor_id ?: null, $saleMaster->id);
+            app(StockGuard::class)->assertSaleLines($stockLines, $saleMaster->vendor_id ?: null, $saleMaster->id, $request->customer_id ? (int) $request->customer_id : (int) $saleMaster->customer_id);
 
             // Advance applied at checkout was already credited when it was received; keep it out of cash paid
             $appliedAdvance = (float) ($saleMaster->applied_advance_amount ?? 0);

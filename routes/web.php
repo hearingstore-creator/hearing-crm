@@ -42,6 +42,10 @@ Route::get('/', function () {
 // Public website lead form (open directly or as a popup via embed.js)
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('f/{key}', [\App\Http\Controllers\PublicLeadFormController::class, 'show'])->name('public.form');
+    // A quotation the patient opens from its private link, accepts or declines
+    Route::get('q/{token}', [\App\Http\Controllers\PublicQuoteController::class, 'show'])->name('public.quote')->middleware('throttle:60,1');
+    Route::post('q/{token}/accept', [\App\Http\Controllers\PublicQuoteController::class, 'accept'])->name('public.quote.accept')->middleware('throttle:10,1');
+    Route::post('q/{token}/decline', [\App\Http\Controllers\PublicQuoteController::class, 'decline'])->name('public.quote.decline')->middleware('throttle:10,1');
     Route::get('f/{key}/embed.js', [\App\Http\Controllers\PublicLeadFormController::class, 'embed'])->name('public.form.embed');
     Route::post('f/{key}', [\App\Http\Controllers\PublicLeadFormController::class, 'submit'])
         ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class)->name('public.form.submit');
@@ -137,6 +141,9 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('sequences/{id}/toggle', [\App\Http\Controllers\Admin\SequenceController::class, 'toggle'])->whereNumber('id')->name('sequences.toggle');
     Route::delete('sequences/{id}', [\App\Http\Controllers\Admin\SequenceController::class, 'destroy'])->whereNumber('id')->name('sequences.destroy');
     Route::post('deals/{id}/sequence', [\App\Http\Controllers\Admin\SequenceController::class, 'enroll'])->whereNumber('id')->name('deals.sequence.start');
+    Route::post('deals/{id}/trials', [\App\Http\Controllers\Admin\DealTrialController::class, 'store'])->whereNumber('id')->name('deals.trials.store');
+    Route::post('deals/{id}/trials/take-home', [\App\Http\Controllers\Admin\DealTrialController::class, 'takeHome'])->whereNumber('id')->name('deals.trials.take-home');
+    Route::post('deal-trials/{id}/close', [\App\Http\Controllers\Admin\DealTrialController::class, 'close'])->whereNumber('id')->name('deals.trials.close');
     Route::post('sequence-enrollments/{id}/stop', [\App\Http\Controllers\Admin\SequenceController::class, 'stop'])->whereNumber('id')->name('deals.sequence.stop');
 
     // Marketing: campaigns, monthly spend (books the advertising expense), and the return report
@@ -208,6 +215,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('proposal/{id}/status', [\App\Http\Controllers\Admin\ProposalController::class, 'updateStatus'])->name('proposal.status');
     Route::post('proposal/{id}/convert-to-sale', [\App\Http\Controllers\Admin\ProposalController::class, 'convertToSale'])->name('proposal.convert');
     Route::post('proposal/{id}/email', [\App\Http\Controllers\Admin\ProposalController::class, 'sendEmail'])->name('proposal.email');
+    Route::post('proposal/{id}/share', [\App\Http\Controllers\Admin\ProposalController::class, 'share'])->name('proposal.share');
     Route::get('proposal/{id}/pdf', [\App\Http\Controllers\Admin\ProposalController::class, 'downloadPdf'])->name('proposal.pdf');
     Route::get('proposal-add-row-item', [\App\Http\Controllers\Admin\ProposalController::class, 'addRowItem'])->name('proposal.add-row');
     Route::resource('proposal', 'ProposalController');

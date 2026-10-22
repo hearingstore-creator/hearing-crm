@@ -327,7 +327,7 @@
             body {
                 background: #ffffff !important;
             }
-            .action-toolbar {
+            .action-toolbar, #proposal-online {
                 display: none !important;
             }
             .page-container {
@@ -416,6 +416,30 @@
             @endcan
         </div>
     </div>
+
+    {{-- Online link: patient opens, accepts or declines; optional payment link --}}
+    @can('permission', 'proposals.edit')
+    <div class="no-print" id="proposal-online" style="max-width: 900px; margin: 0 auto 14px; background: var(--card-bg, #fff); border: 1px solid var(--gray-200, #e2e8f0); border-radius: 10px; padding: 12px 16px; font-size: 13px;">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <b><i class="fas fa-link mr-1"></i>Online quotation</b>
+            @if ($proposal->public_token)
+                <input type="text" readonly id="proposal-link" class="form-control form-control-sm" style="max-width:420px;" value="{{ url('q/' . $proposal->public_token) }}" onclick="this.select()">
+                <span class="text-muted">
+                    {{ $proposal->viewed_at ? 'Opened ' . $proposal->viewed_at->diffForHumans() : 'Not opened yet' }}
+                    @if ($proposal->responded_at) · {{ $proposal->status }} {{ $proposal->responded_at->diffForHumans() }}{{ $proposal->responded_name ? ' by ' . $proposal->responded_name : '' }}{{ $proposal->response_note ? ' – ' . $proposal->response_note : '' }}@endif
+                </span>
+            @else
+                <span class="text-muted">The patient can open it on their phone, accept or decline, and pay through your payment link.</span>
+            @endif
+        </div>
+        <form method="POST" action="{{ route('proposal.share', $proposal->id) }}" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+            @csrf
+            <input type="url" name="payment_url" class="form-control form-control-sm" style="max-width:360px;" value="{{ old('payment_url', $proposal->payment_url) }}" placeholder="Payment link (optional): https://… bKash / SSLCommerz">
+            <label class="mb-0" style="font-weight:400;"><input type="checkbox" name="send_sms" value="1"> SMS the link to the patient</label>
+            <button type="submit" class="btn btn-outline-primary btn-sm" id="proposal-share">{{ $proposal->public_token ? 'Update link' : 'Create link' }}</button>
+        </form>
+    </div>
+    @endcan
 
     {{-- Official A4 Quotation Sheet --}}
     <div class="page-container">

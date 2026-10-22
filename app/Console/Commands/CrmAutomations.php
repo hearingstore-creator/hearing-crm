@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
  *   php artisan crm:automations sla          – inbound lead not contacted by its deadline → alert owner + Super Admin, or next person by rule
  *   php artisan crm:automations scores       – recalculate lead scores of open deals
  *   php artisan crm:automations sequences    – run due follow-up sequence steps (SMS, email, WhatsApp, call tasks)
+ *   php artisan crm:automations trials       – take-home trials: close the bought ones, alert overdue returns
  *   php artisan crm:automations appointments – SMS reminder for tomorrow's appointments
  *   php artisan crm:automations reengage     – "Not ready" lost 90+ days ago → new deal + call
  *   php artisan crm:automations points       – SMS 7 days before membership points expire
@@ -35,9 +36,9 @@ use Illuminate\Support\Facades\DB;
  */
 class CrmAutomations extends Command
 {
-    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays', 'scores', 'sequences'];
+    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays', 'scores', 'sequences', 'trials'];
 
-    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays|scores|sequences} {--dry : show what would happen, change nothing}';
+    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays|scores|sequences|trials} {--dry : show what would happen, change nothing}';
     protected $description = 'Run one lead automation';
 
     public function __construct(private CrmNotifier $notifier, private DealService $deals, private SmsAutomationService $sms)
@@ -106,6 +107,17 @@ class CrmAutomations extends Command
         }
 
         return $n;
+    }
+
+    /** Take-home trials: bought ones close, overdue returns alert the owner (once). */
+    private function trials(): int
+    {
+        if ($this->option('dry')) {
+            return \App\Models\DealTrial::where('kind', 'take_home')->where('status', 'out')->count();
+        }
+        $r = app(\App\Services\TrialService::class)->sweep();
+
+        return $r['bought'] + $r['overdue'];
     }
 
     /** Due steps of follow-up sequences. */
