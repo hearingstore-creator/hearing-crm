@@ -129,6 +129,20 @@ class AuditSecurityBatch1Test extends TestCase
         $this->assertSame('<p>Offer</p>', $row->content);
     }
 
+    public function test_the_quotation_shows_the_clinic_logo_from_its_saved_path(): void
+    {
+        $settingId = DB::table('settings')->value('id') ?? DB::table('settings')->insertGetId(['company_name' => 'Clinic', 'created_at' => now()]);
+        DB::table('settings')->where('id', $settingId)->update(['logo' => 'file/setting/logo-test.png']);
+        $this->actingAs($this->admin)->post('/admin/proposal', [
+            'recipient_type' => 'direct', 'recipient_name' => 'Walk-in', 'title' => 'Quote', 'proposal_date' => date('Y-m-d'),
+        ])->assertSessionHasNoErrors();
+        $id = DB::table('proposals')->max('id');
+
+        $this->actingAs($this->admin)->get('/admin/proposal/' . $id)->assertSuccessful()
+            ->assertSee(asset('file/setting/logo-test.png'), false)
+            ->assertDontSee('file/setting/file/setting', false);
+    }
+
     // ── SEC-06 routes ──
 
     public function test_routes_without_a_controller_method_are_gone(): void

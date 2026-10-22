@@ -448,7 +448,7 @@
         <div class="clinic-header">
             <div class="clinic-logo">
                 @if(!empty($setting->logo))
-                    <img src="{{ asset('file/setting/' . $setting->logo) }}" alt="Logo">
+                    <img src="{{ asset($setting->logo) }}" alt="Logo">
                 @else
                     <div style="font-size: 24px; font-weight: 800; color: var(--brand-primary); letter-spacing: -0.5px;">
                         <i class="fas fa-ear-listen mr-2"></i>{{ $setting->company_name ?? 'HEARING CARE CLINIC' }}
