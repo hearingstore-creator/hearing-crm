@@ -45,6 +45,10 @@
             @endforeach
         </select>
     </div>
+    <div>
+        <label for="{{ $p }}ext">Meta / Google campaign ID</label>
+        <input type="text" name="external_id" id="{{ $p }}ext" class="form-control form-control-sm" maxlength="60" value="{{ $c ? $c->external_id : old('external_id') }}" placeholder="filled in by lead-form leads">
+    </div>
     <div style="grid-column: 1 / -1;">
         <label for="{{ $p }}notes">Notes</label>
         <input type="text" name="notes" id="{{ $p }}notes" class="form-control form-control-sm" maxlength="2000" value="{{ $c ? $c->notes : old('notes') }}" placeholder="Audience, offer, agency…">

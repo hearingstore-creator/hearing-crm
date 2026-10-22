@@ -142,6 +142,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('web-leads', [\App\Http\Controllers\Admin\WebLeadController::class, 'index'])->name('web-leads.index');
     Route::post('web-leads/{id}/retry', [\App\Http\Controllers\Admin\WebLeadController::class, 'retry'])->whereNumber('id');
     Route::post('web-leads/{id}/spam', [\App\Http\Controllers\Admin\WebLeadController::class, 'spam'])->whereNumber('id');
+    Route::post('web-leads/events/{id}/retry', [\App\Http\Controllers\Admin\WebLeadController::class, 'retryEvent'])->whereNumber('id')->name('web-leads.events.retry');
     Route::post('web-leads/forms', [\App\Http\Controllers\Admin\WebLeadController::class, 'storeForm']);
     Route::put('web-leads/forms/{id}', [\App\Http\Controllers\Admin\WebLeadController::class, 'updateForm'])->whereNumber('id');
     Route::post('web-leads/forms/{id}/secret', [\App\Http\Controllers\Admin\WebLeadController::class, 'regenerateSecret'])->whereNumber('id');

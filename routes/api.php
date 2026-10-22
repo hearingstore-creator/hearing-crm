@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Route;
 // Website lead capture – server-to-server, HMAC signed (see WebLeadController)
 Route::post('v1/leads', [WebLeadController::class, 'store'])->name('api.leads.store');
 
+// Lead connectors (see LeadHookController): Meta Lead Ads + WhatsApp, Google lead forms, any webhook
+Route::get('v1/hooks/meta', [\App\Http\Controllers\Api\LeadHookController::class, 'metaVerify'])->name('api.hooks.meta.verify')->middleware('throttle:30,1,hook-meta-verify');
+Route::post('v1/hooks/meta', [\App\Http\Controllers\Api\LeadHookController::class, 'meta'])->name('api.hooks.meta')->middleware('throttle:600,1,hook-meta');
+Route::post('v1/hooks/google/{formKey}', [\App\Http\Controllers\Api\LeadHookController::class, 'google'])->name('api.hooks.google')->middleware('throttle:120,1,hook-google');
+Route::post('v1/hooks/lead/{formKey}', [\App\Http\Controllers\Api\LeadHookController::class, 'generic'])->name('api.hooks.lead')->middleware('throttle:120,1,hook-lead');
+
 // Replies to our SMS, pushed by the gateway. Switched off until SMS_INBOUND_SECRET is set (see SmsInboundController)
 Route::match(['get', 'post'], 'v1/sms/inbound', [\App\Http\Controllers\Api\SmsInboundController::class, 'receive'])->name('api.sms.inbound')->middleware('throttle:120,1,sms-inbound');
 

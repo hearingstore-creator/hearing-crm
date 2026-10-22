@@ -59,8 +59,11 @@ class ProcessWebLead implements ShouldQueue
                 'fbclid'       => $s->fbclid,
                 'landing_page' => $s->landing_page ?: $s->page_url,
             ], fn ($v) => $v !== null && $v !== '');
+            // website form, or a connector (facebook, instagram, google, whatsapp, phone_call …; anything else = other)
+            $source = $s->source ? (SourceOfEntry::tryFrom($s->source) ?? SourceOfEntry::OTHER) : SourceOfEntry::WEBSITE;
+            $label = $s->source ? $source->label() . ($s->external_id && $s->source !== 'whatsapp' ? ' lead form' : '') : 'Website';
             $dealAttributes = array_filter([
-                'source'       => SourceOfEntry::WEBSITE->value,
+                'source'       => $source->value,
                 'inquiry_for'  => $inquiry,
             ], fn ($v) => $v !== null && $v !== []) + $touch;
             // first touch of the person (kept as it was when the lead already has one)
@@ -78,10 +81,10 @@ class ProcessWebLead implements ShouldQueue
                     ->where('lead_id', $lead->id)->latest('id')->first();
                 if ($deal) {
                     $status = LeadSubmission::DUPLICATE;
-                    $deals->addActivity($deal, ActivityType::NOTE, null, $this->noteText($s, 'Website enquiry again'));
+                    $deals->addActivity($deal, ActivityType::NOTE, null, $this->noteText($s, $label . ' enquiry again'));
                 } else {
                     $deal = $deals->openNewDeal($lead, $dealAttributes + ['vendor_id' => $vendorId ?? $lead->vendor_id]);
-                    $deals->addActivity($deal, ActivityType::NOTE, null, $this->noteText($s, 'Website enquiry'));
+                    $deals->addActivity($deal, ActivityType::NOTE, null, $this->noteText($s, $label . ' enquiry'));
                 }
             } else {
                 $lead = Lead::create([
@@ -92,7 +95,7 @@ class ProcessWebLead implements ShouldQueue
                     'vendor_id'       => $vendorId,
                     'inquiry_for'     => $inquiry,
                     'notes'           => $s->message,
-                    'source_of_entry' => SourceOfEntry::WEBSITE->value,
+                    'source_of_entry' => $source->value,
                     'lead_status'     => LeadStatus::NEW->value,
                     'lead_type'       => LeadType::NEW_CUSTOMER->value,
                 ] + $firstTouch);
@@ -102,7 +105,7 @@ class ProcessWebLead implements ShouldQueue
             }
 
             $deals->addActivity($deal, ActivityType::CALL, DealService::dueInOfficeHours($sla)->toDateTimeString(),
-                "Website lead – call within {$sla} min" . ($s->page_url ? ' (' . $s->page_url . ')' : ''));
+                "{$label} lead – call within {$sla} min" . ($s->page_url ? ' (' . $s->page_url . ')' : ''));
 
             $s->update(['status' => $status, 'lead_id' => $lead->id, 'deal_id' => $deal->id, 'error' => null, 'processed_at' => now()]);
         });

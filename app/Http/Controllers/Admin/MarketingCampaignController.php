@@ -97,6 +97,7 @@ class MarketingCampaignController extends Controller
             'budget'     => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'status'     => ['required', Rule::in(array_keys(MarketingCampaign::STATUSES))],
             'notes'      => ['nullable', 'string', 'max:2000'],
+            'external_id' => ['nullable', 'string', 'max:60'],
         ], [
             'code.not_regex' => 'The code goes into web links, so it cannot contain < > " \' & ? or #.',
             'code.unique' => 'Another campaign already uses this code.',

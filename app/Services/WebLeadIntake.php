@@ -118,6 +118,8 @@ class WebLeadIntake
             'fbclid'           => $data['fbclid'] ?? null,
             'landing_page'     => $data['landing_page'] ?? null,
             'referrer_url'     => $data['referrer_url'] ?? null,
+            'source'           => $data['source'] ?? null,
+            'external_id'      => $data['external_id'] ?? null,
             'page_url'         => $data['page_url'] ?? null,
             'ip'               => $data['client_ip'],
             'user_agent'       => $data['user_agent'] ?? null,

@@ -24,7 +24,7 @@ class WebLeadController extends Controller
     public function __construct()
     {
         $this->middleware('permission:web_leads.index')->only(['index', 'retry', 'spam']);
-        $this->middleware('permission:web_leads.manage')->only(['storeForm', 'updateForm', 'regenerateSecret', 'block', 'unblock']);
+        $this->middleware('permission:web_leads.manage')->only(['storeForm', 'updateForm', 'regenerateSecret', 'block', 'unblock', 'retryEvent']);
         $this->middleware(function ($request, $next) {
             abort_if(auth()->user()->branchId(), 403, 'Website leads are handled by Head Office.');
             return $next($request);
@@ -33,11 +33,12 @@ class WebLeadController extends Controller
 
     public function index(Request $request): View
     {
-        $tab = in_array($request->tab, ['forms', 'blocklist'], true) && auth()->user()->hasAccess('web_leads.manage') ? $request->tab : 'inbox';
+        $tab = in_array($request->tab, ['forms', 'blocklist', 'connections'], true) && auth()->user()->hasAccess('web_leads.manage') ? $request->tab : 'inbox';
         $status = in_array($request->status, ['pending', 'processed', 'duplicate', 'spam', 'failed'], true) ? $request->status : null;
 
         $submissions = LeadSubmission::with(['form:id,name', 'lead:id,full_name,lead_uid', 'deal:id,status,stage_id', 'deal.stage:id,name,color'])
             ->when($status, fn ($q) => $q->where('status', $status))
+            ->when($request->filled('source'), fn ($q) => $request->source === 'website' ? $q->whereNull('source') : $q->where('source', $request->source))
             ->when($request->filled('q'), function ($q) use ($request) {
                 $term = trim($request->q);
                 $phone = \App\Classes\Helper::normalizePhone($term);
@@ -61,6 +62,16 @@ class WebLeadController extends Controller
             'inquiries'   => InquiryType::cases(),
             'canManage'   => auth()->user()->hasAccess('web_leads.manage'),
             'endpoint'    => url('api/v1/leads'),
+            'events'      => $tab === 'connections' ? \App\Models\LeadWebhookEvent::latest('id')->limit(60)->get() : collect(),
+            'allForms'    => $tab === 'connections' ? LeadCaptureForm::where('is_active', true)->orderBy('name')->get(['id', 'name', 'key']) : collect(),
+            'meta'        => [
+                'webhook'   => url('api/v1/hooks/meta'),
+                'secret'    => (bool) config('connectors.meta.app_secret'),
+                'verify'    => (bool) config('connectors.meta.verify_token'),
+                'token'     => (bool) config('connectors.meta.page_token'),
+                'form'      => app(\App\Services\LeadConnector::class)->metaForm()?->name,
+                'waForm'    => app(\App\Services\LeadConnector::class)->metaForm(true)?->name,
+            ],
         ]);
     }
 
@@ -72,6 +83,15 @@ class WebLeadController extends Controller
         ProcessWebLead::dispatch($s->id);
 
         return back()->with('success', 'Submission sent for processing.');
+    }
+
+    /** Process a logged connector call again (after fixing a key or the capture form). */
+    public function retryEvent(int $id): RedirectResponse
+    {
+        $event = \App\Models\LeadWebhookEvent::whereIn('status', ['failed', 'received'])->findOrFail($id);
+        $status = app(\App\Services\LeadConnector::class)->replay($event);
+
+        return back()->with($status === 'failed' ? 'error' : 'success', $status === 'failed' ? 'Still failing: ' . $event->fresh()->note : 'Processed again: ' . $status . '.');
     }
 
     public function spam(int $id): RedirectResponse

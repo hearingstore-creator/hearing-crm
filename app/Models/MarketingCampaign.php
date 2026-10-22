@@ -13,7 +13,7 @@ class MarketingCampaign extends Model
 
     public const STATUSES = ['active' => 'Active', 'paused' => 'Paused', 'ended' => 'Ended'];
 
-    protected $fillable = ['name', 'code', 'channel', 'vendor_id', 'start_date', 'end_date', 'budget', 'status', 'notes'];
+    protected $fillable = ['name', 'code', 'channel', 'vendor_id', 'start_date', 'end_date', 'budget', 'status', 'notes', 'external_id'];
 
     protected $casts = [
         'start_date' => 'date',

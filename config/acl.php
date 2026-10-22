@@ -78,7 +78,7 @@ return [
                 [
                     // Website leads inbox (index); capture forms, secrets and blocklist (manage). Head Office only.
                     'name' => 'Web Leads',
-                    'label' => 'Website Leads',
+                    'label' => 'Lead Inbox',
                     'route' => 'admin/web-leads',
                     'actions' => ['index', 'manage']
                 ],
