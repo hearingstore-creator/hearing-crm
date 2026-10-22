@@ -389,8 +389,13 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::resource('expense', 'ExpenseController');
 
     Route::get('employee-list', [EmployeeController::class, 'employeeList'])->name('employee.list');
+    Route::get('voucher-book', [\App\Http\Controllers\Admin\VoucherBookController::class, 'index'])->name('voucher-book');
+    Route::get('income/{id}/attachment', [IncomeController::class, 'attachment'])->name('income.attachment');
+    Route::post('income/{id}/approve', [IncomeController::class, 'approve'])->name('income.approve');
+    Route::post('expense/{id}/approve', [\App\Http\Controllers\Admin\ExpenseController::class, 'approve'])->name('expense.approve');
     Route::get('employee-search', [HomeController::class, 'employeeSearch'])->name('employee.search');
 
+    Route::get('expense/{id}/attachment', [\App\Http\Controllers\Admin\ExpenseController::class, 'attachment'])->name('expense.attachment');
 
     Route::resource('setting', 'SettingController');
 

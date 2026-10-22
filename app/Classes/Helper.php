@@ -606,7 +606,7 @@ class Helper
      * @param ?string $type
      * @return bool
      */
-    public static function expenseLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type): bool
+    public static function expenseLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type, array $extra = []): bool
     {
         $ledger = new Ledger();
 
@@ -617,6 +617,7 @@ class Helper
         if (auth()->check() && auth()->user()->branchId()) {
             $ledger->vendor_id = auth()->user()->branchId();
         } else {
+     * @param array $extra Optional Debit Voucher columns (voucher_no, payee_name, payment_method, bank_name, transaction_no, attachment_path)
             $ledger->vendor_id = null;
         }
 
@@ -641,8 +642,13 @@ class Helper
      * @param ?string $refInvoiceNo
      * @param ?string $type
      * @return bool
+        foreach (['voucher_no', 'payee_name', 'payment_method', 'bank_name', 'transaction_no', 'attachment_path', 'status'] as $col) {
+            if (!empty($extra[$col])) {
+                $ledger->{$col} = $extra[$col];
+            }
+        }
      */
-    public static function incomeLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type): bool
+    public static function incomeLedger(object $request, string $invoiceNo, ?string $refInvoiceNo, ?string $type, array $extra = []): bool
     {
         $ledger = new Ledger();
 
@@ -653,6 +659,7 @@ class Helper
         if (auth()->check() && auth()->user()->branchId()) {
             $ledger->vendor_id = auth()->user()->branchId();
         } else {
+     * @param array $extra Optional voucher columns (voucher_no, payee_name, payment_method, bank_name, transaction_no, attachment_path, status)
             $ledger->vendor_id = null;
         }
 
@@ -677,11 +684,32 @@ class Helper
     {
         $user = auth()->user();
         if (!$user || $user->canViewAllBranches()) {
+        foreach (['voucher_no', 'payee_name', 'payment_method', 'bank_name', 'transaction_no', 'attachment_path', 'status'] as $col) {
+            if (!empty($extra[$col])) {
+                $ledger->{$col} = $extra[$col];
+            }
+        }
             return null;
         }
 
         return $user->branchId();
     }
+    /**
+     * Next voucher number for a date, e.g. DV-20261022-0001 (prefix 'DV') or CV-... for credit vouchers.
+     * Looks across all branches (no branch scope) so numbers never repeat.
+     */
+    public static function nextVoucherNo(string $prefix, string $date): string
+    {
+        $stem = $prefix . '-' . date('Ymd', strtotime($date)) . '-';
+        $last = Ledger::withoutGlobalScopes()
+            ->where('voucher_no', 'like', $stem . '%')
+            ->orderByDesc('voucher_no')
+            ->value('voucher_no');
+        $seq = $last ? ((int) substr($last, strlen($stem))) + 1 : 1;
+
+        return $stem . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+    }
+
 
     /**
      * Middleware body for report controllers: a branch-bound user always gets their own branch

@@ -59,7 +59,7 @@ class InUseGuardTest extends TestCase
         $this->actingAs($this->admin)->delete('/admin/type/999999')->assertNotFound();
 
         $headId = DB::table('income_expense_heads')->insertGetId(['head_type' => 'Expense', 'head_name' => 'Rent', 'status' => 1, 'created_at' => now()]);
-        $this->actingAs($this->admin)->post('/admin/expense', ['income_expense_head_id' => $headId, 'date' => date('Y-m-d'), 'paid' => 1000]);
+        $this->actingAs($this->admin)->post('/admin/expense', ['voucher_no' => 'T-' . uniqid(), 'income_expense_head_id' => $headId, 'date' => date('Y-m-d'), 'paid' => 1000]);
         $this->actingAs($this->admin)->from('/admin/income-expense-head')->delete("/admin/income-expense-head/$headId")->assertSessionHas('warning');
 
         $templateId = DB::table('sms_templates')->insertGetId(['name' => 'Reminder', 'category' => 'appointment', 'body' => 'Hi', 'is_active' => 1, 'created_at' => now()]);
@@ -88,7 +88,7 @@ class InUseGuardTest extends TestCase
         $expenseHead = DB::table('income_expense_heads')->insertGetId(['head_type' => 'Expense', 'head_name' => 'Fuel', 'status' => 1, 'created_at' => now()]);
         $incomeHead = DB::table('income_expense_heads')->insertGetId(['head_type' => 'Income', 'head_name' => 'Misc income', 'status' => 1, 'created_at' => now()]);
 
-        $post = fn ($head, $amount) => $this->actingAs($this->admin)->from('/admin/expense/create')->post('/admin/expense', ['income_expense_head_id' => $head, 'date' => date('Y-m-d'), 'paid' => $amount]);
+        $post = fn ($head, $amount) => $this->actingAs($this->admin)->from('/admin/expense/create')->post('/admin/expense', ['voucher_no' => 'T-' . uniqid(), 'income_expense_head_id' => $head, 'date' => date('Y-m-d'), 'paid' => $amount]);
         $post($expenseHead, -50)->assertSessionHasErrors('paid');
         $post($expenseHead, 'abc')->assertSessionHasErrors('paid');
         $post($incomeHead, 50)->assertSessionHasErrors('income_expense_head_id');

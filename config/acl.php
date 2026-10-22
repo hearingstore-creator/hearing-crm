@@ -606,9 +606,21 @@ return [
                 ],
                 [
                     'name' => 'Expense',
-                    'label' => 'Expenses',
+                    'label' => 'Debit Vouchers (Expenses)',
                     'route' => 'admin/expense',
-                    'actions' => ['index', 'create', 'delete']
+                    'actions' => ['index', 'create', 'edit', 'approve', 'delete']
+                ],
+                [
+                    'name' => 'Income',
+                    'label' => 'Credit Vouchers (Income)',
+                    'route' => 'admin/income',
+                    'actions' => ['index', 'create', 'approve', 'delete']
+                ],
+                [
+                    'name' => 'Cash Bank Book',
+                    'label' => 'Cash & Bank Book',
+                    'route' => 'admin/voucher-book',
+                    'actions' => ['index']
                 ],
                 [
                     'name' => 'Payment Reconciliation',

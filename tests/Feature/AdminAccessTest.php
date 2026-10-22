@@ -109,7 +109,7 @@ class AdminAccessTest extends TestCase
     public function test_only_manual_expenses_are_cancelled_and_by_reversal(): void
     {
         $headId = DB::table('income_expense_heads')->insertGetId(['head_type' => 'Expense', 'head_name' => 'Office', 'status' => 1, 'created_at' => now()]);
-        $this->actingAs($this->admin)->post('/admin/expense', ['income_expense_head_id' => $headId, 'date' => date('Y-m-d'), 'paid' => 300, 'details' => 'Printer ink']);
+        $this->actingAs($this->admin)->post('/admin/expense', ['voucher_no' => 'T-' . uniqid(), 'income_expense_head_id' => $headId, 'date' => date('Y-m-d'), 'paid' => 300, 'details' => 'Printer ink']);
         $manual = DB::table('ledgers')->where('details', 'Printer ink')->first();
         $system = DB::table('ledgers')->insertGetId(['income_expense_head_id' => $headId, 'invoice_no' => 'T-DP-1', 'expense_amount' => 50, 'income_amount' => 0, 'amount_type' => 'Expense', 'date' => date('Y-m-d'), 'type' => 'Doctor Payment', 'ref_invoice_no' => 'DP-T-1', 'created_at' => now()]);
 
