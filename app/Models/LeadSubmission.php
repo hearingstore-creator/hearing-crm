@@ -16,7 +16,7 @@ class LeadSubmission extends Model
 
     protected $fillable = [
         'form_id', 'status', 'spam_reason', 'name', 'phone', 'normalized_phone', 'email', 'message', 'inquiry_for',
-        'utm_source', 'utm_medium', 'utm_campaign', 'page_url', 'ip', 'user_agent', 'lead_id', 'deal_id', 'error', 'processed_at',
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'landing_page', 'referrer_url', 'page_url', 'ip', 'user_agent', 'lead_id', 'deal_id', 'error', 'processed_at',
     ];
 
     protected $casts = [

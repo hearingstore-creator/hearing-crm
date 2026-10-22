@@ -46,19 +46,34 @@ class ProcessWebLead implements ShouldQueue
             $sla = $form->sla_minutes ?? 15;
             $inquiry = $s->inquiry_for ?: ($form->default_inquiry ?? null);
             $vendorId = $form->vendor_id ?? null;
-            $dealAttributes = array_filter([
-                'source'       => SourceOfEntry::WEBSITE->value,
+            // The campaign whose code is in the link (utm_campaign / QR), if it is set up in Marketing → Campaigns
+            $campaign = \App\Models\MarketingCampaign::findByCode($s->utm_campaign);
+            $touch = array_filter([
+                'campaign_id'  => $campaign?->id,
                 'utm_source'   => $s->utm_source,
                 'utm_medium'   => $s->utm_medium,
                 'utm_campaign' => $s->utm_campaign,
+                'utm_content'  => $s->utm_content,
+                'utm_term'     => $s->utm_term,
+                'gclid'        => $s->gclid,
+                'fbclid'       => $s->fbclid,
+                'landing_page' => $s->landing_page ?: $s->page_url,
+            ], fn ($v) => $v !== null && $v !== '');
+            $dealAttributes = array_filter([
+                'source'       => SourceOfEntry::WEBSITE->value,
                 'inquiry_for'  => $inquiry,
-            ], fn ($v) => $v !== null && $v !== []);
+            ], fn ($v) => $v !== null && $v !== []) + $touch;
+            // first touch of the person (kept as it was when the lead already has one)
+            $firstTouch = $touch + array_filter(['referrer_url' => $s->referrer_url], fn ($v) => $v !== null && $v !== '');
 
             $lead = Lead::withoutGlobalScopes()->whereNull('deleted_at')
                 ->where('normalized_phone', $s->normalized_phone)->oldest('id')->first();
             $status = LeadSubmission::PROCESSED;
 
             if ($lead) {
+                if (!$lead->campaign_id && !$lead->utm_source && !$lead->utm_campaign && $firstTouch) {
+                    $lead->forceFill($firstTouch)->saveQuietly();
+                }
                 $deal = Deal::withoutGlobalScopes()->whereNull('deleted_at')->open()
                     ->where('lead_id', $lead->id)->latest('id')->first();
                 if ($deal) {
@@ -80,7 +95,7 @@ class ProcessWebLead implements ShouldQueue
                     'source_of_entry' => SourceOfEntry::WEBSITE->value,
                     'lead_status'     => LeadStatus::NEW->value,
                     'lead_type'       => LeadType::NEW_CUSTOMER->value,
-                ]);
+                ] + $firstTouch);
                 $deal = $deals->openInitialDeal($lead, $dealAttributes);
                 app(\App\Services\SmsAutomationService::class)->fireAfterCommit(\App\Enums\SmsAutomationTrigger::LEAD_CREATED,
                     $lead->phone_number, 'lead', $lead->id, ['name' => $lead->full_name, 'customer_name' => $lead->full_name], 'lead-welcome:' . $lead->id);

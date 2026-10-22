@@ -399,7 +399,7 @@
                 <div class="row">
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label for="source_of_entry">Source of Entry</label>
+                            <label for="source_of_entry">Source of Entry <i class="text-danger">*</i></label>
                             <select class="form-control select @error('source_of_entry') is-invalid @enderror" name="source_of_entry" id="source_of_entry">
                                 <option value="">Select</option>
                                 @foreach($sourceOfEntries as $source)
@@ -409,6 +409,20 @@
                                 @endforeach
                             </select>
                             @error('source_of_entry')
+                                <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
+                            @enderror
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="campaign_id">Campaign <small class="text-muted">(which ad, camp or leaflet)</small></label>
+                            <select class="form-control select @error('campaign_id') is-invalid @enderror" name="campaign_id" id="campaign_id">
+                                <option value="">None / not known</option>
+                                @foreach($marketingCampaigns ?? [] as $mc)
+                                    <option value="{{ $mc->id }}" {{ (string) old('campaign_id') === (string) $mc->id ? 'selected' : '' }}>{{ $mc->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('campaign_id')
                                 <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
                             @enderror
                         </div>

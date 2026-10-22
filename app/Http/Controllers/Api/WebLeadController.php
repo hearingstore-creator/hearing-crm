@@ -15,7 +15,8 @@ use Illuminate\Validation\Rules\Enum;
  * POST /api/v1/leads – called by the website's SERVER (never from the browser).
  *
  * Headers: X-Form-Key, X-Timestamp (unix seconds), X-Signature = hex HMAC-SHA256("{timestamp}.{raw body}", secret)
- * Body (JSON): name, phone, email?, message?, inquiry_for[]?, utm_source?, utm_medium?, utm_campaign?, page_url?,
+ * Body (JSON): name, phone, email?, message?, inquiry_for[]?, utm_source?, utm_medium?, utm_campaign?, utm_content?, utm_term?,
+ *               gclid?, fbclid?, landing_page?, referrer_url?, page_url?,
  *              client_ip, user_agent?, elapsed_seconds, website (honeypot, must be empty), turnstile_token?
  *
  * Bots get a normal 202 when caught by honeypot / timing / content / blocklist, so they learn nothing;
@@ -44,6 +45,12 @@ class WebLeadController extends Controller
             'utm_source'      => ['nullable', 'string', 'max:100'],
             'utm_medium'      => ['nullable', 'string', 'max:100'],
             'utm_campaign'    => ['nullable', 'string', 'max:150'],
+            'utm_content'     => ['nullable', 'string', 'max:150'],
+            'utm_term'        => ['nullable', 'string', 'max:150'],
+            'gclid'           => ['nullable', 'string', 'max:255'],
+            'fbclid'          => ['nullable', 'string', 'max:255'],
+            'landing_page'    => ['nullable', 'string', 'max:500'],
+            'referrer_url'    => ['nullable', 'string', 'max:500'],
             'page_url'        => ['nullable', 'string', 'max:500'],
             'client_ip'       => ['required', 'ip'],
             'user_agent'      => ['nullable', 'string', 'max:500'],

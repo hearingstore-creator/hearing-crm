@@ -40,6 +40,7 @@ class DealService
             'value'            => $lead->approx_budget,
             'temperature'      => $lead->lead_temperature,
             'source'           => $lead->source_of_entry,
+            'campaign_id'      => $lead->campaign_id,
             'position'         => 0,
             'stage_entered_at' => now(),
             'won_at'           => $status === Deal::WON ? now() : null,

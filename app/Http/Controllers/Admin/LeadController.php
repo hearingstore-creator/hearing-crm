@@ -67,6 +67,7 @@ class LeadController extends Controller
         $data['stageMap'] = Lead::stageMap();
         $data['leadTemperatures'] = \App\Enums\LeadTemperature::cases();
         $data['sourceOfEntries'] = SourceOfEntry::cases();
+        $data['marketingCampaigns'] = \App\Models\MarketingCampaign::whereIn('status', ['active', 'paused'])->orderBy('name')->get(['id', 'name', 'channel']);
         $data['vendors'] = User::where('type', 'vendor')->get();
         $data['start_date'] = date('Y-m-d', strtotime('2021-11-01'));
         $data['end_date'] = date('Y-m-d');
@@ -119,6 +120,7 @@ class LeadController extends Controller
         $data['users'] = User::select('id', 'name')->get();
         $data['leadTypes'] = LeadType::cases();
         $data['sourceOfEntries'] = SourceOfEntry::cases();
+        $data['marketingCampaigns'] = \App\Models\MarketingCampaign::whereIn('status', ['active', 'paused'])->orderBy('name')->get(['id', 'name', 'channel']);
         $data['relations'] = Relation::cases();
         $data['inquiries'] = InquiryType::cases();
         $data['genders'] = Gender::cases();
@@ -189,7 +191,8 @@ class LeadController extends Controller
             'loss_to_whom' => ['nullable', 'string', 'max:255'],
             'loss_reason' => ['nullable', 'string', 'max:255'],
             // Source and Type
-            'source_of_entry' => ['nullable', new Enum(SourceOfEntry::class)],
+            'source_of_entry' => ['required', new Enum(SourceOfEntry::class)],
+            'campaign_id' => ['nullable', 'integer', Rule::exists('marketing_campaigns', 'id')->whereNull('deleted_at')],
             'lead_type' => ['nullable', new Enum(LeadType::class)],
 
             // Notes
@@ -202,6 +205,7 @@ class LeadController extends Controller
             'assigned_user' => ['nullable', 'exists:users,id'],
         ], [
             'due_at.required' => 'Choose when the first activity should happen.',
+            'source_of_entry.required' => 'How did this person hear about us? Choose the source.',
         ]);
 
         // The chosen stage's requirements, exactly as when a card is moved on the board
@@ -230,6 +234,9 @@ class LeadController extends Controller
             $leads['lead_uid'] = Lead::generateUid();
             $leads['lead_status'] = LeadStatus::NEW->value; // mirrored from the deal below
             $leads['vendor_id'] = auth()->user()->branchId() ?: $request->vendor_id;
+            if (!empty($leads['campaign_id'])) {
+                $leads['utm_campaign'] = \App\Models\MarketingCampaign::find($leads['campaign_id'])?->code;
+            }
 
             $lead = new Lead($leads);
             if (!$lead->save()) {
@@ -277,6 +284,7 @@ class LeadController extends Controller
         $data['users'] = User::select('id', 'name')->get();
         $data['leadTypes'] = LeadType::cases();
         $data['sourceOfEntries'] = SourceOfEntry::cases();
+        $data['marketingCampaigns'] = \App\Models\MarketingCampaign::whereIn('status', ['active', 'paused'])->orderBy('name')->get(['id', 'name', 'channel']);
         $data['relations'] = Relation::cases();
         $data['inquiries'] = InquiryType::cases();
         $data['genders'] = Gender::cases();
@@ -448,6 +456,7 @@ class LeadController extends Controller
 
             // Source and Type
             'source_of_entry' => ['nullable', new Enum(SourceOfEntry::class)],
+            'campaign_id' => ['nullable', 'integer', Rule::exists('marketing_campaigns', 'id')->whereNull('deleted_at')],
             'lead_type' => ['nullable', new Enum(LeadType::class)],
 
             // Notes

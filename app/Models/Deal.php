@@ -21,6 +21,7 @@ class Deal extends Model
         'lead_id', 'pipeline_id', 'stage_id', 'status', 'vendor_id', 'owner_id', 'title', 'inquiry_for',
         'value', 'expected_close_date', 'temperature', 'position', 'stage_entered_at', 'won_at', 'lost_at',
         'lost_reason_id', 'lost_to', 'lost_note', 'sale_master_id', 'source', 'utm_source', 'utm_medium', 'utm_campaign',
+        'campaign_id', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'landing_page',
     ];
 
     protected $casts = [

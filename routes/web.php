@@ -124,6 +124,20 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('notifications/read-all', [\App\Http\Controllers\Admin\NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::get('deal-reports', [\App\Http\Controllers\Admin\DealReportController::class, 'index'])->name('deal-reports.index');
 
+    // Marketing: campaigns, monthly spend (books the advertising expense), and the return report
+    Route::get('marketing/campaigns', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'index'])->name('marketing.campaigns.index');
+    Route::post('marketing/campaigns', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'store'])->name('marketing.campaigns.store');
+    Route::put('marketing/campaigns/{id}', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'update'])->name('marketing.campaigns.update');
+    Route::delete('marketing/campaigns/{id}', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'destroy'])->name('marketing.campaigns.destroy');
+    Route::get('marketing/spend', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'index'])->name('marketing.spend.index');
+    Route::post('marketing/spend', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'store'])->name('marketing.spend.store');
+    Route::post('marketing/spend/link-expense', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'linkExpense'])->name('marketing.spend.link');
+    Route::post('marketing/spend/import', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'importPreview'])->name('marketing.spend.import');
+    Route::post('marketing/spend/import/confirm', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'importConfirm'])->name('marketing.spend.import.confirm');
+    Route::delete('marketing/spend/{id}', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'destroy'])->name('marketing.spend.destroy');
+    Route::get('marketing/roi', [\App\Http\Controllers\Admin\MarketingRoiController::class, 'index'])->name('marketing.roi.index');
+    Route::get('marketing/roi/export', [\App\Http\Controllers\Admin\MarketingRoiController::class, 'export'])->name('marketing.roi.export');
+
     // Website leads: inbox, capture forms, blocklist
     Route::get('web-leads', [\App\Http\Controllers\Admin\WebLeadController::class, 'index'])->name('web-leads.index');
     Route::post('web-leads/{id}/retry', [\App\Http\Controllers\Admin\WebLeadController::class, 'retry'])->whereNumber('id');

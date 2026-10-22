@@ -92,6 +92,33 @@ return [
             ]
         ],
         [
+            // Campaigns and their monthly spend (head office), and the marketing return report
+            'name' => 'Marketing',
+            'icon' => 'fa-bullhorn',
+            'order' => 2,
+            'category' => 'CRM',
+            'children' => [
+                [
+                    'name' => 'Marketing ROI',
+                    'label' => 'Marketing Return',
+                    'route' => 'admin/marketing/roi',
+                    'actions' => ['index', 'export']
+                ],
+                [
+                    'name' => 'Marketing Campaigns',
+                    'label' => 'Campaigns',
+                    'route' => 'admin/marketing/campaigns',
+                    'actions' => ['index', 'create', 'edit', 'delete']
+                ],
+                [
+                    'name' => 'Marketing Spend',
+                    'label' => 'Monthly Spend',
+                    'route' => 'admin/marketing/spend',
+                    'actions' => ['index', 'create', 'import', 'delete']
+                ],
+            ]
+        ],
+        [
             'name' => 'Customer',
             'label' => 'Customers',
             'icon' => 'fa-users',

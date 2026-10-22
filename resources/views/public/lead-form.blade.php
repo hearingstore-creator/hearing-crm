@@ -239,8 +239,14 @@
         if (Object.keys(errs).length) { showError('', errs); return; }
 
         var data = new FormData(form);
-        ['utm_source', 'utm_medium', 'utm_campaign'].forEach(function (k) { if (qs.get(k)) { data.append(k, qs.get(k)); } });
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'].forEach(function (k) { if (qs.get(k)) { data.append(k, qs.get(k)); } });
+        if (qs.get('c') && !qs.get('utm_campaign')) {   // campaign QR code / printed link
+            data.append('utm_campaign', qs.get('c'));
+            if (!qs.get('utm_source')) { data.append('utm_source', 'qr'); data.append('utm_medium', 'offline'); }
+        }
         data.append('page_url', qs.get('ref') || document.referrer || location.href);
+        data.append('landing_page', qs.get('lp') || qs.get('ref') || location.href);
+        if (qs.get('rf') || (document.referrer && document.referrer.indexOf(location.host) === -1)) { data.append('referrer_url', qs.get('rf') || document.referrer); }
 
         btn.disabled = true;
         btn.querySelector('span').textContent = 'Sending…';
