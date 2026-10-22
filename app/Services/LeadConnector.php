@@ -161,6 +161,7 @@ class LeadConnector
 
         $from = (string) ($message['from'] ?? '');
         $phone = $this->intake->phone($from);
+        app(SequenceService::class)->stopForPhone($from, 'Replied on WhatsApp');
         $hours = max(1, (int) config('connectors.meta.whatsapp_repeat_hours', 24));
         if ($phone && LeadSubmission::where('source', 'whatsapp')->where('normalized_phone', $phone)->where('created_at', '>=', now()->subHours($hours))->exists()) {
             $event->mark('ignored', "Same WhatsApp conversation (within {$hours} h)");

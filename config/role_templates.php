@@ -16,7 +16,7 @@ return [
     'areas' => [
         'Sales'        => ['sales', 'add_sale', 'sale_list', 'patient_due_list', 'sale_fulfillment', 'pending_services', 'service_type', 'sale_return', 'proposals', 'template'],
         'Patients'     => ['customer', 'add_customer', 'customer_list', 'customer_lookup', 'customer_ledger', 'customer_payment', 'advance'],
-        'Leads'        => ['leads', 'deal_board', 'add_lead', 'lead_list', 'web_leads', 'deal_reports', 'pipeline_settings'],
+        'Leads'        => ['leads', 'deal_board', 'add_lead', 'lead_list', 'web_leads', 'deal_reports', 'pipeline_settings', 'sequences'],
         'Marketing'    => ['marketing', 'marketing_roi', 'marketing_campaigns', 'marketing_spend'],
         'Doctors'      => ['doctor', 'add_doctor', 'doctor_list', 'doctor_payment', 'doctor_&_referral', 'doctor_statement'],
         'Suppliers'    => ['supplier', 'add_supplier', 'supplier_list', 'supplier_payment', 'supplier_statement', 'supplier_reconciliation'],

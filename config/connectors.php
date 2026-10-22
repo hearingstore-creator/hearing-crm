@@ -16,5 +16,8 @@ return [
         'whatsapp_form_key' => env('WHATSAPP_LEAD_FORM_KEY'),   // empty = same as form_key
         // A WhatsApp number writing again within this many hours is the same enquiry (no new inbox row)
         'whatsapp_repeat_hours' => (int) env('WHATSAPP_REPEAT_HOURS', 24),
+        // Sending approved WhatsApp templates from follow-up sequences (WhatsApp Cloud API)
+        'wa_phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'wa_token'           => env('WHATSAPP_TOKEN'),
     ],
 ];

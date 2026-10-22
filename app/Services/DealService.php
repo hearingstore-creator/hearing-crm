@@ -54,6 +54,7 @@ class DealService
         $this->route($deal, $lead, $attributes);
         $this->syncLead($lead);
         $this->rescore($deal);
+        $this->sequences(fn (SequenceService $s) => $s->onDealCreated($deal));
 
         return $deal;
     }
@@ -81,6 +82,7 @@ class DealService
             $this->route($deal, $lead, $attributes);
             $this->syncLead($lead);
             $this->rescore($deal);
+            $this->sequences(fn (SequenceService $s) => $s->onDealCreated($deal));
 
             return $deal;
         });
@@ -140,6 +142,7 @@ class DealService
             $this->syncLead($deal->lead);
         });
         $this->rescore($deal->fresh() ?? $deal);
+        $this->sequences(fn (SequenceService $s) => $s->onStageEntered($deal->fresh() ?? $deal));
     }
 
     public function markWon(Deal $deal, ?int $saleMasterId = null, ?string $note = null): Customer
@@ -153,6 +156,7 @@ class DealService
             $this->history($deal, $deal->stage, $deal->stage, $deal->stage?->status_key, LeadStatus::WON->value, $note ?: 'Deal won');
             $customer = $this->ensureCustomer($deal->lead);
             $this->syncLead($deal->lead);
+            $this->sequences(fn (SequenceService $s) => $s->stopForDeal($deal, 'Deal won'));
 
             return $customer;
         });
@@ -176,6 +180,7 @@ class DealService
                 'loss_to_whom' => $lostTo,
             ])->saveQuietly();
             $this->syncLead($deal->lead);
+            $this->sequences(fn (SequenceService $s) => $s->onDealLost($deal));
         });
     }
 
@@ -447,6 +452,16 @@ class DealService
         $router = app(LeadRouter::class);
         if ($router->shouldRoute()) {
             $router->assign($deal, $lead);
+        }
+    }
+
+    /** Follow-up sequences react to deal events; a sequence problem never blocks the work. */
+    private function sequences(callable $fn): void
+    {
+        try {
+            $fn(app(SequenceService::class));
+        } catch (\Throwable $e) {
+            report($e);
         }
     }
 

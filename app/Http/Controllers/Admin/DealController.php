@@ -391,6 +391,8 @@ class DealController extends Controller
             'appointments' => \App\Models\Appointment::with(['service:id,name', 'user:id,name', 'professionalTimeSlot.timeSlot'])
                 ->where('lead_id', $deal->lead_id)->whereDate('appointment_date', '>=', today()->subDays(30))
                 ->orderBy('appointment_date')->limit(20)->get(),
+            'enrollments' => \App\Models\SequenceEnrollment::with('sequence:id,name')->where('deal_id', $deal->id)->latest('id')->limit(5)->get(),
+            'sequenceOptions' => \App\Models\Sequence::orderByDesc('is_active')->orderBy('name')->whereHas('steps')->get(['id', 'name', 'is_active']),
             'services'   => $this->abilities()['appointment']
                 ? \App\Models\AppointmentService::where('status', 1)->orderBy('name')->get(['id', 'name']) : collect(),
         ]);

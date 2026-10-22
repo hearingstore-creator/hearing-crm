@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
  *
  *   php artisan crm:automations sla          – inbound lead not contacted by its deadline → alert owner + Super Admin, or next person by rule
  *   php artisan crm:automations scores       – recalculate lead scores of open deals
+ *   php artisan crm:automations sequences    – run due follow-up sequence steps (SMS, email, WhatsApp, call tasks)
  *   php artisan crm:automations appointments – SMS reminder for tomorrow's appointments
  *   php artisan crm:automations reengage     – "Not ready" lost 90+ days ago → new deal + call
  *   php artisan crm:automations points       – SMS 7 days before membership points expire
@@ -34,9 +35,9 @@ use Illuminate\Support\Facades\DB;
  */
 class CrmAutomations extends Command
 {
-    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays', 'scores'];
+    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays', 'scores', 'sequences'];
 
-    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays|scores} {--dry : show what would happen, change nothing}';
+    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays|scores|sequences} {--dry : show what would happen, change nothing}';
     protected $description = 'Run one lead automation';
 
     public function __construct(private CrmNotifier $notifier, private DealService $deals, private SmsAutomationService $sms)
@@ -105,6 +106,14 @@ class CrmAutomations extends Command
         }
 
         return $n;
+    }
+
+    /** Due steps of follow-up sequences. */
+    private function sequences(): int
+    {
+        return $this->option('dry')
+            ? \App\Models\SequenceEnrollment::where('status', 'active')->where('next_run_at', '<=', now())->count()
+            : app(\App\Services\SequenceService::class)->runDue();
     }
 
     /** Recalculate the lead score of open deals (time-based reasons: quiet for 14 days, overdue step, stuck in a stage). */

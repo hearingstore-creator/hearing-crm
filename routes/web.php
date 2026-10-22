@@ -128,6 +128,17 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('notifications/read-all', [\App\Http\Controllers\Admin\NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::get('deal-reports', [\App\Http\Controllers\Admin\DealReportController::class, 'index'])->name('deal-reports.index');
 
+    // Follow-up sequences (SMS, email, WhatsApp, call tasks over days) and starting / stopping one on a deal
+    Route::get('sequences', [\App\Http\Controllers\Admin\SequenceController::class, 'index'])->name('sequences.index');
+    Route::get('sequences/create', [\App\Http\Controllers\Admin\SequenceController::class, 'create'])->name('sequences.create');
+    Route::post('sequences', [\App\Http\Controllers\Admin\SequenceController::class, 'store'])->name('sequences.store');
+    Route::get('sequences/{id}/edit', [\App\Http\Controllers\Admin\SequenceController::class, 'edit'])->whereNumber('id')->name('sequences.edit');
+    Route::put('sequences/{id}', [\App\Http\Controllers\Admin\SequenceController::class, 'update'])->whereNumber('id')->name('sequences.update');
+    Route::post('sequences/{id}/toggle', [\App\Http\Controllers\Admin\SequenceController::class, 'toggle'])->whereNumber('id')->name('sequences.toggle');
+    Route::delete('sequences/{id}', [\App\Http\Controllers\Admin\SequenceController::class, 'destroy'])->whereNumber('id')->name('sequences.destroy');
+    Route::post('deals/{id}/sequence', [\App\Http\Controllers\Admin\SequenceController::class, 'enroll'])->whereNumber('id')->name('deals.sequence.start');
+    Route::post('sequence-enrollments/{id}/stop', [\App\Http\Controllers\Admin\SequenceController::class, 'stop'])->whereNumber('id')->name('deals.sequence.stop');
+
     // Marketing: campaigns, monthly spend (books the advertising expense), and the return report
     Route::get('marketing/campaigns', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'index'])->name('marketing.campaigns.index');
     Route::post('marketing/campaigns', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'store'])->name('marketing.campaigns.store');

@@ -89,6 +89,13 @@ return [
                     'route' => 'admin/deal-reports',
                     'actions' => ['index']
                 ],
+                [
+                    // Planned follow-ups: SMS, email, WhatsApp templates and call tasks over days
+                    'name' => 'Sequences',
+                    'label' => 'Follow-up Sequences',
+                    'route' => 'admin/sequences',
+                    'actions' => ['index', 'create', 'edit', 'delete']
+                ],
             ]
         ],
         [

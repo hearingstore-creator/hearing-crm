@@ -55,6 +55,8 @@ class SmsInboundController extends Controller
             'received_at'  => now(),
         ]);
 
+        app(\App\Services\SequenceService::class)->stopForPhone($phone, $action === 'stop' ? 'Replied STOP by SMS' : 'Replied by SMS');
+
         if ($action === 'stop') {
             BlockedContact::firstOrCreate(
                 ['type' => BlockedContact::SMS_OPT_OUT, 'value' => $phone],

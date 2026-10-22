@@ -110,6 +110,8 @@
             </form>
         @endif
 
+        @include('admin.deal.partials.sequence-box')
+
         <h3 class="dd-h">Planned</h3>
         @forelse ($pending as $a)
             @php
