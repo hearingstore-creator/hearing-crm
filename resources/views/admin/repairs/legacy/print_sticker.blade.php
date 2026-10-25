@@ -66,7 +66,7 @@
 
     <div class="no-print">
         <button onclick="window.print()">Print</button>
-        <button onclick="window.close()">Close</button>
+        <button onclick="window.close(); setTimeout(function () { window.location.href = '{{ route('repairs.show', $job->id) }}'; }, 250);">Close</button>
     </div>
 
     <div class="header">

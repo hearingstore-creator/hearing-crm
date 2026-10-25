@@ -71,6 +71,38 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
+
+/* Print: neutralise AdminLTE fixed-layout rules so the invoice paper flows across A4 pages */
+@media print {
+    html, body, .wrapper, .content-wrapper, .content-wrapper > *, .sale-page, .inv-layout {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    .wrapper { display: block !important; position: static !important; }
+    .content-wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        position: static !important;
+        transform: none !important;
+        width: 100% !important;
+    }
+    .main-header, .main-sidebar, .main-footer, .control-sidebar, .sidebar-overlay,
+    .no-print, .inv-side, .crm-page-header, .stepper-container, .services-panel-card {
+        display: none !important;
+    }
+    .crm-animate-in { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .inv-layout { display: block !important; margin: 0 !important; padding: 0 !important; }
+    .inv-paper {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+}
 </style>
 @endpush
 
@@ -146,7 +178,7 @@
             @can('permission', 'sale_list.index')
                 <a href="{{ url('admin/sale') }}" class="btn btn-secondary btn-sm" id="btn-back-sales"><i class="fas fa-arrow-left mr-1"></i>Sales List</a>
             @endcan
-            <button type="button" onclick="window.print()" class="btn btn-primary btn-sm" id="btn-print-top"><i class="fas fa-print mr-1"></i>Print / PDF</button>
+            <button type="button" onclick="crmPrintInvoice()" data-print-size class="btn btn-primary btn-sm" id="btn-print-top"><i class="fas fa-print mr-1"></i>Print / PDF</button>
         </div>
     </div>
 
@@ -374,7 +406,7 @@
                 @include('admin.partials.document_header', [
                     'vendor'       => $saleMaster->vendor,
                     'setting'      => $setting,
-                    'documentType' => 'TAX INVOICE',
+                    'documentType' => 'INVOICE',
                     'documentNo'   => '#' . $saleMaster->sale_invoice_no,
                     'date'         => $saleMaster->date,
                     'status'       => $statusLabel,
@@ -677,7 +709,7 @@
                             <i class="fas fa-hand-holding-usd"></i> Collect Due Payment
                         </button>
                     @endif
-                    <button type="button" onclick="window.print()" class="side-btn primary" id="btn-print-side">
+                    <button type="button" onclick="crmPrintInvoice()" data-no-print-size class="side-btn primary" id="btn-print-side">
                         <i class="fas fa-print"></i> Print / Save as PDF
                     </button>
                     <a href="{{ route('sale.pos-print', $saleMaster->id) }}" target="_blank" class="side-btn" id="btn-pos-print">
@@ -868,6 +900,62 @@
 @endif
 
 @push('scripts')
+<script>
+/* Print only the invoice paper, inside an isolated iframe (independent of the admin layout). */
+function crmPrintInvoice() {
+    var paper = document.getElementById('print-area');
+    if (!paper) { window.print(); return; }
+
+    var clone = paper.cloneNode(true);
+    clone.querySelectorAll('.no-print').forEach(function (n) { n.remove(); });
+    clone.classList.remove('crm-animate-in');
+
+    var sizes = (window.CRMPrint && window.CRMPrint.sizes) || {};
+    var cur = (window.CRMPrint && window.CRMPrint.current()) || 'A4';
+    var pg = sizes[cur] || { size: 'A4 portrait', margin: '10mm' };
+
+    var css = [
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+        "{{ asset('assets/css/theme.css') }}",
+        "{{ asset('assets/css/crm-module.css') }}",
+        "{{ asset('assets/css/sales-invoice.css') }}"
+    ].map(function (h) { return '<link rel="stylesheet" href="' + h + '">'; }).join('');
+
+    var old = document.getElementById('crm-print-frame');
+    if (old) old.remove();
+    var frame = document.createElement('iframe');
+    frame.id = 'crm-print-frame';
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    document.body.appendChild(frame);
+
+    var doc = frame.contentWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #{{ $saleMaster->sale_invoice_no }}</title>' + css +
+        '<style>@page{size:' + pg.size + ';margin:' + pg.margin + ';}' +
+        'html,body{margin:0;padding:0;background:#fff;font-family:Inter,system-ui,sans-serif;}' +
+        '.inv-paper{box-shadow:none!important;border-radius:0;margin:0;max-width:none;width:100%;}' +
+        '.inv-pad{padding:8px 4px!important;}' +
+        '.inv-paper,.inv-paper *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
+        '.inv-parties{grid-template-columns:1.5fr 1fr!important;}' +
+        '.inv-parties>.inv-party+.inv-party{border-left:1px dashed #e2e8f0!important;padding-left:20px!important;}' +
+        '.inv-bottom{grid-template-columns:1fr 300px!important;}' +
+        '.inv-foot{grid-template-columns:repeat(3,1fr)!important;}' +
+        '.inv-head{flex-wrap:nowrap;}.inv-items tr{page-break-inside:avoid;}</style>' +
+        '</head><body>' + clone.outerHTML + '</body></html>');
+    doc.close();
+
+    var done = false;
+    function go() {
+        if (done) return; done = true;
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+        catch (e) { window.print(); }
+    }
+    frame.onload = function () { setTimeout(go, 600); };
+    setTimeout(go, 2500); // fallback if onload never fires
+}
+</script>
 <script>
 $(document).ready(function() {
     // Auto-open collect due modal if passed in query (?collect_due=1)
