@@ -305,4 +305,66 @@ class DebitVoucherTest extends TestCase
         $allowed = $this->userWithPermissions(['cash_bank_book.index']);
         $this->actingAs($allowed)->get('/admin/voucher-book')->assertSuccessful();
     }
+
+    public function test_debit_and_credit_voucher_show_views_have_print_icons_and_proper_structure(): void
+    {
+        $headIn = $this->makeHead('Income');
+        $headOut = $this->makeHead();
+        $date = '2026-10-26';
+
+        // 1. Create a Debit Voucher
+        $no = $this->no();
+        $this->actingAs($this->admin)->post('/admin/expense', [
+            'voucher_no' => $no,
+            'income_expense_head_id' => $headOut->id,
+            'date' => $date,
+            'paid' => '500',
+            'payment_method' => 'Cash',
+            'payee_name' => 'Test Vendor Corp',
+        ])->assertSessionHasNoErrors();
+
+        $debit = Ledger::where('voucher_no', $no)->firstOrFail();
+
+        // Check Debit Voucher printable page
+        $res = $this->actingAs($this->admin)->get("/admin/expense/{$debit->id}");
+        $res->assertSuccessful();
+        $res->assertSee('fa-print');
+        $res->assertSee('Print Debit Voucher');
+        $res->assertSee('Test Vendor Corp');
+        $res->assertSee('DEBIT VOUCHER');
+        $res->assertSee('sheet');
+
+        // Check Debit Voucher List page has the print icon
+        $this->actingAs($this->admin)->get('/admin/expense')
+            ->assertSuccessful()
+            ->assertSee('fa-print')
+            ->assertSee("/admin/expense/{$debit->id}");
+
+        // 2. Create a Credit Voucher
+        $this->actingAs($this->admin)->post('/admin/income', [
+            'income_expense_head_id' => $headIn->id,
+            'date' => $date,
+            'paid_amount' => '1200',
+            'payment_method' => 'Cash',
+            'payee_name' => 'Donating Client',
+        ])->assertSessionHasNoErrors();
+
+        $credit = Ledger::where('amount_type', 'Income')->latest('id')->firstOrFail();
+
+        // Check Credit Voucher printable page
+        $resCredit = $this->actingAs($this->admin)->get("/admin/income/{$credit->id}");
+        $resCredit->assertSuccessful();
+        $resCredit->assertSee('fa-print');
+        $resCredit->assertSee('Print Credit Voucher');
+        $resCredit->assertSee('Donating Client');
+        $resCredit->assertSee('CREDIT VOUCHER');
+        $resCredit->assertSee('sheet');
+
+        // Check Credit Voucher List page has the print icon
+        $this->actingAs($this->admin)->get('/admin/income')
+            ->assertSuccessful()
+            ->assertSee('fa-print')
+            ->assertSee("/admin/income/{$credit->id}");
+    }
 }
+

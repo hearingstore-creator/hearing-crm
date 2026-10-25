@@ -87,7 +87,11 @@
                         <tr>
                             <td style="color: var(--page-text-muted); font-size: 12px;">{{ ++$key }}</td>
                             <td><span style="font-size: 13px; font-weight: 500;">{{ $val->date }}</span></td>
-                            <td><span style="font-weight: 600; color: var(--accent-500); font-size: 13px;">{{ $val->voucher_no ?: $val->invoice_no }}</span></td>
+                            <td>
+                                <a href="{{ url('admin/income/' . $val->id) }}" style="font-weight: 600; color: var(--accent-600); font-size: 13px; text-decoration: none;" title="View / print voucher">
+                                    {{ $val->voucher_no ?: $val->invoice_no }}
+                                </a>
+                            </td>
                             <td style="font-size:12px;">{{ $val->head->head_name ?? '—' }}</td>
                             <td style="font-size:12px;">{{ $val->payee_name ?: '—' }}</td>
                             <td style="font-size:12px;">
@@ -116,12 +120,10 @@
                                 @endif
                             </td>
                             <td>
-                                <div class="crm-actions">
-                                    @if ($val->voucher_no)
-                                        <a href="{{ url('admin/income/' . $val->id) }}" class="action-btn" title="View / print voucher"><i class="fas fa-print"></i></a>
-                                        @if ($val->attachment_path)
-                                            <a href="{{ route('income.attachment', $val->id) }}" target="_blank" class="action-btn" title="Document"><i class="fas fa-paperclip"></i></a>
-                                        @endif
+                                <div class="crm-actions" style="justify-content: center;">
+                                    <a href="{{ url('admin/income/' . $val->id) }}" class="action-btn btn-view" title="View / print voucher"><i class="fas fa-print"></i></a>
+                                    @if ($val->attachment_path)
+                                        <a href="{{ route('income.attachment', $val->id) }}" target="_blank" class="action-btn" title="Document"><i class="fas fa-paperclip"></i></a>
                                     @endif
                                     @if (auth()->user()->isSuperAdmin() && $val->type === null && $val->ref_invoice_no === null && $val->income_expense_head_id)
                                         <form action="{{ route('income.destroy', $val->id) }}" method="POST" style="display:inline;">

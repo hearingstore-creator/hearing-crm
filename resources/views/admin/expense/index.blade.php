@@ -94,7 +94,9 @@
                                 <span style="font-size: 13px; font-weight: 500;">{{ $val->date }}</span>
                             </td>
                             <td>
-                                <span style="font-weight: 600; color: var(--accent-500); font-size: 13px;">{{ $val->voucher_no ?: $val->invoice_no }}</span>
+                                <a href="{{ url('admin/expense/' . $val->id) }}" style="font-weight: 600; color: var(--accent-600); font-size: 13px; text-decoration: none;" title="View / print voucher">
+                                    {{ $val->voucher_no ?: $val->invoice_no }}
+                                </a>
                             </td>
                             <td style="font-size:12px;">{{ $val->head->head_name ?? '—' }}</td>
                             <td style="font-size:12px;">{{ $val->payee_name ?: '—' }}</td>
@@ -127,23 +129,21 @@
                                 @endif
                             </td>
                             <td>
-                                <div class="crm-actions">
-                                    @if ($val->voucher_no)
-                                        <a href="{{ url('admin/expense/' . $val->id) }}" class="action-btn" title="View / print voucher"><i class="fas fa-print"></i></a>
-                                        @if ($val->attachment_path)
-                                            <a href="{{ route('expense.attachment', $val->id) }}" target="_blank" class="action-btn" title="Bill / receipt"><i class="fas fa-paperclip"></i></a>
-                                        @endif
-                                        @if ($val->type === null && $val->ref_invoice_no === null && $val->status !== 'Approved')
-                                            @can('permission', 'expense.edit')
-                                                <a href="{{ url('admin/expense/' . $val->id . '/edit') }}" class="action-btn" title="Edit voucher"><i class="fas fa-edit"></i></a>
-                                            @endcan
-                                            @can('permission', 'expense.approve')
-                                                <form action="{{ route('expense.approve', $val->id) }}" method="POST" style="display:inline;">
-                                                    @csrf
-                                                    <button type="submit" class="action-btn" title="Approve voucher" onclick="return confirm('Approve this voucher?')"><i class="fas fa-check-circle"></i></button>
-                                                </form>
-                                            @endcan
-                                        @endif
+                                <div class="crm-actions" style="justify-content: center;">
+                                    <a href="{{ url('admin/expense/' . $val->id) }}" class="action-btn btn-view" title="View / print voucher"><i class="fas fa-print"></i></a>
+                                    @if ($val->attachment_path)
+                                        <a href="{{ route('expense.attachment', $val->id) }}" target="_blank" class="action-btn" title="Bill / receipt"><i class="fas fa-paperclip"></i></a>
+                                    @endif
+                                    @if ($val->voucher_no && $val->type === null && $val->ref_invoice_no === null && $val->status !== 'Approved')
+                                        @can('permission', 'expense.edit')
+                                            <a href="{{ url('admin/expense/' . $val->id . '/edit') }}" class="action-btn btn-edit" title="Edit voucher"><i class="fas fa-edit"></i></a>
+                                        @endcan
+                                        @can('permission', 'expense.approve')
+                                            <form action="{{ route('expense.approve', $val->id) }}" method="POST" style="display:inline;">
+                                                @csrf
+                                                <button type="submit" class="action-btn" title="Approve voucher" onclick="return confirm('Approve this voucher?')"><i class="fas fa-check-circle"></i></button>
+                                            </form>
+                                        @endcan
                                     @endif
                                     {{-- Only manual expenses (no type, no linked invoice) can be cancelled here, by Super Admin, with a reason --}}
                                     @if(auth()->user()->isSuperAdmin() && $val->type === null && $val->ref_invoice_no === null)
