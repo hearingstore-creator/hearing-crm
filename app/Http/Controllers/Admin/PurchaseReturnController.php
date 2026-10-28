@@ -28,7 +28,8 @@ class PurchaseReturnController extends Controller
         $this->middleware('permission:purchase_return.index')->only(['index']);
         $this->middleware('permission:purchase_return.create')->only(['create', 'store', 'getPurchaseItems', 'getPurchasesBySupplier', 'lookupSerial']);
         $this->middleware('permission:purchase_return.view')->only(['show']);
-        $this->middleware('permission:purchase_return.edit')->only(['edit', 'update', 'unconfirm']);
+        // Confirming posts the debit note to the supplier ledger, so it needs the same right as undoing it
+        $this->middleware('permission:purchase_return.edit')->only(['edit', 'update', 'confirm', 'unconfirm']);
         $this->middleware('permission:purchase_return.delete')->only(['destroy']);
     }
 

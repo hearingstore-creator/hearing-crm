@@ -225,7 +225,7 @@ class MembershipController extends Controller
 
         if ($data['start_date'] && $data['end_date']) {
             $start = date('Y-m-d', strtotime($data['start_date']));
-            $end = date('Y-m-d', strtotime($data['end_date']));
+            $end = date('Y-m-d 23:59:59', strtotime($data['end_date']));
             $query->whereBetween('created_at', [$start, $end]);
         }
 
@@ -258,7 +258,7 @@ class MembershipController extends Controller
 
         if ($data['start_date'] && $data['end_date']) {
             $start = date('Y-m-d', strtotime($data['start_date']));
-            $end = date('Y-m-d', strtotime($data['end_date']));
+            $end = date('Y-m-d 23:59:59', strtotime($data['end_date']));
             $query->whereBetween('created_at', [$start, $end]);
         }
 
@@ -309,7 +309,7 @@ class MembershipController extends Controller
 
         if ($data['start_date'] && $data['end_date']) {
             $start = date('Y-m-d', strtotime($data['start_date']));
-            $end = date('Y-m-d', strtotime($data['end_date']));
+            $end = date('Y-m-d 23:59:59', strtotime($data['end_date']));
             $query->whereBetween('upgraded_at', [$start, $end]);
         }
 

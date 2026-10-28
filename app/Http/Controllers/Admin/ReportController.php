@@ -437,6 +437,18 @@ class ReportController extends Controller
     }
 
     /**
+     * start_date / end_date as a whole-day range for timestamp columns
+     * (a bare end date would mean midnight and leave out the rest of that day).
+     */
+    private function dayRange(Request $request): array
+    {
+        return [
+            date('Y-m-d 00:00:00', strtotime($request->start_date)),
+            date('Y-m-d 23:59:59', strtotime($request->end_date)),
+        ];
+    }
+
+    /**
      * Get purchase & stock report data based on filters
      *
      * @param array $filters
@@ -1103,7 +1115,7 @@ class ReportController extends Controller
                 ->whereIn('customers.membership_tier_id', $tierIds)
                 ->whereIn('reward_ledgers.type', [RewardLedgerType::EARN->value, RewardLedgerType::REFERRAL->value, RewardLedgerType::MILESTONE->value])
                 ->when($request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                    $q->whereBetween('reward_ledgers.created_at', [$request->start_date, $request->end_date]);
+                    $q->whereBetween('reward_ledgers.created_at', $this->dayRange($request));
                 })
                 ->when($request->filled('points_status'), function($q) use ($request) {
                     if ($request->points_status === 'expiring') {
@@ -1129,7 +1141,7 @@ class ReportController extends Controller
                 ->where('reward_ledgers.type', RewardLedgerType::REDEEM->value)
                 ->where('reward_ledgers.points', '<', 0)
                 ->when($request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                    $q->whereBetween('reward_ledgers.created_at', [$request->start_date, $request->end_date]);
+                    $q->whereBetween('reward_ledgers.created_at', $this->dayRange($request));
                 })
                 ->whereNull('reward_ledgers.deleted_at')
                 ->groupBy('customers.membership_tier_id');
@@ -1180,7 +1192,7 @@ class ReportController extends Controller
                     DB::raw('SUM(CASE WHEN rewarded_at IS NOT NULL THEN 1 ELSE 0 END) as rewarded_referrals'),
                 ])
                 ->when($request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                    $q->whereBetween('created_at', [$request->start_date, $request->end_date]);
+                    $q->whereBetween('created_at', $this->dayRange($request));
                 })
                 ->whereNull('deleted_at');
 
@@ -1191,7 +1203,7 @@ class ReportController extends Controller
                 ->where('type', RewardLedgerType::REFERRAL->value)
                 ->where('points', '>', 0)
                 ->when($request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                    $q->whereBetween('created_at', [$request->start_date, $request->end_date]);
+                    $q->whereBetween('created_at', $this->dayRange($request));
                 })
                 ->whereNull('deleted_at');
 
@@ -1294,7 +1306,7 @@ class ReportController extends Controller
                 ->join('customers', 'reward_ledgers.customer_id', '=', 'customers.id')
                 ->whereIn('customers.membership_tier_id', $tierIds)
                 ->when($request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                    $q->whereBetween('reward_ledgers.created_at', [$request->start_date, $request->end_date]);
+                    $q->whereBetween('reward_ledgers.created_at', $this->dayRange($request));
                 })
                 ->when($request->filled('points_status'), function($q) use ($request) {
                     if ($request->points_status === 'issued') {
@@ -1316,7 +1328,7 @@ class ReportController extends Controller
                 ->join('customers', 'reward_ledgers.customer_id', '=', 'customers.id')
                 ->whereIn('customers.membership_tier_id', $tierIds)
                 ->when($request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                    $q->whereBetween('reward_ledgers.created_at', [$request->start_date, $request->end_date]);
+                    $q->whereBetween('reward_ledgers.created_at', $this->dayRange($request));
                 })
                 ->groupBy('customers.membership_tier_id')
                 ->get()
@@ -1418,7 +1430,7 @@ class ReportController extends Controller
         // Build base query with filters
         $query = Lead::query()
             ->when($request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                $q->whereBetween('created_at', [$request->start_date, $request->end_date]);
+                $q->whereBetween('created_at', $this->dayRange($request));
             })
             ->when($request->filled('source_of_entry'), function($q) use ($request) {
                 $q->where('source_of_entry', $request->source_of_entry);
@@ -1552,7 +1564,7 @@ class ReportController extends Controller
         // Build base query with filters
         $query = Lead::query()
             ->when($request->filled('start_date') && $request->filled('end_date'), function($q) use ($request) {
-                $q->whereBetween('created_at', [$request->start_date, $request->end_date]);
+                $q->whereBetween('created_at', $this->dayRange($request));
             })
             ->when($request->filled('source_of_entry'), function($q) use ($request) {
                 $q->where('source_of_entry', $request->source_of_entry);
