@@ -29,11 +29,13 @@ use App\Models\Stock;
 use App\Models\User;
 use App\Services\MembershipService;
 use App\Services\LedgerReversal;
+use App\Services\SaleTotals;
 use App\Services\StockGuard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Models\Proposal;
 use App\Models\LoyaltySetting;
@@ -44,6 +46,13 @@ use Yajra\DataTables\Facades\DataTables;
 
 class SaleController extends Controller
 {
+    /** Invoice-level amounts typed on the sale form (create and edit): numbers, never negative. */
+    private const AMOUNT_RULES = [
+        'vat'              => ['nullable', 'numeric', 'min:0'],
+        'invoice_discount' => ['nullable', 'numeric', 'min:0'],
+        'redeem_points'    => ['nullable', 'numeric', 'min:0'],
+    ];
+
     /**
      * Configure middleware to handle authorization for different sale operations
      *
@@ -311,13 +320,15 @@ class SaleController extends Controller
             'total_amount' => ['required', 'numeric', 'min:0'],
             'paid' => ['nullable', 'numeric', 'min:0'],
             'total_discount' => ['nullable', 'numeric', 'min:0'],
-        ];
+        ] + self::AMOUNT_RULES;
 
         if (! empty($requestProductIds)) {
             foreach ($requestProductIds as $key => $val) {
                 $rules["product_id.$key"] = 'required';
                 $rules["qty.$key"] = 'required|numeric|gt:0';
-                $rules["unit_price.$key"] = 'required';
+                $rules["unit_price.$key"] = 'required|numeric|min:0';
+                $rules["discount.$key"] = 'nullable|numeric|min:0|max:100';
+                $rules["discount_taka.$key"] = 'nullable|numeric|min:0';
                 $rules["product_id"] = 'array';
             }
         }
@@ -325,8 +336,10 @@ class SaleController extends Controller
         if (! empty($requestServiceTypeIds)) {
             foreach ($requestServiceTypeIds as $key => $val) {
                 $rules["service_type_id.$key"] = 'required';
-                $rules["service_qty.$key"] = 'required';
-                $rules["service_price.$key"] = 'required';
+                $rules["service_qty.$key"] = 'required|numeric|min:0';
+                $rules["service_price.$key"] = 'required|numeric|min:0';
+                $rules["service_discount.$key"] = 'nullable|numeric|min:0|max:100';
+                $rules["service_discount_taka.$key"] = 'nullable|numeric|min:0';
                 $rules["service_type_id"] = 'array';
             }
         }
@@ -373,6 +386,12 @@ class SaleController extends Controller
                     ->withErrors(['product_validation' => 'Please select either a batch or serial number for each product.']);
             }
 
+        }
+
+        // One save per opened form: a double click or a resent request must not create a second invoice
+        $submissionKey = $request->filled('submission_token') ? 'sale-submit:' . auth()->id() . ':' . $request->submission_token : null;
+        if ($submissionKey && !Cache::add($submissionKey, true, now()->addHours(12))) {
+            return redirect('admin/sale')->with('warning', 'This sale was already submitted. Check the sales list before entering it again.');
         }
 
         DB::beginTransaction();
@@ -587,6 +606,7 @@ class SaleController extends Controller
                     }
 
                     DB::commit();
+                    SaleTotals::logMismatch($request, $saleMaster);
                     if ($saleMaster->serviceDetails()->exists()) {
                         return redirect()->route('sale.show', $saleMaster->sale_invoice_no)
                             ->with('success', 'Sale saved successfully. Please review the services below to fulfill or book appointments.');
@@ -602,9 +622,11 @@ class SaleController extends Controller
             return redirect()->back()->with('warning', 'Not Saved');
         } catch (StockGuardException $ex) {
             DB::rollback();
+            $submissionKey && Cache::forget($submissionKey);
             return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
+            $submissionKey && Cache::forget($submissionKey);
             return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
@@ -817,13 +839,15 @@ class SaleController extends Controller
             'total_amount' => ['required', 'numeric', 'min:0'],
             'paid' => ['nullable', 'numeric', 'min:0'],
             'total_discount' => ['nullable', 'numeric', 'min:0'],
-        ];
+        ] + self::AMOUNT_RULES;
 
         if (! empty($requestProductIds)) {
             foreach ($requestProductIds as $key => $val) {
                 $rules["product_id.$key"] = 'required';
                 $rules["qty.$key"] = 'required|numeric|gt:0';
-                $rules["unit_price.$key"] = 'required';
+                $rules["unit_price.$key"] = 'required|numeric|min:0';
+                $rules["discount.$key"] = 'nullable|numeric|min:0|max:100';
+                $rules["discount_taka.$key"] = 'nullable|numeric|min:0';
                 $rules["product_id"] = 'array';
             }
         }
@@ -831,8 +855,10 @@ class SaleController extends Controller
         if (! empty($requestServiceTypeIds)) {
             foreach ($requestServiceTypeIds as $key => $val) {
                 $rules["service_type_id.$key"] = 'required';
-                $rules["service_qty.$key"] = 'required';
-                $rules["service_price.$key"] = 'required';
+                $rules["service_qty.$key"] = 'required|numeric|min:0';
+                $rules["service_price.$key"] = 'required|numeric|min:0';
+                $rules["service_discount.$key"] = 'nullable|numeric|min:0|max:100';
+                $rules["service_discount_taka.$key"] = 'nullable|numeric|min:0';
                 $rules["service_type_id"] = 'array';
             }
         }

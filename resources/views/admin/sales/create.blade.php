@@ -61,6 +61,8 @@
         data-min-redeem-points="{{ \App\Models\LoyaltySetting::current()->min_redeem_points }}"
         data-max-redeem-percent="{{ \App\Models\LoyaltySetting::current()->max_redeem_percent }}">
         @csrf
+        {{-- New on every page load: the server saves one sale per token --}}
+        <input type="hidden" name="submission_token" value="{{ \Illuminate\Support\Str::uuid() }}">
         @if(isset($fromProposal))
             <input type="hidden" name="from_proposal_id" value="{{ $fromProposal->id }}">
         @endif

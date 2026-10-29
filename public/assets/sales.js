@@ -1055,6 +1055,16 @@ $(function () {
         $form.append(oldBatchInput);
         $form.append(oldSerialInput);
 
+        // Send the sale only once: a double click must not post it twice
+        if (this.id === 'saleForm') {
+            if ($form.data('sending')) {
+                return false;
+            }
+            $form.data('sending', true);
+            $('button[type="submit"][form="saleForm"], #saleForm button[type="submit"], #btn-quick-checkout')
+                .prop('disabled', true).addClass('disabled');
+        }
+
         // Submit the form programmatically
         this.submit();
     });
