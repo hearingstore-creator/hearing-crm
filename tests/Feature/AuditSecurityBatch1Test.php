@@ -88,7 +88,7 @@ class AuditSecurityBatch1Test extends TestCase
     public function test_sales_lists_need_a_sales_permission(): void
     {
         $receptionist = $this->userWithPermissions(['appointment_list.index']);
-        $this->actingAs($receptionist)->getJson('/admin/sale-list')->assertForbidden();
+        $this->actingAs($receptionist)->getJson('/admin/sale-list')->assertNotFound(); // the broken JSON list was removed (audit F-07)
         $this->actingAs($receptionist)->get('/admin/sales/due-list')->assertForbidden();
 
         $cashier = $this->userWithPermissions(['patient_due_list.index']);

@@ -29,7 +29,6 @@ use App\Enums\RewardLedgerType;
 use App\Enums\SourceOfEntry;
 use App\Enums\LeadStatus;
 use App\Exports\PurchaseStockReportExport;
-use App\Exports\DoctorReferralReportExport;
 use App\Exports\SalesPerformanceReportExport;
 use App\Exports\MembershipLoyaltyReportExport;
 use App\Exports\LeadFunnelReportExport;
@@ -840,81 +839,6 @@ class ReportController extends Controller
             'vendorId' => $filters['vendor_id'],
             'paymentStatus' => $filters['payment_status'],
         ];
-    }
-
-    /**
-     * Export doctor referral report to Excel
-     *
-     * @param \Illuminate\Http\Request $request
-     * @param string $type (full|summary)
-     * @param string $format (xlsx|csv)
-     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
-     */
-    public function exportDoctorReferralReport(Request $request, string $type = 'full', string $format = 'xlsx'): BinaryFileResponse
-    {
-        // Get filter parameters
-        $filters = [
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'doctor_id' => $request->doctor_id,
-            'vendor_id' => $request->vendor_id,
-            'payment_status' => $request->payment_status ?? 'all',
-        ];
-
-        // Get report data
-        $reportDataResult = $this->getDoctorReferralReportData($filters);
-        $reportData = $reportDataResult['reportData'];
-
-        // Get company name
-        $setting = Setting::where('id', 1)->first(['company_name']);
-        $companyName = $setting ? $setting->company_name : 'CRM System';
-
-        // Get current user name
-        $userName = auth()->user()->name ?? 'System';
-
-        // Get doctor name if filtered
-        $doctorName = '';
-        if (!empty($filters['doctor_id'])) {
-            $doctor = Doctor::where('id', $filters['doctor_id'])->first(['name']);
-            $doctorName = $doctor ? $doctor->name : '';
-        }
-
-        // Get vendor name if filtered
-        $vendorName = '';
-        if (!empty($filters['vendor_id'])) {
-            $vendor = User::where('id', $filters['vendor_id'])->first(['supplier_name', 'name']);
-            $vendorName = $vendor ? ($vendor->supplier_name ?? $vendor->name) : '';
-        }
-
-        // Validate export type
-        if (!in_array($type, ['full', 'summary'])) {
-            $type = 'full';
-        }
-
-        // Validate format
-        if (!in_array($format, ['xlsx', 'csv'])) {
-            $format = 'xlsx';
-        }
-
-        // Generate filename
-        $filename = 'doctor_referral_report_' . $type;
-        if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
-            $filename .= '_' . $filters['start_date'] . '_to_' . $filters['end_date'];
-        }
-        $filename .= '_' . now()->format('Y-m-d_His');
-
-        // Create export instance
-        $export = new DoctorReferralReportExport(
-            $reportData,
-            $filters,
-            $type,
-            $companyName,
-            $userName,
-            $doctorName,
-            $vendorName
-        );
-
-        return Excel::download($export, $filename . '.xlsx');
     }
 
     /**

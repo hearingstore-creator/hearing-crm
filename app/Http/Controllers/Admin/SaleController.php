@@ -60,7 +60,7 @@ class SaleController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('permission:sale_list.index')->only(['index', 'saleList']);
+        $this->middleware('permission:sale_list.index')->only(['index']);
         $this->middleware('permission:patient_due_list.index|sale_list.index')->only(['dueList']);
         $this->middleware('permission:add_sale.create')->only(['create', 'store']);
         $this->middleware('permission:sale_list.edit')->only(['edit', 'update']);
@@ -156,48 +156,6 @@ class SaleController extends Controller
         ];
 
         return view('admin.sales.index', $data);
-    }
-
-    /**
-     * Get the list of sales for DataTables.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function saleList(): JsonResponse
-    {
-        $data = SaleMaster::join('customers', 'customers.id', '=', 'sale_masters.customer_id')
-            ->select('sale_masters.*', 'customers.name')
-            ->orderBy('id', 'desc')
-            ->get();
-
-        return DataTables::of($data)
-            ->addIndexColumn()
-                ->addColumn('action', function ($row) {
-                    $action = '<div class="d-flex flex-wrap align-items-center">';
-                    if (Helper::hasPermission('sale_list.edit')) {
-                        $action .= '<a href="' . route('sale.edit', $row->sale_invoice_no) . '" class="btn btn-success btn-sm mr-1" title="Edit"><i class="fas fa-edit"></i></a>';
-                    }
-                    if (Helper::hasPermission('sale_list.view')) {
-                        $action .= '<a href="' . route('sale.show', $row->sale_invoice_no) . '" class="btn btn-info btn-sm mr-1" title="Details"><i class="fas fa-eye"></i></a>';
-                    }
-
-                    $action .= '<a href="' . route('sale.pos-print', $row->sale_invoice_no) . '" class="btn btn-secondary btn-sm mr-1" target="_blank" title="POS Print"><i class="fas fa-print"></i></a>';
-
-                    if (Helper::hasPermission('sale_return.create')) {
-                        $action .= '<a href="' . route('sale-returns.create', ['sale_invoice_no' => $row->sale_invoice_no]) . '" class="btn btn-warning btn-sm mr-1" title="Return / Credit Note"><i class="fas fa-undo-alt"></i></a>';
-                    }
-
-                    if (auth()->user()->isSuperAdmin()) {
-                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" onsubmit="return confirmCancelWithReason(event, \'this sale invoice\')">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
-                    }
-                    
-                    $action .= '</div>';
-                    return $action;
-                })
-            ->rawColumns(['action'])
-            ->toJson();
-        
-        
     }
 
     /**
@@ -1602,59 +1560,6 @@ class SaleController extends Controller
             }
             return redirect()->back()->with('warning', 'Due collection failed: ' . \App\Classes\Helper::userMessage($e))->withInput();
         }
-    }
-
-    /**
-     * Display the discount list creation form.
-     *
-     * @return \Illuminate\Contracts\View\View
-     */
-    public function discountListCreate(): View
-    {
-        return view('admin.sales.discount_list');
-    }
-
-    /**
-     * Get the list of discounted sales for DataTables.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function discountList(): JsonResponse
-    {
-        $data = SaleMaster::join('customers', 'customers.id', '=', 'sale_masters.customer_id')
-            ->whereNull('sale_masters.deleted_at')
-            ->select('sale_masters.*', 'customers.name', DB::raw("SUM(total_amount-paid) as due"))
-            ->groupBy('sale_masters.sale_invoice_no')
-            ->orderBy('id', 'desc')
-            ->havingRaw('total_discount > 0')
-            ->get();
-
-            return DataTables::of($data)
-            ->addIndexColumn()
-                ->addColumn('action', function ($row) {
-                    $action = '<div class="text-center">';
-                    if (Helper::hasPermission('sale_list.edit')) {
-                        $action .= '<a href="' . route('sale.edit', $row->sale_invoice_no) . '" class="btn btn-success btn-sm mr-1" title="Edit"><i class="fas fa-edit"></i></a>';
-                    }
-                    if (Helper::hasPermission('sale_list.view')) {
-                        $action .= '<a href="' . route('sale.show', $row->sale_invoice_no) . '" class="btn btn-info btn-sm mr-1" title="Details"><i class="fas fa-eye"></i></a>';
-                    }
-
-                    $action .= '<a href="' . route('sale.pos-print', $row->sale_invoice_no) . '" class="btn btn-secondary btn-sm mr-1" target="_blank" title="POS Print"><i class="fas fa-print"></i></a>';
-                    
-                    if (Helper::hasPermission('sale_return.create')) {
-                        $action .= '<a href="' . route('sale-returns.create', ['sale_invoice_no' => $row->sale_invoice_no]) . '" class="btn btn-warning btn-sm mr-1" title="Return / Credit Note"><i class="fas fa-undo-alt"></i></a>';
-                    }
-                    
-                    if (auth()->user()->isSuperAdmin()) {
-                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" style="display:inline-block;" onsubmit="return confirmCancelWithReason(event, \'this sale invoice\')">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
-                    }
-                    $action .= '</div>';
-                    return $action;
-                })
-            ->rawColumns(['action'])
-            ->toJson();
-        
     }
 
     /**

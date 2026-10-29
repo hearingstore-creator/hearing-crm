@@ -339,7 +339,6 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('sales/service-detail/{id}/book-later', [SaleController::class, 'markServiceBookLater'])->name('sales.service-book-later');
 
     Route::resource('sale', 'SaleController');
-    Route::get('sale-list', [SaleController::class, 'saleList'])->name('sale.list');
     Route::get('sale-add-row-item', [SaleController::class, 'addRowItem'])->name('sale.add-row');
     Route::get('sale-add-service-row-item', [SaleController::class, 'addServiceRowItem'])->name('sale.add-service-row');
     Route::get('product-serial-numbers/{id}', [SaleController::class, 'getProductSerialNumbers'])->name('sale.product.serial');
