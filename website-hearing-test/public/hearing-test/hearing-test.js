@@ -29,6 +29,9 @@
         maxLevel: 85,
         maxTrialsPerFreq: 20,
         catchRate: 0.12,
+        // 'adjust' = visitor slides each tone up until barely audible (default, easiest);
+        // 'classic' = tap-when-you-hear-it with a Hughson-Westlake staircase
+        toneMethod: ds.toneMethod === 'classic' ? 'classic' : 'adjust',
         // 'full' = tones + digits-in-noise, 'tones' = tones only, 'din' = digits-in-noise only
         mode: ['full', 'tones', 'din'].indexOf(ds.mode) >= 0 ? ds.mode : 'full',
         audioBase: ds.audioBase || (script && script.src ? new URL('digits/', script.src).href : 'digits/'),
@@ -98,15 +101,30 @@
             cantTell: 'Both / not sure',
             lrWrong: 'That did not match. Check the headphones are on the correct ears (L on left, R on right), not in mono mode, and try again.',
             lrOk: 'Headphones look good!',
-            volTitle: 'Set your volume',
-            volText: 'Tap Play. Adjust your device volume until the beeps are clear and comfortable – about as loud as normal speech. Do not make it loud.',
+            volTitle: 'Turn your volume to maximum',
+            volText: 'Set your phone or computer volume to maximum. The test sounds start very quietly, so this is safe. Tap Play to check you can hear the beep.',
+            volTitleDin: 'Set your volume',
+            stSetup: 'Setup',
+            stR: 'Right ear',
+            stL: 'Left ear',
+            stDin: 'Noise',
+            stQs: 'Questions',
+            stRes: 'Results',
+            testTextAdj: 'You will hear a beep in one ear. It starts silent. Press + (or drag the slider) until you can barely hear it, then tap Continue.',
+            adjTitle: 'Press <b>+</b> until you can <b>barely hear</b> the tone',
+            adjHint: 'Go up one step at a time. Stop at the first step where you can just hear the beeps.',
+            adjMove: 'Press + until you can just hear the tone.',
+            adjCant: 'I can\'t hear it at all',
+            cont: 'Continue',
+            louder: 'Louder',
+            softer: 'Softer',
             volKeep: 'After this step, do not change the volume until the test ends.',
             volCant: 'Can\'t hear anything? Turn your volume up, switch off silent mode, and check your headphones are connected.',
             volDone: 'Volume is set',
             testTitle: 'Testing your {ear} ear',
             earRight: 'right',
             earLeft: 'left',
-            testText: 'You will hear soft beeps, some very quiet. Tap the button (or press Space) every time you hear one – even if it is very faint.',
+            testTextClassic: 'You will hear soft beeps, some very quiet. Tap the button (or press Space) every time you hear one – even if it is very faint.',
             ready: 'I\'m ready',
             hear: 'I hear it',
             pause: 'Pause',
@@ -205,15 +223,30 @@
             cantTell: 'দুই পাশে / নিশ্চিত নই',
             lrWrong: 'মিলল না। হেডফোন সঠিক কানে আছে কিনা দেখুন (L বাম কানে, R ডান কানে), মোনো মোড বন্ধ রাখুন, তারপর আবার চেষ্টা করুন।',
             lrOk: 'হেডফোন ঠিক আছে!',
-            volTitle: 'ভলিউম ঠিক করুন',
-            volText: '"শব্দ বাজান" চাপুন। ডিভাইসের ভলিউম এমনভাবে ঠিক করুন যাতে বিপ শব্দ পরিষ্কার ও আরামদায়ক শোনায় – স্বাভাবিক কথাবার্তার মতো। বেশি জোরে দেবেন না।',
+            volTitle: 'ভলিউম সর্বোচ্চ করুন',
+            volText: 'আপনার ফোন বা কম্পিউটারের ভলিউম সর্বোচ্চ করুন। টেস্টের শব্দ খুব আস্তে শুরু হয়, তাই এটি নিরাপদ। বিপ শুনতে পাচ্ছেন কিনা দেখতে "শব্দ বাজান" চাপুন।',
+            volTitleDin: 'ভলিউম ঠিক করুন',
+            stSetup: 'প্রস্তুতি',
+            stR: 'ডান কান',
+            stL: 'বাম কান',
+            stDin: 'কোলাহল',
+            stQs: 'প্রশ্ন',
+            stRes: 'ফলাফল',
+            testTextAdj: 'আপনি এক কানে একটি বিপ শব্দ শুনবেন। এটি নিঃশব্দ থেকে শুরু হবে। + চাপুন (বা স্লাইডার টানুন) যতক্ষণ না খুব আস্তে শুনতে পান, তারপর "এগিয়ে যান" চাপুন।',
+            adjTitle: '<b>+</b> চাপুন যতক্ষণ না শব্দটি <b>খুব আস্তে শুনতে</b> পান',
+            adjHint: 'এক ধাপ করে বাড়ান। যে ধাপে প্রথম হালকা বিপ শুনবেন সেখানেই থামুন।',
+            adjMove: '+ চাপুন যতক্ষণ না শব্দটি হালকা শুনতে পান।',
+            adjCant: 'আমি একদমই শুনতে পাচ্ছি না',
+            cont: 'এগিয়ে যান',
+            louder: 'জোরে',
+            softer: 'আস্তে',
             volKeep: 'এই ধাপের পর টেস্ট শেষ না হওয়া পর্যন্ত ভলিউম পরিবর্তন করবেন না।',
             volCant: 'কিছু শুনতে পাচ্ছেন না? ভলিউম বাড়ান, সাইলেন্ট মোড বন্ধ করুন এবং হেডফোন সংযুক্ত আছে কিনা দেখুন।',
             volDone: 'ভলিউম ঠিক আছে',
             testTitle: 'আপনার {ear} কান পরীক্ষা',
             earRight: 'ডান',
             earLeft: 'বাম',
-            testText: 'আপনি মৃদু বিপ শব্দ শুনবেন, কিছু খুবই আস্তে। যখনই শুনবেন বাটনটি চাপুন (বা Space চাপুন) – খুব আস্তে শুনলেও।',
+            testTextClassic: 'আপনি মৃদু বিপ শব্দ শুনবেন, কিছু খুবই আস্তে। যখনই শুনবেন বাটনটি চাপুন (বা Space চাপুন) – খুব আস্তে শুনলেও।',
             ready: 'আমি প্রস্তুত',
             hear: 'শুনতে পাচ্ছি',
             pause: 'বিরতি',
@@ -368,19 +401,26 @@
     }
 
     function flowSteps() {
-        var s = ['lr', 'vol'];
-        if (CONFIG.mode !== 'din') { s.push('tones'); }
+        var s = ['setup'];
+        if (CONFIG.mode !== 'din') { s.push('R', 'L'); }
         if (CONFIG.mode !== 'tones') { s.push('din'); }
-        s.push('qs');
+        s.push('qs', 'results');
         return s;
     }
+    var STEP_LABEL = { setup: 'stSetup', R: 'stR', L: 'stL', din: 'stDin', qs: 'stQs', results: 'stRes' };
 
     function num(n) { return lang === 'bn' ? bnDigits(n) : String(n); }
 
+    // Step tracker: done steps get a tick, the current one is highlighted.
     function steps(id) {
-        var list = flowSteps(), n = list.indexOf(id) + 1, m = list.length;
-        return '<div class="ht-steps"><div class="ht-steps-label">' + t('step', { n: num(n), m: num(m) }) + '</div>' +
-            '<div class="ht-bar"><span style="width:' + Math.round(n / m * 100) + '%"></span></div></div>';
+        if (id === 'lr' || id === 'vol') { id = 'setup'; }
+        var list = flowSteps(), cur = list.indexOf(id);
+        return '<ol class="ht-stepper" aria-label="' + t('step', { n: num(cur + 1), m: num(list.length) }) + '">' +
+            list.map(function (s, i) {
+                var cls = i < cur || (s === 'results' && s === id) ? 'done' : i === cur ? 'on' : '';
+                return '<li class="' + cls + '"' + (i === cur ? ' aria-current="step"' : '') + '><span class="ht-dot">' +
+                    (cls === 'done' ? '✓' : num(i + 1)) + '</span><span class="ht-lbl">' + t(STEP_LABEL[s]) + '</span></li>';
+            }).join('') + '</ol>';
     }
 
     function bnDigits(s) {
@@ -451,7 +491,7 @@
         var timer = null, dinOnly = CONFIG.mode === 'din';
         render(steps('vol') +
             (msg ? '<div class="ht-msg ok">' + t(msg) + '</div>' : '') +
-            '<h3>' + t('volTitle') + '</h3><p>' + t(dinOnly ? 'volTextDin' : 'volText') + '</p>' +
+            '<h3>' + t(dinOnly ? 'volTitleDin' : 'volTitle') + '</h3><p>' + t(dinOnly ? 'volTextDin' : 'volText') + '</p>' +
             '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-play">🔊 ' + t('play') + '</button></div>' +
             '<p class="ht-hint">' + t('volCant') + '</p>' +
             '<div class="ht-msg warn">' + t('volKeep') + '</div>' +
@@ -472,8 +512,8 @@
                 }).catch(function () { btn.textContent = t('dinLoadErr'); });
                 return;
             }
-            Audio.pulses(1000, 'both', CAL_LEVEL, 3);
-            timer = setInterval(function () { Audio.pulses(1000, 'both', CAL_LEVEL, 3); }, 2000);
+            Audio.pulses(1000, 'both', 40, 3);
+            timer = setInterval(function () { Audio.pulses(1000, 'both', 40, 3); }, 2000);
         });
         on('#ht-back', 'click', function () { stop(); screenLR(); });
         on('#ht-done', 'click', function () { stop(); if (dinOnly) { screenDinIntro(); } else { screenTestIntro('R'); } });
@@ -481,13 +521,13 @@
 
     function screenTestIntro(ear) {
         state.redraw = function () { screenTestIntro(ear); };
-        render(steps('tones') +
+        render(steps(ear) +
             (ear === 'L' ? '<div class="ht-msg ok">' + t('switchEar') + '</div>' : '') +
             '<h3>' + t('testTitle', { ear: t(ear === 'R' ? 'earRight' : 'earLeft') }) + '</h3>' +
-            '<p>' + t('testText') + '</p>' +
+            '<p>' + t(CONFIG.toneMethod === 'adjust' ? 'testTextAdj' : 'testTextClassic') + '</p>' +
             '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-ready">' + t('ready') + '</button></div>'
         );
-        on('#ht-ready', 'click', function () { runEar(ear); });
+        on('#ht-ready', 'click', function () { if (CONFIG.toneMethod === 'adjust') { runEarAdjust(ear); } else { runEar(ear); } });
     }
 
     /* ---------------- Test procedure ---------------- */
@@ -502,7 +542,7 @@
         var done = ear === 'R' ? 0 : CONFIG.freqs.length + 1;
 
         state.redraw = function () {}; // language buttons disabled while running
-        render(steps('tones') +
+        render(steps(ear) +
             '<h3>' + t('testTitle', { ear: t(ear === 'R' ? 'earRight' : 'earLeft') }) + '</h3>' +
             '<div class="ht-ear ht-ear-' + ear + '">' + (ear === 'R' ? t('rightEar') : t('leftEar')) + '</div>' +
             '<div class="ht-count" id="ht-count" aria-live="polite"></div>' +
@@ -556,8 +596,88 @@
             }
             document.removeEventListener('keydown', state.keyHandler);
             state.running = false;
-            if (ear === 'R') { screenTestIntro('L'); } else if (CONFIG.mode === 'full') { screenDinIntro(); } else { screenQuestions(); }
+            afterEar(ear);
         })();
+    }
+
+    function afterEar(ear) {
+        if (ear === 'R') { screenTestIntro('L'); } else if (CONFIG.mode === 'full') { screenDinIntro(); } else { screenQuestions(); }
+    }
+
+    // Method of adjustment (ascending): each tone starts below audibility and the visitor
+    // raises it in 5 dB steps until it is barely audible. Faster and easier than tap-to-respond.
+    function runEarAdjust(ear) {
+        var freqs = CONFIG.freqs.slice();
+        if (ear === 'R') { freqs.push('retest'); }
+        var total = CONFIG.freqs.length * 2 + 1;
+        var done = ear === 'R' ? 0 : CONFIG.freqs.length + 1;
+        var i = 0;
+        state.running = true;
+        state.redraw = function () {};
+        (function next() {
+            if (i >= freqs.length) { state.running = false; afterEar(ear); return; }
+            var f = freqs[i];
+            adjustTone(ear, f === 'retest' ? 1000 : f, done + 1, total, function (r) {
+                if (f === 'retest') {
+                    state.retest = { first: state.results.R[1000].db, second: r.db };
+                    if (!r.noResp && r.db < state.results.R[1000].db) { state.results.R[1000] = r; }
+                } else {
+                    state.results[ear][f] = r;
+                }
+                i++;
+                done++;
+                next();
+            });
+        })();
+    }
+
+    function adjustTone(ear, freq, n, total, cb) {
+        var min = CONFIG.minLevel, max = Audio.maxLevel(freq), top = Math.round((max - min) / 5), idx = 0, moved = false;
+        render(steps(ear) +
+            '<div class="ht-count">' + t('toneCount', { n: num(n), m: num(total) }) + '</div>' +
+            '<h3 class="ht-adj-title">' + t('adjTitle') + '</h3>' +
+            '<div class="ht-adj-label"><span class="ht-ear ht-ear-' + ear + '">' + t(ear === 'R' ? 'rightEar' : 'leftEar') + '</span> ' + num(freq) + ' Hz</div>' +
+            '<div class="ht-adj">' +
+            '<button type="button" class="ht-round" id="ht-minus" aria-label="' + t('softer') + '">−</button>' +
+            '<div class="ht-adj-track"><output id="ht-val" class="ht-adj-val">' + num(1) + '</output>' +
+            '<input type="range" id="ht-range" min="0" max="' + top + '" step="1" value="0" aria-label="' + t('louder') + '"></div>' +
+            '<button type="button" class="ht-round" id="ht-plus" aria-label="' + t('louder') + '">+</button>' +
+            '</div>' +
+            '<p class="ht-hint ht-center">' + t('adjHint') + '</p>' +
+            '<div class="ht-msg warn" id="ht-adj-msg" hidden></div>' +
+            '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-cant" hidden>' + t('adjCant') + '</button>' +
+            '<button type="button" class="ht-btn ht-primary" id="ht-cont">' + t('cont') + '</button></div>'
+        );
+        var range = $('#ht-range'), val = $('#ht-val');
+        function set(v) {
+            idx = Math.max(0, Math.min(top, v));
+            if (idx > 0) { moved = true; }
+            range.value = idx;
+            val.textContent = num(idx + 1);
+            range.style.setProperty('--pct', (idx / top * 100) + '%');
+            $('#ht-cant').hidden = idx < top;
+            $('#ht-adj-msg').hidden = true;
+        }
+        set(0);
+        var timer = setInterval(function () { Audio.pulses(freq, ear, min + idx * 5, 1); }, 600);
+        Audio.pulses(freq, ear, min, 1);
+        function finish(noResp) {
+            clearInterval(timer);
+            cb({ db: noResp ? max : min + idx * 5, noResp: noResp });
+        }
+        range.addEventListener('input', function () { set(Number(range.value)); });
+        on('#ht-minus', 'click', function () { set(idx - 1); });
+        on('#ht-plus', 'click', function () { set(idx + 1); });
+        on('#ht-cant', 'click', function () { finish(true); });
+        on('#ht-cont', 'click', function () {
+            if (!moved) {
+                var m = $('#ht-adj-msg');
+                m.textContent = t('adjMove');
+                m.hidden = false;
+                return;
+            }
+            finish(false);
+        });
     }
 
     async function waitIfPaused() {
@@ -1012,7 +1132,7 @@
             (s.din.srt !== null ? '<div class="ht-earres-avg">' + t('dinScore', { v: s.din.srt }) + '</div>' : '') + '</div>' : '';
         var wa = CONFIG.whatsapp ? 'https://wa.me/' + CONFIG.whatsapp.replace(/\D/g, '') + '?text=' + encodeURIComponent(t('waMsg', { r: resultLine })) : '';
 
-        render(
+        render(steps('results') +
             '<h3>' + t('resTitle') + '</h3>' +
             '<div class="ht-summary ht-b-' + s.overall + '">' + t(sumKey) + '</div>' +
             (tones ? '<div class="ht-ears">' + earCard('rightEar', s.right) + earCard('leftEar', s.left) + '</div>' : '') +

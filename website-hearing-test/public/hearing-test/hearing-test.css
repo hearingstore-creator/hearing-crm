@@ -56,7 +56,6 @@
 .ht-wa { background: #25d366; border-color: #25d366; color: #fff; }
 .ht-wa:hover { background: #1eb457; }
 
-.ht-steps { margin-bottom: 14px; }
 .ht-steps-label { font-size: 12px; color: var(--ht-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
 .ht-bar { height: 6px; background: var(--ht-line); border-radius: 999px; overflow: hidden; }
 .ht-bar span { display: block; height: 100%; background: var(--ht-red); transition: width .4s; }
@@ -158,3 +157,27 @@
     .ht-noprint, .ht-cta, .ht-lang { display: none !important; }
     .ht-card { box-shadow: none; }
 }
+
+/* Step tracker */
+.ht-stepper { list-style: none; margin: 0 0 18px; padding: 0; display: flex; }
+.ht-stepper li { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; color: var(--ht-muted); opacity: .55; }
+.ht-stepper li + li::before { content: ""; position: absolute; top: 14px; right: calc(50% + 18px); left: calc(-50% + 18px); height: 2px; background: var(--ht-line); }
+.ht-stepper li.done + li::before { background: var(--ht-ink); }
+.ht-stepper li.on, .ht-stepper li.done { opacity: 1; color: var(--ht-ink); }
+.ht-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--ht-line); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: #fff; }
+.ht-stepper li.on .ht-dot { border-color: var(--ht-red); color: var(--ht-red); }
+.ht-stepper li.done .ht-dot { background: var(--ht-ink); border-color: var(--ht-ink); color: #fff; }
+.ht-lbl { font-size: 11px; font-weight: 600; text-align: center; line-height: 1.2; overflow-wrap: anywhere; }
+
+/* Slider (method of adjustment) */
+.ht-adj-title { font-size: 24px !important; line-height: 1.25; text-wrap: balance; }
+.ht-adj-title b { color: var(--ht-red); }
+.ht-adj-label { text-align: center; font-weight: 700; font-size: 17px; margin: 14px 0 10px; display: flex; gap: 8px; align-items: center; justify-content: center; }
+.ht-adj { display: flex; align-items: center; gap: 12px; margin: 8px 0 12px; }
+.ht-round { flex: none; width: 64px; height: 64px; border-radius: 50%; border: 0; background: var(--ht-ink); color: #fff; font-size: 34px; line-height: 1; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ht-round:active { transform: scale(.95); }
+.ht-round:focus-visible { outline: 3px solid rgba(229, 36, 33, .35); outline-offset: 2px; }
+.ht-adj-track { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ht-adj-val { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ht-adj-track input[type=range] { width: 100%; height: 32px; margin: 0; accent-color: var(--ht-red); cursor: pointer; }
+.ht-center { text-align: center; }
