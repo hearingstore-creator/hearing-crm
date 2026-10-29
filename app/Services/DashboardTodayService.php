@@ -360,10 +360,10 @@ class DashboardTodayService extends DashboardAnalyticsService
 
         if ($can('todays_sales')) {
             $tiles[] = $this->safeTile('sales_today', fn () => $this->dailyTile(
-                'sales_today', 'Sales today', 'fas fa-cash-register', 'money',
+                'sales_today', 'Invoiced today', 'fas fa-cash-register', 'money',
                 $this->daily($this->sales(), 'sm.date', 'SUM(sm.total_amount)'),
                 url('admin/sale?start_date=' . $today . '&end_date=' . $today),
-                fn ($v) => $this->sales()->whereDate('sm.date', $today)->count() . ' invoice(s)'
+                fn ($v) => $this->sales()->whereDate('sm.date', $today)->count() . ' invoice(s) · before returns'
             ));
         }
 

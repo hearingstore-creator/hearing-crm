@@ -270,7 +270,7 @@
     var builders = {
         revenue_month: function (d, canvas) {
             document.getElementById('td-rev-note').textContent = d.this_label + ' so far ' + fmt(d.total, 'money') +
-                ' · same day last month ' + fmt(d.same_day_last, 'money');
+                ' · same day last month ' + fmt(d.same_day_last, 'money') + ' · before returns';
 
             var ctx = canvas.getContext('2d');
             var grad = ctx.createLinearGradient(0, 0, 0, 240);
@@ -388,7 +388,7 @@
             };
         },
         sales_by_category: function (d) {
-            document.getElementById('td-cat-note').textContent = d.period + ' · total ' + fmt(d.total, 'money');
+            document.getElementById('td-cat-note').textContent = d.period + ' · total ' + fmt(d.total, 'money') + ' · before returns';
             if (!d.values.length) return null;
 
             var catPalette = ['#4f46e5', '#059669', '#d97706', '#0891b2', '#7c3aed', '#e11d48', '#94a3b8'];

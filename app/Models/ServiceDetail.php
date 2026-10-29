@@ -5,10 +5,14 @@ namespace App\Models;
 use App\Traits\HelperTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ServiceDetail extends Model
 {
-    use HasFactory, HelperTrait;
+    // HelperTrait's soft delete also records deleted_by
+    use HasFactory, HelperTrait, SoftDeletes {
+        HelperTrait::runSoftDelete insteadof SoftDeletes;
+    }
 
     public const STATUS_NOT_BOOKED = 'not_booked';
     public const STATUS_BOOKED     = 'booked';

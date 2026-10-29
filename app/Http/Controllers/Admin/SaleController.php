@@ -103,6 +103,11 @@ class SaleController extends Controller
 
         $query = $bf(SaleMaster::with(relations: ['customer.lead:id,full_name', 'vendor']));
 
+        // Cancelled invoices are kept but listed only on request; summary cards below never count them
+        if ($request->boolean('cancelled')) {
+            $query->onlyTrashed();
+        }
+
         if ($request->filled('sale_invoice_no')) {
             $query->where('sale_invoice_no', $request->sale_invoice_no);
         }
@@ -638,9 +643,9 @@ class SaleController extends Controller
      * @param array $with
      * @return \App\Models\SaleMaster|null
      */
-    protected function resolveSaleMaster(string|int $id, array $with = []): ?SaleMaster
+    protected function resolveSaleMaster(string|int $id, array $with = [], bool $withCancelled = false): ?SaleMaster
     {
-        $query = SaleMaster::with($with);
+        $query = SaleMaster::with($with)->when($withCancelled, fn ($q) => $q->withTrashed());
 
         if (is_numeric($id)) {
             $sale = (clone $query)->where('id', (int) $id)->first();
@@ -661,16 +666,18 @@ class SaleController extends Controller
     public function show(string $id): View
     {
         $data = Helper::readAllBranches(function () use ($id) {
-            $saleMaster = $this->resolveSaleMaster($id, ['customer.lead', 'vendor', 'doctor', 'doctorChamber', 'creator']);
+            $saleMaster = $this->resolveSaleMaster($id, ['customer.lead', 'vendor', 'doctor', 'doctorChamber', 'creator'], true);
 
             // Check if the user has access to this sale
             if (!$saleMaster || !$saleMaster->isAccessibleByAuthUser()) {
                 abort(403, 'You do not have permission to view this sale.');
             }
 
+            // A cancelled invoice keeps its lines, so show them as they were
+            $cancelled = $saleMaster->trashed();
             $data['saleMaster'] = $saleMaster;
-            $data['saleDetail'] = SaleDetail::with('product.category', 'batch')->where('sale_master_id', $saleMaster->id)->get();
-            $data['serviceDetails'] = ServiceDetail::with(['serviceType.appointmentService', 'appointment.user', 'doneByUser'])->where('sale_master_id', $saleMaster->id)->get();
+            $data['saleDetail'] = SaleDetail::with('product.category', 'batch')->when($cancelled, fn ($q) => $q->withTrashed()->withoutGlobalScope('vendor_relation_filter'))->where('sale_master_id', $saleMaster->id)->get();
+            $data['serviceDetails'] = ServiceDetail::with(['serviceType.appointmentService', 'appointment.user', 'doneByUser'])->when($cancelled, fn ($q) => $q->withTrashed())->where('sale_master_id', $saleMaster->id)->get();
             $data['professionals'] = User::where('status', 1)->orderBy('name')->get(['id', 'name']);
             $data['setting'] = \App\Classes\Helper::invoiceBranding($saleMaster->vendor_id);
 
@@ -689,16 +696,17 @@ class SaleController extends Controller
     public function posPrint(string $id): View
     {
         $data = Helper::readAllBranches(function () use ($id) {
-            $saleMaster = $this->resolveSaleMaster($id, ['customer.lead', 'vendor', 'doctor', 'doctorChamber', 'creator']);
+            $saleMaster = $this->resolveSaleMaster($id, ['customer.lead', 'vendor', 'doctor', 'doctorChamber', 'creator'], true);
 
             // Check if the user has access to this sale
             if (!$saleMaster || !$saleMaster->isAccessibleByAuthUser()) {
                 abort(403, 'You do not have permission to view this sale.');
             }
 
+            $cancelled = $saleMaster->trashed();
             $data['saleMaster'] = $saleMaster;
-            $data['saleDetail'] = SaleDetail::with('product.category', 'batch')->where('sale_master_id', $saleMaster->id)->get();
-            $data['serviceDetails'] = ServiceDetail::with('serviceType')->where('sale_master_id', $saleMaster->id)->get();
+            $data['saleDetail'] = SaleDetail::with('product.category', 'batch')->when($cancelled, fn ($q) => $q->withTrashed()->withoutGlobalScope('vendor_relation_filter'))->where('sale_master_id', $saleMaster->id)->get();
+            $data['serviceDetails'] = ServiceDetail::with('serviceType')->when($cancelled, fn ($q) => $q->withTrashed())->where('sale_master_id', $saleMaster->id)->get();
             $data['setting'] = \App\Classes\Helper::invoiceBranding($saleMaster->vendor_id);
 
             return $data;
@@ -1154,12 +1162,13 @@ class SaleController extends Controller
                     }
                 }
 
-                // Delete removed products (all of them when no existing line was kept; their batch qty was released above)
-                SaleDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $saleDetailsId ?? [])->delete();
+                // Delete removed products (all of them when no existing line was kept; their batch qty was released above).
+                // forceDelete: a line removed by an edit is gone, as before; soft delete marks lines of a cancelled invoice only
+                SaleDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $saleDetailsId ?? [])->forceDelete();
 
                 // Delete removed services
                 if (isset($serviceDetailsId)) {
-                    ServiceDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $serviceDetailsId)->delete();
+                    ServiceDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $serviceDetailsId)->forceDelete();
                 }
 
                 // Handle new products
@@ -1498,7 +1507,7 @@ class SaleController extends Controller
     public function collectDue(Request $request)
     {
         $request->validate([
-            'sale_invoice_no' => ['required', 'string', 'exists:sale_masters,sale_invoice_no'],
+            'sale_invoice_no' => ['required', 'string', 'exists:sale_masters,sale_invoice_no,deleted_at,NULL'],
             'paid_amount'     => ['required', 'numeric', 'min:0.01', 'max:99999999'],
             'date'            => ['required', 'date'],
             'new_due_date'    => ['nullable', 'date'],
@@ -1722,9 +1731,13 @@ class SaleController extends Controller
                 }
             }
 
-            SaleMaster::where('sale_invoice_no', $saleInvoiceNo)->delete();
+            // The invoice and its lines are kept as cancelled (soft delete), so it can still be viewed and reprinted.
+            // Lines first: the SaleDetail branch scope looks up its invoice, which a cancelled invoice no longer matches
             SaleDetail::where('sale_master_id', $realId)->delete();
             ServiceDetail::where('sale_master_id', $realId)->delete();
+            $saleMaster->cancel_reason = $reason;
+            $saleMaster->save();
+            $saleMaster->delete();
             Stock::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
 
             // Money history is kept: patient, company and doctor ledger rows get reversal entries
@@ -1751,7 +1764,7 @@ class SaleController extends Controller
             return redirect()->back()->with('warning', 'The sale could not be cancelled. Nothing was changed. Please try again or contact the administrator.');
         }
 
-        return redirect()->back()->with('success', "Sale {$saleInvoiceNo} cancelled. Its ledger entries were reversed, not deleted.");
+        return redirect()->back()->with('success', "Sale {$saleInvoiceNo} cancelled. Its ledger entries were reversed, and the invoice is kept under Cancelled invoices.");
     }
 
     /**

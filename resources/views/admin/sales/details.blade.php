@@ -150,6 +150,9 @@
     if ($due <= 0.009) { $status = 'paid'; $statusLabel = 'Paid'; }
     elseif ($paid > 0) { $status = 'partial'; $statusLabel = 'Partially Paid'; }
     else { $status = 'unpaid'; $statusLabel = 'Unpaid'; }
+    // A cancelled invoice is kept for reference only: no payments, edits or service actions
+    $isCancelled = $saleMaster->trashed();
+    if ($isCancelled) { $status = 'unpaid'; $statusLabel = 'Cancelled'; }
     $paidPct = $grandTotal > 0 ? min(100, max(0, round($paid / $grandTotal * 100))) : 100;
 
     $paymentLabel = \App\Classes\Helper::paymentType()[$saleMaster->payment_id] ?? null;
@@ -170,7 +173,7 @@
             <p>Issued {{ $saleMaster->date->format('d M Y') }} to {{ $customerLead->full_name ?? 'Customer' }}</p>
         </div>
         <div class="header-actions">
-            @if ($due > 0.009)
+            @if ($due > 0.009 && !$isCancelled)
                 <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#collectDueModal">
                     <i class="fas fa-hand-holding-usd mr-1"></i>Collect Due
                 </button>
@@ -181,6 +184,12 @@
             <button type="button" onclick="crmPrintInvoice()" data-print-size class="btn btn-primary btn-sm" id="btn-print-top"><i class="fas fa-print mr-1"></i>Print / PDF</button>
         </div>
     </div>
+    @if ($isCancelled)
+        <div class="alert alert-danger no-print" id="sale-cancelled-banner" role="alert">
+            <i class="fas fa-ban mr-1"></i><strong>Cancelled</strong> on {{ $saleMaster->deleted_at->format('d M Y, h:i A') }}@if ($saleMaster->cancel_reason) — {{ $saleMaster->cancel_reason }}@endif.
+            Its stock and ledger entries were reversed. This copy is kept for reference only.
+        </div>
+    @endif
 
     {{-- Interactive Fulfillment Stepper Bar (Screen-only) --}}
     @php
@@ -224,9 +233,11 @@
                         <i class="fas fa-flask mr-1"></i>Lab: {{ $saleMaster->lab_name }}
                     </span>
                 @endif
+                @unless ($isCancelled)
                 <button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#updateFulfillmentModal" style="border-radius: 8px; font-size: 12px; font-weight: 600; padding: 4px 10px;">
                     <i class="fas fa-edit mr-1"></i>Edit Promised Date / Lab
                 </button>
+                @endunless
             </div>
         </div>
 
@@ -346,7 +357,9 @@
                                 </td>
                                 <td style="text-align: center;" id="sale-sd-actions-{{ $sd->id }}">
                                     <div class="d-flex justify-content-center align-items-center" style="gap: 6px;">
-                                        @if ($fStatus === 'not_booked')
+                                        @if ($isCancelled)
+                                            <span class="text-muted" style="font-size: 12px;">Invoice cancelled</span>
+                                        @elseif ($fStatus === 'not_booked')
                                             {{-- Walk-in: Done now --}}
                                             @if ($bType === 'walk_in')
                                                 <button type="button" class="btn btn-success btn-sm btn-done-modal" data-id="{{ $sd->id }}" data-service="{{ $sd->serviceType?->service_type_name }}" data-patient="{{ $customerLead?->full_name ?? 'Patient' }}">
@@ -701,10 +714,12 @@
             <div class="inv-side-card">
                 <h4>Actions</h4>
                 <div class="side-actions">
+                    @unless ($isCancelled)
                     <button type="button" class="side-btn" style="background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%); color: #fff; font-weight: 600;" data-toggle="modal" data-target="#updateFulfillmentModal">
                         <i class="fas fa-clipboard-check"></i> {{ $saleMaster->isServiceSale() ? 'Update Report Status' : 'Update Fulfillment' }}
                     </button>
-                    @if ($due > 0.009)
+                    @endunless
+                    @if ($due > 0.009 && !$isCancelled)
                         <button type="button" class="side-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; font-weight: 600;" data-toggle="modal" data-target="#collectDueModal">
                             <i class="fas fa-hand-holding-usd"></i> Collect Due Payment
                         </button>
@@ -715,7 +730,7 @@
                     <a href="{{ route('sale.pos-print', $saleMaster->id) }}" target="_blank" class="side-btn" id="btn-pos-print">
                         <i class="fas fa-receipt ic-blue"></i> POS Receipt
                     </a>
-                    @if ((int) $saleMaster->vendor_id === (int) \App\Classes\Helper::currentBranchId())
+                    @if (!$isCancelled && (int) $saleMaster->vendor_id === (int) \App\Classes\Helper::currentBranchId())
                     @can('permission', 'sale_list.edit')
                         <a href="{{ url('admin/sale/' . $saleMaster->id . '/edit') }}" class="side-btn" id="btn-edit-sale">
                             <i class="fas fa-pen ic-amber"></i> Edit Sale

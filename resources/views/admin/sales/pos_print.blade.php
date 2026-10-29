@@ -261,6 +261,10 @@
             @endif
         </div>
 
+        @if ($saleMaster->trashed())
+            <div id="pos-cancelled-stamp" style="border: 2px solid #b91c1c; color: #b91c1c; text-align: center; font-weight: 800; letter-spacing: 2px; padding: 3px; margin: 6px 0;">CANCELLED · NOT VALID</div>
+        @endif
+
         {{-- Memo Info --}}
         <div class="memo-info">
             <div class="meta-row">

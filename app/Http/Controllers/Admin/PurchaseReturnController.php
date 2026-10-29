@@ -219,7 +219,7 @@ class PurchaseReturnController extends Controller
         }
 
         // Check if sold
-        $isSold = DB::table('sale_details')
+        $isSold = DB::table('sale_details')->whereNull('deleted_at')
             ->where('product_id', $detail->product_id)
             ->where(function ($sq) use ($serial) {
                 $sq->whereJsonContains('serial_no', $serial)
@@ -321,7 +321,7 @@ class PurchaseReturnController extends Controller
             }
             $serials = array_values(array_filter(array_map('trim', (array) $serials)));
 
-            $soldSerials = DB::table('sale_details')
+            $soldSerials = DB::table('sale_details')->whereNull('deleted_at')
                 ->where('product_id', $d->product_id)
                 ->whereNotNull('serial_no')
                 ->pluck('serial_no')
