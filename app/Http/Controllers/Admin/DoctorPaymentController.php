@@ -90,7 +90,9 @@ class DoctorPaymentController extends Controller
             'saleMaster.saleDetails.product',
             'doctor',
             'doctorChamber'
-        ])->pending();
+        ])->pending()
+            // Only referrals on sales this user can see (branch scope; cancelled sales drop out)
+            ->whereHas('saleMaster');
 
         if ($request->filled('pending_doctor_id')) {
             $pendingQuery->where('doctor_id', $request->pending_doctor_id);

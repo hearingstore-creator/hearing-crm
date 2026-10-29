@@ -1649,8 +1649,10 @@ class SaleController extends Controller
             $reversal = app(LedgerReversal::class);
             $what = "Sale {$saleInvoiceNo}";
             $sameInvoice = fn ($q) => $q->where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales);
-            $reversal->reverse('customer_ledgers', $sameInvoice, $reason, $what);
-            $reversal->reverse('ledgers', $sameInvoice, $reason, $what);
+            // Payments collected later against this invoice (due collection, delivery) are reversed with it
+            $sameInvoiceMoney = fn ($q) => $q->where('ref_invoice_no', $saleInvoiceNo)->whereIn('type', [Helper::$sales, Helper::$receive]);
+            $reversal->reverse('customer_ledgers', $sameInvoiceMoney, $reason, $what);
+            $reversal->reverse('ledgers', $sameInvoiceMoney, $reason, $what);
             $reversal->reverse('doctor_ledgers', $sameInvoice, $reason, $what);
             $reversal->log('sale_cancelled', $saleMaster, [
                 'sale_invoice_no' => $saleInvoiceNo,

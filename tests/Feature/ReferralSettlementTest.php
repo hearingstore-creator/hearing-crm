@@ -114,6 +114,26 @@ class ReferralSettlementTest extends TestCase
         $response->assertSee('Pending Negotiations');
     }
 
+    public function test_doctor_payment_index_loads_when_another_branch_has_pending_referral(): void
+    {
+        $docId = $this->doctor('Dr Test Branch Pending');
+        $sale = $this->createSaleWithReferral($docId, 0, 'SN-BRPEND-01');
+        $branch = User::forceCreate([
+            'name' => 'Test Branch', 'email' => uniqid('br') . '@test.test', 'password' => bcrypt('secret-pass'),
+            'type' => 'vendor', 'status' => 1,
+        ]);
+        // The sale belongs to a branch, so head office cannot open it
+        DB::table('sale_masters')->where('id', $sale->id)->update(['vendor_id' => $branch->id]);
+
+        $this->actingAs($this->admin)->get('/admin/doctors-payment')
+            ->assertStatus(200)
+            ->assertDontSee($sale->sale_invoice_no);
+
+        $this->actingAs($branch)->get('/admin/doctors-payment')
+            ->assertStatus(200)
+            ->assertSee($sale->sale_invoice_no);
+    }
+
     public function test_settle_referral_with_pay_now_creates_ledgers_and_cash_outflow(): void
     {
         $docId = $this->doctor('Dr Settle Cash');
