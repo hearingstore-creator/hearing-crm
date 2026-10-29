@@ -79,6 +79,18 @@
 .ht-hear.flash { animation: ht-flash .25s ease-out; }
 @keyframes ht-flash { 0% { transform: scale(.94); } 100% { transform: scale(1); } }
 
+.ht-slots { display: flex; justify-content: center; gap: 10px; margin: 6px 0 16px; }
+.ht-slots span { width: 56px; height: 64px; border: 2px solid var(--ht-line); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ht-slots span.on { border-color: var(--ht-red); }
+.ht-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 300px; margin: 0 auto; }
+.ht-keypad button { min-height: 56px; border: 1px solid var(--ht-line); border-radius: 12px; background: #fff; color: var(--ht-ink); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ht-keypad button:hover:not(:disabled) { background: var(--ht-soft); }
+.ht-keypad button:disabled { opacity: .4; cursor: default; }
+.ht-keypad .ht-key-ok { background: var(--ht-red); border-color: var(--ht-red); color: #fff; font-size: 17px; }
+.ht-keypad .ht-key-ok:hover:not(:disabled) { background: var(--ht-red-dark); }
+.ht-keypad button:focus-visible { outline: 3px solid rgba(229, 36, 33, .35); outline-offset: 2px; }
+.ht-din-res { border: 1px solid var(--ht-line); border-top: 4px solid var(--b); border-radius: 12px; padding: 12px; text-align: center; margin-top: 10px; }
+
 .ht-q { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--ht-line); }
 .ht-q-text { flex: 1; }
 .ht-yn { display: flex; gap: 6px; flex: none; }

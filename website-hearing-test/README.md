@@ -6,7 +6,8 @@ A lightweight hearing **screening** test for the Hearing Store website (Laravel)
 public/hearing-test/
   hearing-test.js     the test (audio engine, flow, scoring, results, lead form)
   hearing-test.css    styles, all scoped under .ht-root
-  demo.html           open in a browser to try it
+  demo.html           open in a browser to try it (needs a web server for the digit sounds)
+  digits/en, digits/bn  spoken digits for the Digits-in-Noise test (PLACEHOLDER robot voice – replace)
 laravel/
   hearing-test.blade.php           example website page
   hearing_test.php                 website config -> config/hearing_test.php
@@ -23,8 +24,16 @@ laravel/
    - Each presentation is three pulsed beeps, starting after a random delay. The visitor taps the big button or presses Space.
    - The threshold is found with a simplified **Hughson-Westlake** procedure: down 10 dB after a response, up 5 dB after a miss. The threshold is the lowest level heard on 2 ascending presentations.
    - About 12% of presentations are silent **catch trials**, used to detect random tapping.
-5. **Five quick questions** about everyday listening difficulty and tinnitus.
-6. **Results:**
+5. **Digits in Noise (DIN):** a speech-in-noise test, the method behind WHO's hearWHO app.
+   - The visitor hears three spoken digits in background noise, played to both ears, and types them on a keypad. Each round of three digits is a "triplet".
+   - The noise has the same frequency profile as the digit voice. It is generated in the browser from the recordings, so no separate noise file is needed.
+   - The first triplet repeats 4 dB easier until it is answered correctly. After that, a correct triplet makes the noise louder by 2 dB and a wrong one makes it quieter by 2 dB, for 24 triplets.
+   - Score: **SRT** (speech reception threshold) = the average SNR of triplets 5 to 25. Lower is better. It is shown as Good / Borderline / Poor.
+   - Combined speech and noise loudness stays constant, so the volume never jumps.
+   - Speech and noise come out of the same speaker, so the result depends much less on the phone and headphones than the tone test does.
+   - English leaves out "seven" and Bangla leaves out "শূন্য", because both are two syllables (standard DIN practice).
+6. **Five quick questions** about everyday listening difficulty and tinnitus.
+7. **Results:**
    - A band for each ear from the 4-frequency average (500/1k/2k/4k), using WHO-style grades: Normal under 20 dB, Mild 20–34, Moderate 35–49, Significant 50 or more.
    - An approximate audiogram (right ear red O, left ear blue X).
    - Notes for high-frequency dip, ear asymmetry (15 dB or more), questionnaire result and unreliable responses.
@@ -32,9 +41,24 @@ laravel/
 
 Levels are **approximate dB HL**. A browser can't be calibrated to a clinical standard, so the module always presents itself as a screening and never as a diagnosis. Per-frequency headphone corrections are in `CORR` at the top of `hearing-test.js`.
 
+## Digit recordings (must be replaced before going live)
+
+The files in `digits/` are **robot-voice placeholders** generated with espeak-ng, so the test can be tried now. Before launch:
+
+1. Record one clear speaker (the same person for every digit) in a quiet room:
+   - English: zero, one, two, three, four, five, six, eight, nine.
+   - Bangla: এক, দুই, তিন, চার, পাঁচ, ছয়, সাত, আট, নয়.
+   - Say each digit in a neutral, even tone at the same distance from the microphone.
+2. Trim the silence at the start and end. Export mono MP3 files named `0.mp3`–`9.mp3` into `digits/en/` and `digits/bn/`. The test equalises loudness automatically.
+3. **Re-norm the cut-offs.** DIN scores depend on the voice and the recordings, so the default `-9` / `-6` are only provisional.
+   - Have at least 20 adults aged 18–30 with normal hearing (confirmed on your audiometer) take the test with `data-mode="din"`, in each language.
+   - Read each score from the results screen.
+   - Set `data-din-good` = mean + 2 SD (the normal limit) and `data-din-poor` = that value + 3 dB.
+   - Ideally, an audiologist also checks a few people with known hearing loss.
+
 ## Install on the website (Laravel)
 
-1. Copy `public/hearing-test/` into the website's `public/` folder.
+1. Copy `public/hearing-test/` (including `digits/`) into the website's `public/` folder.
 2. Copy `laravel/hearing_test.php` to `config/hearing_test.php`, and add to `.env`:
    ```
    HEARING_TEST_PHONE=+8801XXXXXXXXX
@@ -55,6 +79,9 @@ Levels are **approximate dB HL**. A browser can't be calibrated to a clinical st
 | `data-whatsapp` | Digits only. Shows a WhatsApp button with a pre-filled message. |
 | `data-booking-url` | Shows a "Book appointment" button. |
 | `data-lead-url` | Shows the call-back form and POSTs JSON here. Leave empty to show no form. |
+| `data-mode` | `full` (default: tones then Digits in Noise), `tones` (tones only) or `din` (Digits in Noise only, about 3 min). |
+| `data-audio-base` | Folder holding `en/` and `bn/` digit files. Defaults to `digits/` next to the script. |
+| `data-din-good`, `data-din-poor` | Score cut-offs in dB SNR. Default `-9` and `-6` (provisional, see below). |
 | `data-target` | Container selector, default `#hearing-test`. |
 | `data-freqs` | Override the frequency list, e.g. `1000,2000,4000,500`. |
 
@@ -85,7 +112,7 @@ The CRM already accepts signed website leads at `POST /api/v1/leads` (`WebLeadCo
 4. The Blade page then adds `data-lead-url` automatically and the call-back form appears on the results screen.
 
 Each lead arrives in the CRM with `inquiry_for = hearing_test` and a one-line result summary in the message, for example:
-`Online hearing test: overall MILD | Right normal (PTA ~10 dB) | Left mild (PTA ~30 dB) | Flags: Asym | Questionnaire yes: 2/5 | R {...} L {...}`
+`Online hearing test (full): overall MILD | Right normal (PTA ~10 dB) | Left mild (PTA ~30 dB) | Digits-in-noise borderline (SRT -7.4 dB SNR) | Flags: Asym, Din | Questionnaire yes: 2/5 | R {...} L {...}`
 
 ## Privacy
 

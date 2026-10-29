@@ -28,7 +28,22 @@
         minLevel: -10,
         maxLevel: 85,
         maxTrialsPerFreq: 20,
-        catchRate: 0.12
+        catchRate: 0.12,
+        // 'full' = tones + digits-in-noise, 'tones' = tones only, 'din' = digits-in-noise only
+        mode: ['full', 'tones', 'din'].indexOf(ds.mode) >= 0 ? ds.mode : 'full',
+        audioBase: ds.audioBase || (script && script.src ? new URL('digits/', script.src).href : 'digits/'),
+        din: {
+            trials: 24,
+            startSnr: 0,
+            step: 2,
+            maxSnr: 10,
+            minSnr: -24,
+            // Two-syllable digits are left out (English "seven", Bangla "shunno"), as in standard DIN tests.
+            digits: { en: [0, 1, 2, 3, 4, 5, 6, 8, 9], bn: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            // PROVISIONAL cut-offs (dB SNR). Re-norm whenever the recordings change – see README.
+            good: ds.dinGood !== undefined ? Number(ds.dinGood) : -9,
+            poor: ds.dinPoor !== undefined ? Number(ds.dinPoor) : -6
+        }
     };
 
     // Level model: the volume step sets CAL_LEVEL dB HL at 1 kHz to CAL_AMP of full scale.
@@ -52,7 +67,27 @@
             start: 'Start test',
             next: 'Next',
             back: 'Back',
-            step: 'Step {n} of 4',
+            step: 'Step {n} of {m}',
+            volTextDin: 'Tap Play. You will hear numbers with background noise. Adjust your device volume until the voice is clear and comfortable – like normal conversation.',
+            dinTitle: 'Numbers in noise',
+            dinText: 'You will hear 3 numbers spoken with background noise. Type the numbers you heard, then tap OK. The noise gets louder as you do well – that is normal. If you are not sure, take a guess.',
+            dinStart: 'Start',
+            dinLoading: 'Loading sounds…',
+            dinLoadErr: 'The sounds could not be loaded. You can skip this part.',
+            skip: 'Skip',
+            dinListen: 'Listen…',
+            dinType: 'Type the 3 numbers you heard',
+            ok: 'OK',
+            dinTrial: '{n} of {m}',
+            dinResTitle: 'Hearing in noise',
+            din_good: 'Good',
+            din_borderline: 'Borderline',
+            din_poor: 'Poor',
+            dinScore: 'Speech-in-noise score: {v} dB SNR (lower is better)',
+            flagDin: 'You found it harder than expected to follow speech in background noise. This is often the first everyday sign of hearing loss.',
+            sumdin_good: 'You understood speech in noise well. Your hearing for everyday conversation seems fine. We recommend a hearing check once a year.',
+            sumdin_borderline: 'You found speech in noise somewhat hard to follow. A professional hearing test is recommended.',
+            sumdin_poor: 'You found speech in noise hard to follow, which suggests a hearing loss. Please book a professional hearing test.',
             lrTitle: 'Check your headphones',
             lrText: 'Put on your headphones. Tap Play, then tell us which side you heard the beep.',
             play: 'Play sound',
@@ -138,7 +173,27 @@
             start: 'টেস্ট শুরু করুন',
             next: 'পরবর্তী',
             back: 'পেছনে',
-            step: 'ধাপ {n} / ৪',
+            step: 'ধাপ {n} / {m}',
+            volTextDin: '"শব্দ বাজান" চাপুন। আপনি পেছনের শব্দের সাথে কিছু সংখ্যা শুনবেন। ডিভাইসের ভলিউম এমনভাবে ঠিক করুন যাতে কণ্ঠস্বর পরিষ্কার ও আরামদায়ক শোনায় – স্বাভাবিক কথাবার্তার মতো।',
+            dinTitle: 'কোলাহলে সংখ্যা শোনা',
+            dinText: 'আপনি পেছনের শব্দের মধ্যে ৩টি সংখ্যা শুনবেন। যে সংখ্যাগুলো শুনলেন তা লিখে OK চাপুন। আপনি ভালো করলে পেছনের শব্দ বাড়বে – এটি স্বাভাবিক। নিশ্চিত না হলে অনুমান করে দিন।',
+            dinStart: 'শুরু করুন',
+            dinLoading: 'শব্দ লোড হচ্ছে…',
+            dinLoadErr: 'শব্দ লোড করা যায়নি। আপনি এই অংশটি বাদ দিতে পারেন।',
+            skip: 'বাদ দিন',
+            dinListen: 'শুনুন…',
+            dinType: 'যে ৩টি সংখ্যা শুনলেন তা লিখুন',
+            ok: 'OK',
+            dinTrial: '{n} / {m}',
+            dinResTitle: 'কোলাহলে শোনা',
+            din_good: 'ভালো',
+            din_borderline: 'সীমারেখায়',
+            din_poor: 'দুর্বল',
+            dinScore: 'কোলাহলে কথা বোঝার স্কোর: {v} dB SNR (কম হলে ভালো)',
+            flagDin: 'পেছনের শব্দের মধ্যে কথা বুঝতে আপনার প্রত্যাশার চেয়ে বেশি কষ্ট হয়েছে। এটি প্রায়ই দৈনন্দিন জীবনে শ্রবণ হ্রাসের প্রথম লক্ষণ।',
+            sumdin_good: 'কোলাহলের মধ্যেও আপনি কথা ভালোভাবে বুঝেছেন। দৈনন্দিন কথাবার্তায় আপনার শ্রবণশক্তি ঠিক আছে বলে মনে হচ্ছে। বছরে একবার শ্রবণ পরীক্ষা করানোর পরামর্শ দিই।',
+            sumdin_borderline: 'কোলাহলের মধ্যে কথা বুঝতে আপনার কিছুটা কষ্ট হয়েছে। একটি পেশাদার শ্রবণ পরীক্ষা করানোর পরামর্শ দেওয়া হচ্ছে।',
+            sumdin_poor: 'কোলাহলের মধ্যে কথা বুঝতে আপনার বেশ কষ্ট হয়েছে, যা শ্রবণ হ্রাসের ইঙ্গিত দেয়। অনুগ্রহ করে একটি পেশাদার শ্রবণ পরীক্ষা বুক করুন।',
             lrTitle: 'হেডফোন পরীক্ষা করুন',
             lrText: 'হেডফোন পরে নিন। "শব্দ বাজান" চাপুন, তারপর বলুন কোন পাশে বিপ শুনলেন।',
             play: 'শব্দ বাজান',
@@ -310,9 +365,20 @@
         });
     }
 
-    function steps(n) {
-        return '<div class="ht-steps"><div class="ht-steps-label">' + t('step', { n: lang === 'bn' ? bnDigits(n) : n }) + '</div>' +
-            '<div class="ht-bar"><span style="width:' + (n * 25) + '%"></span></div></div>';
+    function flowSteps() {
+        var s = ['lr', 'vol'];
+        if (CONFIG.mode !== 'din') { s.push('tones'); }
+        if (CONFIG.mode !== 'tones') { s.push('din'); }
+        s.push('qs');
+        return s;
+    }
+
+    function num(n) { return lang === 'bn' ? bnDigits(n) : String(n); }
+
+    function steps(id) {
+        var list = flowSteps(), n = list.indexOf(id) + 1, m = list.length;
+        return '<div class="ht-steps"><div class="ht-steps-label">' + t('step', { n: num(n), m: num(m) }) + '</div>' +
+            '<div class="ht-bar"><span style="width:' + Math.round(n / m * 100) + '%"></span></div></div>';
     }
 
     function bnDigits(s) {
@@ -346,7 +412,7 @@
         state.redraw = function () { screenLR(msg); };
         var seq = Math.random() < 0.5 ? ['L', 'R'] : ['R', 'L'];
         var idx = 0;
-        render(steps(1) +
+        render(steps('lr') +
             '<h3>' + t('lrTitle') + '</h3><p>' + t('lrText') + '</p>' +
             (msg ? '<div class="ht-msg ' + (msg === 'lrOk' ? 'ok' : 'warn') + '">' + t(msg) + '</div>' : '') +
             '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-play">🔊 ' + t('play') + ' (1/2)</button></div>' +
@@ -380,10 +446,10 @@
 
     function screenVolume(msg) {
         state.redraw = function () { screenVolume(); };
-        var timer = null;
-        render(steps(2) +
+        var timer = null, dinOnly = CONFIG.mode === 'din';
+        render(steps('vol') +
             (msg ? '<div class="ht-msg ok">' + t(msg) + '</div>' : '') +
-            '<h3>' + t('volTitle') + '</h3><p>' + t('volText') + '</p>' +
+            '<h3>' + t('volTitle') + '</h3><p>' + t(dinOnly ? 'volTextDin' : 'volText') + '</p>' +
             '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-play">🔊 ' + t('play') + '</button></div>' +
             '<p class="ht-hint">' + t('volCant') + '</p>' +
             '<div class="ht-msg warn">' + t('volKeep') + '</div>' +
@@ -395,17 +461,25 @@
             var btn = $('#ht-play');
             if (timer) { stop(); btn.textContent = '🔊 ' + t('play'); return; }
             Audio.init();
+            btn.textContent = '⏹ ' + t('playing');
+            if (dinOnly) {
+                // Speech sample in light noise, so the volume is set on the voice the test uses.
+                var sample = function () { Din.play(Din.triplet(), 10); };
+                Din.load(lang).then(function () {
+                    if (btn.isConnected && !timer) { sample(); timer = setInterval(sample, 4500); }
+                }).catch(function () { btn.textContent = t('dinLoadErr'); });
+                return;
+            }
             Audio.pulses(1000, 'both', CAL_LEVEL, 3);
             timer = setInterval(function () { Audio.pulses(1000, 'both', CAL_LEVEL, 3); }, 2000);
-            btn.textContent = '⏹ ' + t('playing');
         });
         on('#ht-back', 'click', function () { stop(); screenLR(); });
-        on('#ht-done', 'click', function () { stop(); screenTestIntro('R'); });
+        on('#ht-done', 'click', function () { stop(); if (dinOnly) { screenDinIntro(); } else { screenTestIntro('R'); } });
     }
 
     function screenTestIntro(ear) {
         state.redraw = function () { screenTestIntro(ear); };
-        render(steps(3) +
+        render(steps('tones') +
             (ear === 'L' ? '<div class="ht-msg ok">' + t('switchEar') + '</div>' : '') +
             '<h3>' + t('testTitle', { ear: t(ear === 'R' ? 'earRight' : 'earLeft') }) + '</h3>' +
             '<p>' + t('testText') + '</p>' +
@@ -426,7 +500,7 @@
         var done = ear === 'R' ? 0 : CONFIG.freqs.length + 1;
 
         state.redraw = function () {}; // language buttons disabled while running
-        render(steps(3) +
+        render(steps('tones') +
             '<h3>' + t('testTitle', { ear: t(ear === 'R' ? 'earRight' : 'earLeft') }) + '</h3>' +
             '<div class="ht-ear ht-ear-' + ear + '">' + (ear === 'R' ? t('rightEar') : t('leftEar')) + '</div>' +
             '<div class="ht-bar ht-bar-test"><span id="ht-prog"></span></div>' +
@@ -474,7 +548,7 @@
             }
             document.removeEventListener('keydown', state.keyHandler);
             state.running = false;
-            if (ear === 'R') { screenTestIntro('L'); } else { screenQuestions(); }
+            if (ear === 'R') { screenTestIntro('L'); } else if (CONFIG.mode === 'full') { screenDinIntro(); } else { screenQuestions(); }
         })();
     }
 
@@ -545,12 +619,269 @@
         return { db: best !== undefined ? best : level, noResp: false, uncertain: true };
     }
 
+    /* ---------------- Digits-in-noise (DIN) ---------------- */
+
+    // Iterative radix-2 FFT, in place; inverse when inv is true (unscaled).
+    function fft(re, im, inv) {
+        var n = re.length, i, j, k, tmp;
+        for (i = 1, j = 0; i < n; i++) {
+            var bit = n >> 1;
+            for (; j & bit; bit >>= 1) { j ^= bit; }
+            j ^= bit;
+            if (i < j) {
+                tmp = re[i]; re[i] = re[j]; re[j] = tmp;
+                tmp = im[i]; im[i] = im[j]; im[j] = tmp;
+            }
+        }
+        for (var len = 2; len <= n; len <<= 1) {
+            var ang = 2 * Math.PI / len * (inv ? 1 : -1), wr = Math.cos(ang), wi = Math.sin(ang), half = len >> 1;
+            for (i = 0; i < n; i += len) {
+                var cr = 1, ci = 0;
+                for (k = 0; k < half; k++) {
+                    var a = i + k, b = a + half;
+                    var tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+                    re[b] = re[a] - tr; im[b] = im[a] - ti;
+                    re[a] += tr; im[a] += ti;
+                    tmp = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = tmp;
+                }
+            }
+        }
+    }
+
+    function rms(arr) {
+        var s = 0;
+        for (var i = 0; i < arr.length; i++) { s += arr[i] * arr[i]; }
+        return Math.sqrt(s / arr.length) || 1;
+    }
+
+    var Din = {
+        cache: {},       // lang -> Promise<{ digits: {d: AudioBuffer}, noise: AudioBuffer }>
+        set: null,
+        DIN_RMS: 0.04,   // combined speech + noise RMS; constant so loudness does not jump between triplets
+
+        load: function (l) {
+            if (this.cache[l]) { return this.cache[l]; }
+            Audio.init();
+            var ctx = Audio.ctx, ds = CONFIG.din.digits[l];
+            var p = Promise.all(ds.map(function (d) {
+                return fetch(CONFIG.audioBase + l + '/' + d + '.mp3')
+                    .then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.arrayBuffer(); })
+                    .then(function (buf) { return new Promise(function (res, rej) { ctx.decodeAudioData(buf, res, rej); }); });
+            })).then(function (bufs) {
+                // Equalise every digit to RMS 1 so the SNR is exact for each one.
+                var digits = {}, all = [];
+                bufs.forEach(function (b, i) {
+                    var src = b.getChannelData(0), g = 1 / rms(src);
+                    var out = ctx.createBuffer(1, src.length, b.sampleRate), dst = out.getChannelData(0);
+                    for (var k = 0; k < src.length; k++) { dst[k] = src[k] * g; }
+                    digits[ds[i]] = out;
+                    all.push(dst);
+                });
+                return { digits: digits, noise: Din.speechNoise(all, ctx) };
+            });
+            p.catch(function () { delete Din.cache[l]; });
+            this.cache[l] = p;
+            return p;
+        },
+
+        // Stationary noise with the long-term spectrum of the digit recordings (random-phase method).
+        // It loops seamlessly because the inverse FFT is circular.
+        speechNoise: function (signals, ctx) {
+            var SEG = 4096, psd = new Float64Array(SEG / 2 + 1), segs = 0, win = new Float64Array(SEG), i, k;
+            for (i = 0; i < SEG; i++) { win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (SEG - 1)); }
+            var total = 0;
+            signals.forEach(function (s) { total += s.length; });
+            var cat = new Float64Array(Math.max(total, SEG)), off = 0;
+            signals.forEach(function (s) { cat.set(s, off); off += s.length; });
+            for (var start = 0; start + SEG <= cat.length; start += SEG / 2) {
+                var re = new Float64Array(SEG), im = new Float64Array(SEG);
+                for (i = 0; i < SEG; i++) { re[i] = cat[start + i] * win[i]; }
+                fft(re, im, false);
+                for (k = 0; k <= SEG / 2; k++) { psd[k] += re[k] * re[k] + im[k] * im[k]; }
+                segs++;
+            }
+            var N = 1 << 18, nre = new Float64Array(N), nim = new Float64Array(N);
+            for (k = 1; k < N / 2; k++) {
+                var pos = k * SEG / N, lo = Math.floor(pos), fr = pos - lo;
+                var mag = Math.sqrt(((psd[lo] * (1 - fr) + psd[Math.min(lo + 1, SEG / 2)] * fr) / Math.max(segs, 1)));
+                var ph = Math.random() * 2 * Math.PI;
+                nre[k] = mag * Math.cos(ph); nim[k] = mag * Math.sin(ph);
+                nre[N - k] = nre[k]; nim[N - k] = -nim[k];
+            }
+            fft(nre, nim, true);
+            var buf = ctx.createBuffer(1, N, ctx.sampleRate), d = buf.getChannelData(0), g = 1 / rms(nre);
+            for (i = 0; i < N; i++) { d[i] = nre[i] * g; }
+            return buf;
+        },
+
+        triplet: function () {
+            var pool = CONFIG.din.digits[this.lang || lang].slice(), out = [];
+            for (var i = 0; i < 3; i++) { out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]); }
+            return out;
+        },
+
+        // Plays three digits in gated noise at the given SNR (both ears). Returns duration in ms.
+        play: function (digits, snr) {
+            var ctx = Audio.ctx, set = this.set;
+            if (!set) { return 0; }
+            var r = Math.pow(10, snr / 20), gn = this.DIN_RMS / Math.sqrt(1 + r * r), gs = gn * r;
+            var t0 = ctx.currentTime + 0.1, lead = 0.5, gap = 0.3, ramp = 0.1, at = t0 + lead;
+            var srcs = [];
+            digits.forEach(function (d) {
+                var s = ctx.createBufferSource(), g = ctx.createGain();
+                s.buffer = set.digits[d];
+                g.gain.value = gs;
+                s.connect(g); g.connect(ctx.destination);
+                s.start(at);
+                at += s.buffer.duration + gap;
+                srcs.push([s, g]);
+            });
+            var end = at - gap + lead;
+            var n = ctx.createBufferSource(), ng = ctx.createGain();
+            n.buffer = set.noise;
+            n.loop = true;
+            ng.gain.setValueAtTime(0, t0);
+            ng.gain.linearRampToValueAtTime(gn, t0 + ramp);
+            ng.gain.setValueAtTime(gn, end - ramp);
+            ng.gain.linearRampToValueAtTime(0, end);
+            n.connect(ng); ng.connect(ctx.destination);
+            n.start(t0, Math.random() * set.noise.duration);
+            n.stop(end + 0.05);
+            n.onended = function () {
+                n.disconnect(); ng.disconnect();
+                srcs.forEach(function (p) { p[0].disconnect(); p[1].disconnect(); });
+            };
+            return Math.round((end - ctx.currentTime) * 1000);
+        }
+    };
+
+    function screenDinIntro() {
+        state.redraw = screenDinIntro;
+        render(steps('din') +
+            '<h3>' + t('dinTitle') + '</h3><p>' + t('dinText') + '</p>' +
+            '<div class="ht-msg" id="ht-din-msg" hidden></div>' +
+            '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-skip">' + t('skip') + '</button>' +
+            '<button type="button" class="ht-btn ht-primary" id="ht-din-start">' + t('dinStart') + '</button></div>'
+        );
+        on('#ht-skip', 'click', function () { state.din = null; screenQuestions(); });
+        on('#ht-din-start', 'click', function () {
+            var btn = $('#ht-din-start'), msg = $('#ht-din-msg');
+            btn.disabled = true;
+            btn.textContent = t('dinLoading');
+            Din.load(lang).then(function (set) {
+                Din.set = set;
+                Din.lang = lang;
+                runDin();
+            }).catch(function () {
+                msg.hidden = false;
+                msg.className = 'ht-msg warn';
+                msg.textContent = t('dinLoadErr');
+                btn.disabled = false;
+                btn.textContent = t('dinStart');
+            });
+        });
+    }
+
+    // Adaptive 1-up/1-down on whole-triplet correctness (Smits et al. 2004):
+    // first triplet repeats 4 dB easier until correct, then 2 dB steps for 24 triplets.
+    // Speech reception threshold (SRT) = mean SNR of triplets 5-24 plus the next one.
+    function runDin() {
+        var cfg = CONFIG.din;
+        state.running = true;
+        state.redraw = function () {};
+        render(steps('din') +
+            '<h3>' + t('dinTitle') + '</h3>' +
+            '<div class="ht-bar ht-bar-test"><span id="ht-prog"></span></div>' +
+            '<p class="ht-status" id="ht-status">' + t('dinListen') + '</p>' +
+            '<div class="ht-slots" id="ht-slots"><span></span><span></span><span></span></div>' +
+            '<div class="ht-keypad" id="ht-keypad">' +
+            [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (d) { return '<button type="button" data-d="' + d + '">' + num(d) + '</button>'; }).join('') +
+            '<button type="button" data-d="back" aria-label="Delete">⌫</button>' +
+            '<button type="button" data-d="0">' + num(0) + '</button>' +
+            '<button type="button" data-d="ok" class="ht-key-ok">' + t('ok') + '</button>' +
+            '</div>'
+        );
+        var prog = $('#ht-prog'), status = $('#ht-status'), slots = root.querySelectorAll('#ht-slots span');
+        var keys = root.querySelectorAll('#ht-keypad button');
+        var entry = [], resolver = null, accepting = false;
+
+        function draw() {
+            slots.forEach(function (s, i) { s.textContent = entry[i] !== undefined ? num(entry[i]) : ''; s.classList.toggle('on', i === entry.length); });
+            keys.forEach(function (b) {
+                var d = b.getAttribute('data-d');
+                b.disabled = !accepting || (d === 'ok' ? entry.length !== 3 : d === 'back' ? !entry.length : entry.length >= 3);
+            });
+        }
+        function key(d) {
+            if (!accepting) { return; }
+            if (d === 'back') { entry.pop(); } else if (d === 'ok') {
+                if (entry.length === 3 && resolver) { var r = resolver; resolver = null; accepting = false; r(entry.slice()); }
+            } else if (entry.length < 3) { entry.push(Number(d)); }
+            draw();
+        }
+        keys.forEach(function (b) { b.addEventListener('click', function () { key(b.getAttribute('data-d')); }); });
+        state.keyHandler = function (e) {
+            var bnIdx = '০১২৩৪৫৬৭৮৯'.indexOf(e.key);
+            if (/^[0-9]$/.test(e.key)) { key(e.key); } else if (bnIdx >= 0) { key(String(bnIdx)); } else if (e.key === 'Backspace') { e.preventDefault(); key('back'); } else if (e.key === 'Enter') { key('ok'); }
+        };
+        document.addEventListener('keydown', state.keyHandler);
+
+        async function present(snr) {
+            var trip = Din.triplet();
+            entry = [];
+            accepting = false;
+            status.textContent = t('dinListen');
+            draw();
+            await wait(400);
+            var ms = Din.play(trip, snr);
+            await wait(Math.max(ms - 300, 0));
+            accepting = true;
+            status.textContent = t('dinType');
+            draw();
+            var ans = await new Promise(function (res) { resolver = res; });
+            var hits = ans.filter(function (d, i) { return d === trip[i]; }).length;
+            state.dinDigits.n += 3;
+            state.dinDigits.ok += hits;
+            return hits === 3;
+        }
+
+        (async function () {
+            var snr = cfg.startSnr, levels = [], misses = 0;
+            prog.style.width = '0%';
+            // First triplet: get it right, raising the SNR 4 dB after each miss.
+            while (!(await present(snr))) {
+                if (snr >= cfg.maxSnr && ++misses >= 3) { break; }
+                snr = Math.min(snr + 4, cfg.maxSnr);
+            }
+            var completed = misses < 3;
+            if (completed) {
+                levels.push(snr);
+                snr = Math.max(snr - cfg.step, cfg.minSnr);
+                for (var n = 2; n <= cfg.trials; n++) {
+                    prog.style.width = Math.round((n - 1) / cfg.trials * 100) + '%';
+                    levels.push(snr);
+                    var ok = await present(snr);
+                    snr = Math.min(Math.max(snr + (ok ? -cfg.step : cfg.step), cfg.minSnr), cfg.maxSnr);
+                }
+                levels.push(snr); // the level the 25th triplet would have used
+            }
+            var used = levels.slice(4);
+            state.din = completed ? {
+                srt: Math.round(used.reduce(function (s, v) { return s + v; }, 0) / used.length * 10) / 10,
+                levels: levels
+            } : { srt: null, levels: levels };
+            document.removeEventListener('keydown', state.keyHandler);
+            state.running = false;
+            screenQuestions();
+        })();
+    }
+
     /* ---------------- Questionnaire ---------------- */
 
     function screenQuestions() {
         state.redraw = screenQuestions;
         var qs = ['q1', 'q2', 'q3', 'q4', 'q5'];
-        render(steps(4) + '<h3>' + t('qTitle') + '</h3>' +
+        render(steps('qs') + '<h3>' + t('qTitle') + '</h3>' +
             qs.map(function (q) {
                 var v = state.answers[q];
                 return '<div class="ht-q"><div class="ht-q-text">' + t(q) + '</div><div class="ht-yn">' +
@@ -584,7 +915,17 @@
     var BAND_RANK = { normal: 0, mild: 1, moderate: 2, significant: 3 };
 
     // Bands follow the WHO 2021 grades on the 4-frequency pure-tone average (PTA).
+    var DIN_BAND = { good: 'normal', borderline: 'mild', poor: 'moderate' };
+
+    function dinCategory(srt) {
+        if (srt === null) { return 'poor'; }
+        if (srt <= CONFIG.din.good) { return 'good'; }
+        return srt <= CONFIG.din.poor ? 'borderline' : 'poor';
+    }
+
     function score() {
+        var tones = CONFIG.mode !== 'din';
+        var din = state.din ? { srt: state.din.srt, category: dinCategory(state.din.srt), digitsCorrect: state.dinDigits.ok + '/' + state.dinDigits.n } : null;
         var ears = {};
         ['R', 'L'].forEach(function (e) {
             var res = state.results[e];
@@ -594,19 +935,23 @@
             ears[e] = { pta: pta, band: band(pta), high: high, thresholds: res };
         });
         var worst = BAND_RANK[ears.R.band] >= BAND_RANK[ears.L.band] ? ears.R.band : ears.L.band;
+        if (!tones) { worst = din ? DIN_BAND[din.category] : 'normal'; }
         var yes = Object.keys(state.answers).filter(function (k) { return state.answers[k] === 1; }).length;
         var flags = [];
-        if (worst === 'normal' && (ears.R.high || ears.L.high)) { flags.push('flagHigh'); }
-        if (Math.abs(ears.R.pta - ears.L.pta) >= 15) { flags.push('flagAsym'); }
+        if (tones && worst === 'normal' && (ears.R.high || ears.L.high)) { flags.push('flagHigh'); }
+        if (tones && Math.abs(ears.R.pta - ears.L.pta) >= 15) { flags.push('flagAsym'); }
+        if (tones && din && din.category !== 'good') { flags.push('flagDin'); }
         if (yes >= 2) { flags.push('flagQs'); }
         var unreliable = (state.catchN >= 2 && state.catchFalse / state.catchN > 0.34) ||
             (state.retest && Math.abs(state.retest.first - state.retest.second) > 10) ||
             state.stray > 12;
         if (unreliable) { flags.push('flagUnreliable'); }
         return {
+            mode: CONFIG.mode,
             overall: worst,
-            right: { pta: ears.R.pta, band: ears.R.band, thresholds: flat(ears.R.thresholds) },
-            left: { pta: ears.L.pta, band: ears.L.band, thresholds: flat(ears.L.thresholds) },
+            right: tones ? { pta: ears.R.pta, band: ears.R.band, thresholds: flat(ears.R.thresholds) } : null,
+            left: tones ? { pta: ears.L.pta, band: ears.L.band, thresholds: flat(ears.L.thresholds) } : null,
+            din: din,
             flags: flags,
             questionnaireYes: yes,
             reliable: !unreliable,
@@ -623,12 +968,17 @@
 
     // One-line English summary, used for WhatsApp and the CRM lead note.
     function summaryText(s) {
-        return 'Online hearing test: overall ' + s.overall.toUpperCase() +
-            ' | Right ' + s.right.band + ' (PTA ~' + s.right.pta + ' dB)' +
-            ' | Left ' + s.left.band + ' (PTA ~' + s.left.pta + ' dB)' +
-            (s.flags.length ? ' | Flags: ' + s.flags.map(function (f) { return f.replace('flag', ''); }).join(', ') : '') +
-            ' | Questionnaire yes: ' + s.questionnaireYes + '/5' +
-            ' | R ' + JSON.stringify(s.right.thresholds) + ' L ' + JSON.stringify(s.left.thresholds);
+        var parts = ['Online hearing test (' + s.mode + '): overall ' + s.overall.toUpperCase()];
+        if (s.right) {
+            parts.push('Right ' + s.right.band + ' (PTA ~' + s.right.pta + ' dB)', 'Left ' + s.left.band + ' (PTA ~' + s.left.pta + ' dB)');
+        }
+        if (s.din) {
+            parts.push('Digits-in-noise ' + s.din.category + (s.din.srt !== null ? ' (SRT ' + s.din.srt + ' dB SNR)' : ' (not completed)'));
+        }
+        if (s.flags.length) { parts.push('Flags: ' + s.flags.map(function (f) { return f.replace('flag', ''); }).join(', ')); }
+        parts.push('Questionnaire yes: ' + s.questionnaireYes + '/5');
+        if (s.right) { parts.push('R ' + JSON.stringify(s.right.thresholds) + ' L ' + JSON.stringify(s.left.thresholds)); }
+        return parts.join(' | ');
     }
 
     /* ---------------- Results ---------------- */
@@ -641,15 +991,22 @@
                 '<div class="ht-earres-band">' + t('band_' + e.band) + '</div>' +
                 '<div class="ht-earres-avg">' + t('avg', { db: e.pta }) + '</div></div>';
         }
-        var resultLine = t('band_' + s.overall);
+        var tones = !!s.right;
+        var resultLine = tones ? t('band_' + s.overall) : (s.din ? t('dinResTitle') + ': ' + t('din_' + s.din.category) : '');
+        var sumKey = tones || !s.din ? 'sum_' + s.overall : 'sumdin_' + s.din.category;
+        var dinCard = s.din ? '<div class="ht-din-res ht-b-' + DIN_BAND[s.din.category] + '">' +
+            '<div class="ht-earres-name">' + t('dinResTitle') + '</div>' +
+            '<div class="ht-earres-band">' + t('din_' + s.din.category) + '</div>' +
+            (s.din.srt !== null ? '<div class="ht-earres-avg">' + t('dinScore', { v: s.din.srt }) + '</div>' : '') + '</div>' : '';
         var wa = CONFIG.whatsapp ? 'https://wa.me/' + CONFIG.whatsapp.replace(/\D/g, '') + '?text=' + encodeURIComponent(t('waMsg', { r: resultLine })) : '';
 
         render(
             '<h3>' + t('resTitle') + '</h3>' +
-            '<div class="ht-summary ht-b-' + s.overall + '">' + t('sum_' + s.overall) + '</div>' +
-            '<div class="ht-ears">' + earCard('rightEar', s.right) + earCard('leftEar', s.left) + '</div>' +
+            '<div class="ht-summary ht-b-' + s.overall + '">' + t(sumKey) + '</div>' +
+            (tones ? '<div class="ht-ears">' + earCard('rightEar', s.right) + earCard('leftEar', s.left) + '</div>' : '') +
+            dinCard +
             (s.flags.length ? '<ul class="ht-flags">' + s.flags.map(function (f) { return '<li>' + t(f) + '</li>'; }).join('') + '</ul>' : '') +
-            '<div class="ht-chart"><div class="ht-chart-title">' + t('chartTitle') + '</div>' + audiogram() + '</div>' +
+            (tones ? '<div class="ht-chart"><div class="ht-chart-title">' + t('chartTitle') + '</div>' + audiogram() + '</div>' : '') +
             '<p class="ht-note">' + t('note') + '</p>' +
             '<div class="ht-cta"><div class="ht-cta-title">' + t('ctaTitle') + '</div><div class="ht-cta-btns">' +
             (CONFIG.bookingUrl ? '<a class="ht-btn ht-primary" href="' + esc(CONFIG.bookingUrl) + '">' + t('book') + '</a>' : '') +
@@ -769,7 +1126,7 @@
     function reset() {
         if (state && state.keyHandler) { document.removeEventListener('keydown', state.keyHandler); }
         state = {
-            results: { R: {}, L: {} }, answers: {}, catchN: 0, catchFalse: 0, stray: 0,
+            results: { R: {}, L: {} }, answers: {}, catchN: 0, catchFalse: 0, stray: 0, din: null, dinDigits: { n: 0, ok: 0 },
             retest: null, window: null, paused: false, running: false, startedAt: Date.now(), redraw: function () {}
         };
     }
