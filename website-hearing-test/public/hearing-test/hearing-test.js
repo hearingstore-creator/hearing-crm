@@ -78,7 +78,8 @@
             dinListen: 'Listen…',
             dinType: 'Type the 3 numbers you heard',
             ok: 'OK',
-            dinTrial: '{n} of {m}',
+            dinTrial: 'Round {n} of {m}',
+            toneCount: 'Sound {n} of {m}',
             dinResTitle: 'Hearing in noise',
             din_good: 'Good',
             din_borderline: 'Borderline',
@@ -184,7 +185,8 @@
             dinListen: 'শুনুন…',
             dinType: 'যে ৩টি সংখ্যা শুনলেন তা লিখুন',
             ok: 'OK',
-            dinTrial: '{n} / {m}',
+            dinTrial: 'রাউন্ড {n} / {m}',
+            toneCount: 'শব্দ {n} / {m}',
             dinResTitle: 'কোলাহলে শোনা',
             din_good: 'ভালো',
             din_borderline: 'সীমারেখায়',
@@ -503,6 +505,7 @@
         render(steps('tones') +
             '<h3>' + t('testTitle', { ear: t(ear === 'R' ? 'earRight' : 'earLeft') }) + '</h3>' +
             '<div class="ht-ear ht-ear-' + ear + '">' + (ear === 'R' ? t('rightEar') : t('leftEar')) + '</div>' +
+            '<div class="ht-count" id="ht-count" aria-live="polite"></div>' +
             '<div class="ht-bar ht-bar-test"><span id="ht-prog"></span></div>' +
             '<p class="ht-status" id="ht-status">' + t('listening') + '</p>' +
             '<button type="button" class="ht-hear" id="ht-hear">' + t('hear') + '</button>' +
@@ -510,7 +513,12 @@
         );
         var prog = $('#ht-prog');
         var hearBtn = $('#ht-hear');
-        function setProg() { prog.style.width = Math.round(done / total * 100) + '%'; }
+        var count = $('#ht-count');
+        // Counts pitches across both ears; the number of beeps per pitch varies, so beeps are not counted.
+        function setProg() {
+            prog.style.width = Math.round(done / total * 100) + '%';
+            count.textContent = t('toneCount', { n: num(Math.min(done + 1, total)), m: num(total) });
+        }
         setProg();
 
         function press(e) {
@@ -791,6 +799,7 @@
         state.redraw = function () {};
         render(steps('din') +
             '<h3>' + t('dinTitle') + '</h3>' +
+            '<div class="ht-count" id="ht-count" aria-live="polite"></div>' +
             '<div class="ht-bar ht-bar-test"><span id="ht-prog"></span></div>' +
             '<p class="ht-status" id="ht-status">' + t('dinListen') + '</p>' +
             '<div class="ht-slots" id="ht-slots"><span></span><span></span><span></span></div>' +
@@ -847,7 +856,9 @@
 
         (async function () {
             var snr = cfg.startSnr, levels = [], misses = 0;
+            var count = $('#ht-count');
             prog.style.width = '0%';
+            count.textContent = t('dinTrial', { n: num(1), m: num(cfg.trials) });
             // First triplet: get it right, raising the SNR 4 dB after each miss.
             while (!(await present(snr))) {
                 if (snr >= cfg.maxSnr && ++misses >= 3) { break; }
@@ -859,6 +870,7 @@
                 snr = Math.max(snr - cfg.step, cfg.minSnr);
                 for (var n = 2; n <= cfg.trials; n++) {
                     prog.style.width = Math.round((n - 1) / cfg.trials * 100) + '%';
+                    count.textContent = t('dinTrial', { n: num(n), m: num(cfg.trials) });
                     levels.push(snr);
                     var ok = await present(snr);
                     snr = Math.min(Math.max(snr + (ok ? -cfg.step : cfg.step), cfg.minSnr), cfg.maxSnr);
