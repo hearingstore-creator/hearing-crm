@@ -7,7 +7,7 @@ public/hearing-test/
   hearing-test.js     the test (audio engine, flow, scoring, results, lead form)
   hearing-test.css    styles, all scoped under .ht-root
   demo.html           open in a browser to try it (needs a web server for the digit sounds)
-  digits/en, digits/bn  spoken digits for the Digits-in-Noise test (PLACEHOLDER robot voice – replace)
+  digits/en, digits/bn  spoken digits for the Digits-in-Noise test (neural TTS voices)
 laravel/
   hearing-test.blade.php           example website page
   hearing_test.php                 website config -> config/hearing_test.php
@@ -40,9 +40,9 @@ laravel/
 
 Levels are **approximate dB HL**. A browser can't be calibrated to a clinical standard, so the module always presents itself as a screening and never as a diagnosis. Per-frequency headphone corrections are in `CORR` at the top of `hearing-test.js`.
 
-## Digit recordings (must be replaced before going live)
+## Digit recordings
 
-The files in `digits/` are **robot-voice placeholders** generated with espeak-ng. The Bangla placeholders are mispronounced, so replace them before launch. There are two ways:
+The files in `digits/` were generated with Microsoft neural voices using `scripts/make_digits_tts.py`: **bn-BD-NabanitaNeural** (Bangla) and **en-US-JennyNeural** (English). They replace the earlier robot placeholders. Check the voice licence before commercial use. You can switch to a real recording later in either of two ways:
 
 1. **Record a real voice (recommended).** This is what clinical DIN tests use, and it has no licensing questions.
    - Open `hearing-test/tools/digit-recorder.html` on your website, or on a local server, on a phone or laptop. The microphone needs https or localhost.

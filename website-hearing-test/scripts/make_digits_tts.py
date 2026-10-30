@@ -13,7 +13,9 @@ Check the voice licence terms before commercial use.
 """
 import argparse
 import asyncio
+import os
 import pathlib
+import ssl
 import sys
 
 try:
@@ -27,6 +29,13 @@ DIGITS = {
     "en": {0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 8: "eight", 9: "nine"},
 }
 
+# Behind a proxy (office network, cloud sandbox): honour HTTPS_PROXY and a custom CA bundle.
+PROXY = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+CA_FILE = os.environ.get("SSL_CERT_FILE") or os.environ.get("REQUESTS_CA_BUNDLE")
+if CA_FILE and os.path.exists(CA_FILE):
+    import edge_tts.communicate
+    edge_tts.communicate._SSL_CTX = ssl.create_default_context(cafile=CA_FILE)
+
 OUT = pathlib.Path(__file__).resolve().parent.parent / "public" / "hearing-test" / "digits"
 
 
@@ -37,7 +46,7 @@ async def make(lang, voice, rate):
         target = folder / f"{digit}.mp3"
         tmp = folder / f"{digit}.tmp.mp3"
         try:
-            await edge_tts.Communicate(word, voice, rate=rate).save(str(tmp))
+            await edge_tts.Communicate(word, voice, rate=rate, proxy=PROXY).save(str(tmp))
         except Exception as exc:
             tmp.unlink(missing_ok=True)
             sys.exit(f"Could not reach the voice service ({exc.__class__.__name__}). Check your internet connection; no files were changed for '{word}'.")
