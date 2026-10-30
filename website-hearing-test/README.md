@@ -56,6 +56,9 @@ The files in `digits/` are **robot-voice placeholders** generated with espeak-ng
 
 ## Install on the website (Laravel)
 
+The widget uses a frosted-glass card with line icons, and is designed for **Manrope** (English) and **Hind Siliguri** (Bangla). Load both fonts from Google Fonts in the page head, as `laravel/hearing-test.blade.php` does. Without them it falls back to the system font.
+
+
 1. Copy `public/hearing-test/` (including `digits/`) into the website's `public/` folder.
 2. Copy `laravel/hearing_test.php` to `config/hearing_test.php`, and add to `.env`:
    ```

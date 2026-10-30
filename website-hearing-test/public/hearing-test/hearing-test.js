@@ -61,7 +61,12 @@
         en: {
             title: 'Online Hearing Test',
             subtitle: 'A free 5-minute hearing check',
-            introLead: 'Find out in about 5 minutes if you should get your hearing professionally checked.',
+            introTitle: 'Check your hearing in 5 minutes',
+            introLead: 'A quick screening that tells you whether you should get your hearing professionally checked.',
+            chipTime: 'About 5 min',
+            chipFree: 'Free',
+            chipPrivate: 'Private',
+            needsTitle: 'Before you start',
             need1: 'Headphones or earphones (wired works best)',
             need2: 'A quiet room',
             need3: 'Phone silent mode OFF',
@@ -183,7 +188,12 @@
         bn: {
             title: 'অনলাইন হিয়ারিং টেস্ট',
             subtitle: '৫ মিনিটের বিনামূল্যে শ্রবণ পরীক্ষা',
-            introLead: 'মাত্র ৫ মিনিটে জেনে নিন আপনার শ্রবণশক্তি পেশাদারভাবে পরীক্ষা করানো দরকার কিনা।',
+            introTitle: '৫ মিনিটে আপনার শ্রবণশক্তি যাচাই করুন',
+            introLead: 'একটি দ্রুত স্ক্রিনিং, যা জানাবে আপনার শ্রবণশক্তি পেশাদারভাবে পরীক্ষা করানো দরকার কিনা।',
+            chipTime: 'প্রায় ৫ মিনিট',
+            chipFree: 'বিনামূল্যে',
+            chipPrivate: 'গোপনীয়',
+            needsTitle: 'শুরু করার আগে',
             need1: 'হেডফোন বা ইয়ারফোন (তারযুক্ত হলে ভালো)',
             need2: 'একটি নিরিবিলি ঘর',
             need3: 'ফোনের সাইলেন্ট মোড বন্ধ রাখুন',
@@ -309,6 +319,46 @@
             .map(function (b) { return '<rect x="' + b[0] + '" y="' + b[1] + '" width="5" height="' + b[2] + '" rx="2.5"/>'; }).join('') +
         '</svg>';
 
+    // Line icons (Lucide, ISC licence), 24px grid, stroke = currentColor.
+    var ICONS = {
+        ear: '<path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 1 1-7 0"/><path d="M15 8.5a2.5 2.5 0 0 0-5 0v1a2 2 0 1 1 0 4"/>',
+        headphones: '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>',
+        home: '<path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+        bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/>',
+        volume: '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
+        stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+        pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+        play: '<path d="M7 4v16l13-8z"/>',
+        check: '<path d="M20 6 9 17l-5-5"/>',
+        checkCircle: '<circle cx="12" cy="12" r="10"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+        alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+        info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+        shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+        clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+        lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+        gift: '<path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>',
+        left: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+        right: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+        minus: '<path d="M5 12h14"/>',
+        plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+        del: '<path d="M10 5a2 2 0 0 0-1.34.52l-6.33 5.74a1 1 0 0 0 0 1.48l6.33 5.74A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/>',
+        phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+        chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+        calendar: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
+        printer: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+        redo: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+        wave: '<path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/>',
+        list: '<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="m3 6 1 1 2-2"/><path d="m3 12 1 1 2-2"/><path d="m3 18 1 1 2-2"/>'
+    };
+
+    function ic(name, cls) {
+        return '<svg class="ht-ic' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+    }
+
+    function msgBox(kind, text, id) {
+        return '<div class="ht-msg ' + kind + '"' + (id ? ' id="' + id + '"' : '') + '>' + ic(kind === 'ok' ? 'checkCircle' : kind === 'warn' ? 'alert' : 'info') + '<span>' + text + '</span></div>';
+    }
+
     var root, lang = CONFIG.lang, state;
 
     function t(key, vars) {
@@ -381,6 +431,7 @@
 
     function render(html) {
         root.innerHTML =
+            '<div class="ht-ambient" aria-hidden="true"><i></i><i></i><i></i></div>' +
             '<div class="ht-card">' +
             '<div class="ht-head">' + LOGO_SVG +
             '<div class="ht-head-text"><div class="ht-title">' + t('title') + '</div><div class="ht-sub">' + t('subtitle') + '</div></div>' +
@@ -419,7 +470,7 @@
             list.map(function (s, i) {
                 var cls = i < cur || (s === 'results' && s === id) ? 'done' : i === cur ? 'on' : '';
                 return '<li class="' + cls + '"' + (i === cur ? ' aria-current="step"' : '') + '><span class="ht-dot">' +
-                    (cls === 'done' ? '✓' : num(i + 1)) + '</span><span class="ht-lbl">' + t(STEP_LABEL[s]) + '</span></li>';
+                    (cls === 'done' ? ic('check') : num(i + 1)) + '</span><span class="ht-lbl">' + t(STEP_LABEL[s]) + '</span></li>';
             }).join('') + '</ol>';
     }
 
@@ -435,15 +486,19 @@
     function screenIntro() {
         state.redraw = screenIntro;
         render(
+            '<div class="ht-hero"><div class="ht-hero-ic">' + ic('ear') + '</div>' +
+            '<h2 class="ht-h2">' + t('introTitle') + '</h2>' +
             '<p class="ht-lead">' + t('introLead') + '</p>' +
-            '<ul class="ht-needs"><li>🎧 ' + t('need1') + '</li><li>🤫 ' + t('need2') + '</li><li>🔔 ' + t('need3') + '</li></ul>' +
-            '<div class="ht-disclaimer">' + t('disclaimer') + '</div>' +
+            '<div class="ht-chips"><span>' + ic('clock') + t('chipTime') + '</span><span>' + ic('gift') + t('chipFree') + '</span><span>' + ic('lock') + t('chipPrivate') + '</span></div></div>' +
+            '<div class="ht-panel"><div class="ht-eyebrow">' + t('needsTitle') + '</div>' +
+            '<ul class="ht-needs"><li>' + ic('headphones') + '<span>' + t('need1') + '</span></li><li>' + ic('home') + '<span>' + t('need2') + '</span></li><li>' + ic('bellOff') + '<span>' + t('need3') + '</span></li></ul></div>' +
+            '<div class="ht-disclaimer">' + ic('shield') + '<span>' + t('disclaimer') + '</span></div>' +
             '<label class="ht-check"><input type="checkbox" id="ht-agree"> <span>' + t('agree') + '</span></label>' +
-            '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-start" disabled>' + t('start') + '</button></div>'
+            '<div class="ht-actions"><button type="button" class="ht-btn ht-primary ht-wide" id="ht-start" disabled>' + t('start') + ic('right') + '</button></div>'
         );
         on('#ht-agree', 'change', function (e) { $('#ht-start').disabled = !e.target.checked; });
         on('#ht-start', 'click', function () {
-            if (!Audio.init()) { render('<p class="ht-error">' + t('noAudio') + '</p>'); return; }
+            if (!Audio.init()) { render(msgBox('warn', t('noAudio'))); return; }
             state.startedAt = Date.now();
             screenLR();
         });
@@ -456,13 +511,13 @@
         var idx = 0;
         render(steps('lr') +
             '<h3>' + t('lrTitle') + '</h3><p>' + t('lrText') + '</p>' +
-            (msg ? '<div class="ht-msg ' + (msg === 'lrOk' ? 'ok' : 'warn') + '">' + t(msg) + '</div>' : '') +
-            '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-play">🔊 ' + t('play') + ' (1/2)</button></div>' +
+            (msg ? msgBox(msg === 'lrOk' ? 'ok' : 'warn', t(msg)) : '') +
+            '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-play">' + ic('volume') + t('play') + ' (1/2)</button></div>' +
             '<div class="ht-choices" id="ht-lr" hidden>' +
-            '<button type="button" class="ht-btn" data-ans="L">◀ ' + t('left') + '</button>' +
-            '<button type="button" class="ht-btn" data-ans="both">' + t('cantTell') + '</button>' +
-            '<button type="button" class="ht-btn" data-ans="R">' + t('right') + ' ▶</button></div>' +
-            '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-back">' + t('back') + '</button></div>'
+            '<button type="button" class="ht-btn ht-choice" data-ans="L">' + ic('left') + t('left') + '</button>' +
+            '<button type="button" class="ht-btn ht-choice" data-ans="both">' + t('cantTell') + '</button>' +
+            '<button type="button" class="ht-btn ht-choice" data-ans="R">' + t('right') + ic('right') + '</button></div>' +
+            '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-back">' + ic('left') + t('back') + '</button></div>'
         );
         on('#ht-back', 'click', screenIntro);
         on('#ht-play', 'click', function () {
@@ -481,7 +536,7 @@
                 $('#ht-lr').hidden = true;
                 var btn = $('#ht-play');
                 btn.disabled = false;
-                btn.textContent = '🔊 ' + t('play') + ' (2/2)';
+                btn.innerHTML = ic('volume') + t('play') + ' (2/2)';
             });
         });
     }
@@ -490,20 +545,21 @@
         state.redraw = function () { screenVolume(); };
         var timer = null, dinOnly = CONFIG.mode === 'din';
         render(steps('vol') +
-            (msg ? '<div class="ht-msg ok">' + t(msg) + '</div>' : '') +
+            (msg ? msgBox('ok', t(msg)) : '') +
             '<h3>' + t(dinOnly ? 'volTitleDin' : 'volTitle') + '</h3><p>' + t(dinOnly ? 'volTextDin' : 'volText') + '</p>' +
-            '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-play">🔊 ' + t('play') + '</button></div>' +
-            '<p class="ht-hint">' + t('volCant') + '</p>' +
-            '<div class="ht-msg warn">' + t('volKeep') + '</div>' +
-            '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-back">' + t('back') + '</button>' +
-            '<button type="button" class="ht-btn ht-primary" id="ht-done">' + t('volDone') + '</button></div>'
+            '<div class="ht-actions"><button type="button" class="ht-btn ht-glass ht-play" id="ht-play">' + ic('volume') + t('play') + '</button></div>' +
+            '<p class="ht-hint ht-center">' + t('volCant') + '</p>' +
+            msgBox('warn', t('volKeep')) +
+            '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-back">' + ic('left') + t('back') + '</button>' +
+            '<button type="button" class="ht-btn ht-primary" id="ht-done">' + t('volDone') + ic('right') + '</button></div>'
         );
         function stop() { if (timer) { clearInterval(timer); timer = null; } }
         on('#ht-play', 'click', function () {
             var btn = $('#ht-play');
-            if (timer) { stop(); btn.textContent = '🔊 ' + t('play'); return; }
+            if (timer) { stop(); btn.innerHTML = ic('volume') + t('play'); btn.classList.remove('on'); return; }
             Audio.init();
-            btn.textContent = '⏹ ' + t('playing');
+            btn.innerHTML = ic('stop') + t('playing');
+            btn.classList.add('on');
             if (dinOnly) {
                 // Speech sample in light noise, so the volume is set on the voice the test uses.
                 var sample = function () { Din.play(Din.triplet(), 10); };
@@ -522,10 +578,11 @@
     function screenTestIntro(ear) {
         state.redraw = function () { screenTestIntro(ear); };
         render(steps(ear) +
-            (ear === 'L' ? '<div class="ht-msg ok">' + t('switchEar') + '</div>' : '') +
-            '<h3>' + t('testTitle', { ear: t(ear === 'R' ? 'earRight' : 'earLeft') }) + '</h3>' +
-            '<p>' + t(CONFIG.toneMethod === 'adjust' ? 'testTextAdj' : 'testTextClassic') + '</p>' +
-            '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-ready">' + t('ready') + '</button></div>'
+            (ear === 'L' ? msgBox('ok', t('switchEar')) : '') +
+            '<div class="ht-ear-hero ht-ear-hero-' + ear + '">' + ic('ear') + '</div>' +
+            '<h3 class="ht-center">' + t('testTitle', { ear: t(ear === 'R' ? 'earRight' : 'earLeft') }) + '</h3>' +
+            '<p class="ht-center">' + t(CONFIG.toneMethod === 'adjust' ? 'testTextAdj' : 'testTextClassic') + '</p>' +
+            '<div class="ht-actions"><button type="button" class="ht-btn ht-primary ht-wide" id="ht-ready">' + t('ready') + ic('right') + '</button></div>'
         );
         on('#ht-ready', 'click', function () { if (CONFIG.toneMethod === 'adjust') { runEarAdjust(ear); } else { runEar(ear); } });
     }
@@ -544,12 +601,12 @@
         state.redraw = function () {}; // language buttons disabled while running
         render(steps(ear) +
             '<h3>' + t('testTitle', { ear: t(ear === 'R' ? 'earRight' : 'earLeft') }) + '</h3>' +
-            '<div class="ht-ear ht-ear-' + ear + '">' + (ear === 'R' ? t('rightEar') : t('leftEar')) + '</div>' +
+            '<div class="ht-ear ht-ear-' + ear + '">' + ic('ear') + (ear === 'R' ? t('rightEar') : t('leftEar')) + '</div>' +
             '<div class="ht-count" id="ht-count" aria-live="polite"></div>' +
             '<div class="ht-bar ht-bar-test"><span id="ht-prog"></span></div>' +
             '<p class="ht-status" id="ht-status">' + t('listening') + '</p>' +
-            '<button type="button" class="ht-hear" id="ht-hear">' + t('hear') + '</button>' +
-            '<div class="ht-actions"><button type="button" class="ht-btn ht-ghost" id="ht-pause">' + t('pause') + '</button></div>'
+            '<button type="button" class="ht-hear" id="ht-hear">' + ic('ear') + '<span>' + t('hear') + '</span></button>' +
+            '<div class="ht-actions"><button type="button" class="ht-btn ht-ghost" id="ht-pause">' + ic('pause') + t('pause') + '</button></div>'
         );
         var prog = $('#ht-prog');
         var hearBtn = $('#ht-hear');
@@ -576,7 +633,7 @@
         document.addEventListener('keydown', state.keyHandler);
         on('#ht-pause', 'click', function () {
             state.paused = !state.paused;
-            $('#ht-pause').textContent = state.paused ? t('resume') : t('pause');
+            $('#ht-pause').innerHTML = state.paused ? ic('play') + t('resume') : ic('pause') + t('pause');
             $('#ht-status').textContent = state.paused ? t('paused') : t('listening');
             hearBtn.disabled = state.paused;
         });
@@ -636,17 +693,17 @@
         render(steps(ear) +
             '<div class="ht-count">' + t('toneCount', { n: num(n), m: num(total) }) + '</div>' +
             '<h3 class="ht-adj-title">' + t('adjTitle') + '</h3>' +
-            '<div class="ht-adj-label"><span class="ht-ear ht-ear-' + ear + '">' + t(ear === 'R' ? 'rightEar' : 'leftEar') + '</span> ' + num(freq) + ' Hz</div>' +
+            '<div class="ht-adj-label"><span class="ht-ear ht-ear-' + ear + '">' + ic('ear') + t(ear === 'R' ? 'rightEar' : 'leftEar') + '</span><span class="ht-freq">' + num(freq) + ' Hz</span></div>' +
             '<div class="ht-adj">' +
-            '<button type="button" class="ht-round" id="ht-minus" aria-label="' + t('softer') + '">−</button>' +
+            '<button type="button" class="ht-round" id="ht-minus" aria-label="' + t('softer') + '">' + ic('minus') + '</button>' +
             '<div class="ht-adj-track"><output id="ht-val" class="ht-adj-val">' + num(1) + '</output>' +
             '<input type="range" id="ht-range" min="0" max="' + top + '" step="1" value="0" aria-label="' + t('louder') + '"></div>' +
-            '<button type="button" class="ht-round" id="ht-plus" aria-label="' + t('louder') + '">+</button>' +
+            '<button type="button" class="ht-round" id="ht-plus" aria-label="' + t('louder') + '">' + ic('plus') + '</button>' +
             '</div>' +
             '<p class="ht-hint ht-center">' + t('adjHint') + '</p>' +
-            '<div class="ht-msg warn" id="ht-adj-msg" hidden></div>' +
+            '<div class="ht-msg warn" id="ht-adj-msg" hidden>' + ic('alert') + '<span></span></div>' +
             '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-cant" hidden>' + t('adjCant') + '</button>' +
-            '<button type="button" class="ht-btn ht-primary" id="ht-cont">' + t('cont') + '</button></div>'
+            '<button type="button" class="ht-btn ht-primary" id="ht-cont">' + t('cont') + ic('right') + '</button></div>'
         );
         var range = $('#ht-range'), val = $('#ht-val');
         function set(v) {
@@ -672,7 +729,7 @@
         on('#ht-cont', 'click', function () {
             if (!moved) {
                 var m = $('#ht-adj-msg');
-                m.textContent = t('adjMove');
+                m.querySelector('span').textContent = t('adjMove');
                 m.hidden = false;
                 return;
             }
@@ -886,10 +943,11 @@
     function screenDinIntro() {
         state.redraw = screenDinIntro;
         render(steps('din') +
-            '<h3>' + t('dinTitle') + '</h3><p>' + t('dinText') + '</p>' +
-            '<div class="ht-msg" id="ht-din-msg" hidden></div>' +
+            '<div class="ht-ear-hero">' + ic('wave') + '</div>' +
+            '<h3 class="ht-center">' + t('dinTitle') + '</h3><p class="ht-center">' + t('dinText') + '</p>' +
+            '<div class="ht-msg warn" id="ht-din-msg" hidden>' + ic('alert') + '<span></span></div>' +
             '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-skip">' + t('skip') + '</button>' +
-            '<button type="button" class="ht-btn ht-primary" id="ht-din-start">' + t('dinStart') + '</button></div>'
+            '<button type="button" class="ht-btn ht-primary" id="ht-din-start">' + t('dinStart') + ic('right') + '</button></div>'
         );
         on('#ht-skip', 'click', function () { state.din = null; screenQuestions(); });
         on('#ht-din-start', 'click', function () {
@@ -902,10 +960,9 @@
                 runDin();
             }).catch(function () {
                 msg.hidden = false;
-                msg.className = 'ht-msg warn';
-                msg.textContent = t('dinLoadErr');
+                msg.querySelector('span').textContent = t('dinLoadErr');
                 btn.disabled = false;
-                btn.textContent = t('dinStart');
+                btn.innerHTML = t('dinStart') + ic('right');
             });
         });
     }
@@ -925,9 +982,9 @@
             '<div class="ht-slots" id="ht-slots"><span></span><span></span><span></span></div>' +
             '<div class="ht-keypad" id="ht-keypad">' +
             [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (d) { return '<button type="button" data-d="' + d + '">' + num(d) + '</button>'; }).join('') +
-            '<button type="button" data-d="back" aria-label="Delete">⌫</button>' +
+            '<button type="button" data-d="back" aria-label="Delete">' + ic('del') + '</button>' +
             '<button type="button" data-d="0">' + num(0) + '</button>' +
-            '<button type="button" data-d="ok" class="ht-key-ok">' + t('ok') + '</button>' +
+            '<button type="button" data-d="ok" class="ht-key-ok" aria-label="' + t('ok') + '">' + ic('check') + '</button>' +
             '</div>'
         );
         var prog = $('#ht-prog'), status = $('#ht-status'), slots = root.querySelectorAll('#ht-slots span');
@@ -1013,7 +1070,7 @@
     function screenQuestions() {
         state.redraw = screenQuestions;
         var qs = ['q1', 'q2', 'q3', 'q4', 'q5'];
-        render(steps('qs') + '<h3>' + t('qTitle') + '</h3>' +
+        render(steps('qs') + '<h3>' + t('qTitle') + '</h3><div class="ht-qs">' +
             qs.map(function (q) {
                 var v = state.answers[q];
                 return '<div class="ht-q"><div class="ht-q-text">' + t(q) + '</div><div class="ht-yn">' +
@@ -1021,7 +1078,7 @@
                     '<button type="button" data-q="' + q + '" data-v="0" class="' + (v === 0 ? 'on' : '') + '">' + t('no') + '</button>' +
                     '</div></div>';
             }).join('') +
-            '<div class="ht-actions"><button type="button" class="ht-btn ht-primary" id="ht-res">' + t('seeResults') + '</button></div>'
+            '</div><div class="ht-actions"><button type="button" class="ht-btn ht-primary ht-wide" id="ht-res">' + t('seeResults') + ic('right') + '</button></div>'
         );
         root.querySelectorAll('.ht-yn button').forEach(function (b) {
             b.addEventListener('click', function () {
@@ -1119,38 +1176,56 @@
         state.redraw = screenResults;
         var s = state.summary;
         function earCard(key, e) {
-            return '<div class="ht-earres ht-b-' + e.band + '"><div class="ht-earres-name">' + t(key) + '</div>' +
+            return '<div class="ht-earres ht-b-' + e.band + '"><div class="ht-earres-name">' + ic('ear') + t(key) + '</div>' +
+                gauge(e.pta) +
                 '<div class="ht-earres-band">' + t('band_' + e.band) + '</div>' +
-                '<div class="ht-earres-avg">' + t('avg', { db: e.pta }) + '</div></div>';
+                '<div class="ht-earres-avg">' + t('avg', { db: num(e.pta) }) + '</div></div>';
         }
         var tones = !!s.right;
         var resultLine = tones ? t('band_' + s.overall) : (s.din ? t('dinResTitle') + ': ' + t('din_' + s.din.category) : '');
         var sumKey = tones || !s.din ? 'sum_' + s.overall : 'sumdin_' + s.din.category;
         var dinCard = s.din ? '<div class="ht-din-res ht-b-' + DIN_BAND[s.din.category] + '">' +
-            '<div class="ht-earres-name">' + t('dinResTitle') + '</div>' +
+            '<div class="ht-earres-name">' + ic('wave') + t('dinResTitle') + '</div>' +
             '<div class="ht-earres-band">' + t('din_' + s.din.category) + '</div>' +
-            (s.din.srt !== null ? '<div class="ht-earres-avg">' + t('dinScore', { v: s.din.srt }) + '</div>' : '') + '</div>' : '';
+            (s.din.srt !== null ? '<div class="ht-earres-avg">' + t('dinScore', { v: num(s.din.srt) }) + '</div>' : '') + '</div>' : '';
         var wa = CONFIG.whatsapp ? 'https://wa.me/' + CONFIG.whatsapp.replace(/\D/g, '') + '?text=' + encodeURIComponent(t('waMsg', { r: resultLine })) : '';
 
         render(steps('results') +
             '<h3>' + t('resTitle') + '</h3>' +
-            '<div class="ht-summary ht-b-' + s.overall + '">' + t(sumKey) + '</div>' +
+            '<div class="ht-summary ht-b-' + s.overall + '">' + ic(s.overall === 'normal' ? 'checkCircle' : 'info') + '<span>' + t(sumKey) + '</span></div>' +
             (tones ? '<div class="ht-ears">' + earCard('rightEar', s.right) + earCard('leftEar', s.left) + '</div>' : '') +
             dinCard +
-            (s.flags.length ? '<ul class="ht-flags">' + s.flags.map(function (f) { return '<li>' + t(f) + '</li>'; }).join('') + '</ul>' : '') +
+            (s.flags.length ? '<ul class="ht-flags">' + s.flags.map(function (f) { return '<li>' + ic(f === 'flagUnreliable' ? 'alert' : 'info') + '<span>' + t(f) + '</span></li>'; }).join('') + '</ul>' : '') +
             (tones ? '<div class="ht-chart"><div class="ht-chart-title">' + t('chartTitle') + '</div>' + audiogram() + '</div>' : '') +
-            '<p class="ht-note">' + t('note') + '</p>' +
+            '<p class="ht-note">' + ic('info') + '<span>' + t('note') + '</span></p>' +
             '<div class="ht-cta"><div class="ht-cta-title">' + t('ctaTitle') + '</div><div class="ht-cta-btns">' +
-            (CONFIG.bookingUrl ? '<a class="ht-btn ht-primary" href="' + esc(CONFIG.bookingUrl) + '">' + t('book') + '</a>' : '') +
-            (CONFIG.phone ? '<a class="ht-btn" href="tel:' + esc(CONFIG.phone) + '">📞 ' + t('call') + '</a>' : '') +
-            (wa ? '<a class="ht-btn ht-wa" href="' + esc(wa) + '" target="_blank" rel="noopener">' + t('whatsapp') + '</a>' : '') +
+            (CONFIG.bookingUrl ? '<a class="ht-btn ht-primary" href="' + esc(CONFIG.bookingUrl) + '">' + ic('calendar') + t('book') + '</a>' : '') +
+            (CONFIG.phone ? '<a class="ht-btn ht-glass" href="tel:' + esc(CONFIG.phone) + '">' + ic('phone') + t('call') + '</a>' : '') +
+            (wa ? '<a class="ht-btn ht-wa" href="' + esc(wa) + '" target="_blank" rel="noopener">' + ic('chat') + t('whatsapp') + '</a>' : '') +
             '</div>' + (CONFIG.leadUrl ? leadForm() : '') + '</div>' +
-            '<div class="ht-actions ht-split ht-noprint"><button type="button" class="ht-btn ht-ghost" id="ht-print">' + t('print') + '</button>' +
-            '<button type="button" class="ht-btn ht-ghost" id="ht-again">' + t('retake') + '</button></div>'
+            '<div class="ht-actions ht-split ht-noprint"><button type="button" class="ht-btn ht-ghost" id="ht-print">' + ic('printer') + t('print') + '</button>' +
+            '<button type="button" class="ht-btn ht-ghost" id="ht-again">' + ic('redo') + t('retake') + '</button></div>'
         );
         on('#ht-print', 'click', function () { window.print(); });
         on('#ht-again', 'click', function () { reset(); screenIntro(); });
         if (CONFIG.leadUrl) { bindLeadForm(); }
+    }
+
+    // Half-circle gauge over the WHO bands (-10 to 80 dB HL), marker at the ear's average.
+    function gauge(pta) {
+        var cx = 60, cy = 58, r = 46, lo = -10, hi = 80;
+        function pt(v) {
+            var a = Math.PI * (1 - (Math.min(Math.max(v, lo), hi) - lo) / (hi - lo));
+            return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
+        }
+        function arc(a, b, cls) {
+            var p = pt(a), q = pt(b);
+            return '<path class="' + cls + '" d="M' + p[0].toFixed(2) + ' ' + p[1].toFixed(2) + 'A' + r + ' ' + r + ' 0 0 1 ' + q[0].toFixed(2) + ' ' + q[1].toFixed(2) + '"/>';
+        }
+        var m = pt(pta);
+        return '<svg class="ht-gauge" viewBox="0 0 120 68" aria-hidden="true">' +
+            arc(-10, 19.5, 'g-normal') + arc(20.5, 34.5, 'g-mild') + arc(35.5, 49.5, 'g-moderate') + arc(50.5, 80, 'g-significant') +
+            '<circle class="g-mark" cx="' + m[0].toFixed(2) + '" cy="' + m[1].toFixed(2) + '" r="6.5"/></svg>';
     }
 
     function audiogram() {
@@ -1189,7 +1264,7 @@
             });
         });
         g += '</svg>';
-        return g + '<div class="ht-legend"><span class="ht-r">● ' + t('legendR') + '</span><span class="ht-l">✕ ' + t('legendL') + '</span></div>';
+        return g + '<div class="ht-legend"><span class="ht-r"><i></i>' + t('legendR') + '</span><span class="ht-l"><i></i>' + t('legendL') + '</span></div>';
     }
 
     /* ---------------- Lead form (optional) ---------------- */
@@ -1200,7 +1275,7 @@
             '<input type="tel" name="phone" placeholder="' + t('formPhone') + ' (01XXXXXXXXX)" autocomplete="tel" maxlength="20" required>' +
             '<input type="text" name="website" class="ht-hp" tabindex="-1" autocomplete="off" aria-hidden="true">' +
             '<label class="ht-check"><input type="checkbox" name="consent" checked> <span>' + t('formConsent') + '</span></label>' +
-            '<button type="submit" class="ht-btn ht-primary">' + t('formSend') + '</button>' +
+            '<button type="submit" class="ht-btn ht-primary">' + ic('phone') + t('formSend') + '</button>' +
             '<div class="ht-form-msg" id="ht-form-msg" role="status"></div></form>';
     }
 
@@ -1242,11 +1317,11 @@
                 body: JSON.stringify(body)
             }).then(function (r) {
                 if (!r.ok) { throw new Error(r.status); }
-                form.innerHTML = '<div class="ht-form-msg ok">' + t('formOk') + '</div>';
+                form.innerHTML = msgBox('ok', t('formOk'));
                 root.dispatchEvent(new CustomEvent('hearingtest:lead', { bubbles: true, detail: state.summary }));
             }).catch(function () {
                 btn.disabled = false;
-                btn.textContent = t('formSend');
+                btn.innerHTML = ic('phone') + t('formSend');
                 msg.className = 'ht-form-msg err';
                 msg.textContent = t('formErr');
             });
