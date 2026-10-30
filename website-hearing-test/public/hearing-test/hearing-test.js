@@ -849,8 +849,12 @@
             '<span class="ht-live" id="ht-live" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>' +
             '<div class="ht-adj">' +
             '<div class="ht-roundwrap"><button type="button" class="ht-round" id="ht-minus" aria-label="' + t('softer') + '">' + ic('minus') + '</button><span>' + t('softer') + '</span></div>' +
-            '<div class="ht-adj-track"><output id="ht-val" class="ht-adj-val">' + num(1) + '</output>' +
-            '<input type="range" id="ht-range" min="0" max="' + top + '" step="1" value="0" aria-label="' + t('louder') + '"></div>' +
+            // Volume bar: native range input (invisible, on top) drives a recessed pill with gradient fill and a glass knob.
+            '<div class="ht-vol" id="ht-vol">' +
+            '<input type="range" class="ht-vol-input" id="ht-range" min="0" max="' + top + '" step="1" value="0" aria-label="' + t('louder') + '">' +
+            '<div class="ht-vol-track" aria-hidden="true"><div class="ht-vol-fill"></div>' +
+            '<div class="ht-vol-ticks">' + new Array(top).join('<i></i>') + '</div>' +
+            '<div class="ht-vol-knob"><output id="ht-val" class="ht-adj-val">' + num(1) + '</output></div></div></div>' +
             '<div class="ht-roundwrap"><button type="button" class="ht-round" id="ht-plus" aria-label="' + t('louder') + '">' + ic('plus') + '</button><span>' + t('louder') + '</span></div>' +
             '</div>' +
             '<p class="ht-hint ht-center">' + t('adjHint') + '</p>' +
@@ -867,7 +871,8 @@
             tone.set(min + idx * 5);
             range.value = idx;
             val.textContent = num(idx + 1);
-            range.style.setProperty('--pct', (idx / top * 100) + '%');
+            $('#ht-vol').style.setProperty('--p', (idx / top).toFixed(4));
+            range.setAttribute('aria-valuetext', num(idx + 1) + ' / ' + num(top + 1));
             live.style.setProperty('--lv', (0.25 + 0.75 * idx / top).toFixed(2));
             if (idx !== prev) { val.classList.remove('pop'); void val.offsetWidth; val.classList.add('pop'); }
             $('#ht-cant').hidden = idx < top;

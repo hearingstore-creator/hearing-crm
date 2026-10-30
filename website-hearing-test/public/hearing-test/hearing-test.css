@@ -184,18 +184,28 @@
 .ht-adj-label { display: flex; gap: 10px; align-items: center; justify-content: center; }
 .ht-adj-label .ht-ear { align-self: center; }
 .ht-freq { font-weight: 800; font-size: 16px; font-variant-numeric: tabular-nums; }
-.ht-adj { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 22px; background: var(--ht-glass); border: 1px solid var(--ht-glass-edge); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9); }
+.ht-adj { display: flex; align-items: center; gap: 12px; padding: 14px 12px; border-radius: 22px; background: var(--ht-glass); border: 1px solid var(--ht-glass-edge); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9); }
 .ht-round { flex: none; width: 60px; height: 60px; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer; background: linear-gradient(180deg, #3a332d, var(--ht-ink)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 10px 20px -10px rgba(23, 19, 15, .7); touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform .1s; }
 .ht-round .ht-ic { width: 26px; height: 26px; stroke-width: 2.4; }
 .ht-round:active { transform: scale(.94); }
-.ht-adj-track { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.ht-adj-val { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.ht-adj-track input[type=range] { --pct: 0%; transition: --pct .18s ease-out; -webkit-appearance: none; appearance: none; width: 100%; height: 28px; margin: 0; background: transparent; cursor: pointer; }
-.ht-adj-track input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--ht-red) var(--pct), rgba(23, 19, 15, .1) var(--pct)); }
-.ht-adj-track input[type=range]::-moz-range-track { height: 8px; border-radius: 999px; background: rgba(23, 19, 15, .1); }
-.ht-adj-track input[type=range]::-moz-range-progress { height: 8px; border-radius: 999px; background: var(--ht-red); }
-.ht-adj-track input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -9px; border-radius: 50%; background: #fff; border: 2px solid var(--ht-red); box-shadow: 0 4px 10px -2px rgba(23, 19, 15, .35); }
-.ht-adj-track input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid var(--ht-red); box-shadow: 0 4px 10px -2px rgba(23, 19, 15, .35); }
+/* Volume bar: recessed pill, warm gradient fill revealed up to the level, frosted knob carrying the number. */
+.ht-vol { --p: 0; --knob: 58px; position: relative; flex: 1; min-width: 0; height: 74px; padding: 8px; border-radius: 999px; background: #f3f0ed; box-shadow: inset 0 2px 6px rgba(23, 19, 15, .14), inset 0 -1px 0 rgba(255, 255, 255, .9), 0 1px 0 #fff; transition: --p .22s cubic-bezier(.2, .8, .2, 1); }
+.ht-vol-track { position: absolute; inset: 8px; border-radius: 999px; }
+.ht-vol-fill { position: absolute; inset: 0; border-radius: 999px; background: linear-gradient(90deg, #ffd66b 0%, #ffb347 35%, #ff7a3d 68%, var(--ht-red) 100%); box-shadow: inset 0 2px 4px rgba(255, 255, 255, .45), inset 0 -3px 8px rgba(150, 30, 10, .18);
+    clip-path: inset(0 calc((100% - var(--knob)) * (1 - var(--p))) 0 0 round 999px); }
+.ht-vol-ticks { position: absolute; inset: 0 calc(var(--knob) / 2); display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+.ht-vol-ticks i { width: 1.5px; height: 30%; border-radius: 1px; background: rgba(255, 255, 255, .7); }
+.ht-vol-knob { position: absolute; top: 50%; left: calc((100% - var(--knob)) * var(--p)); width: var(--knob); height: var(--knob); margin-top: calc(var(--knob) / -2); border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, .72); -webkit-backdrop-filter: blur(10px) saturate(160%); backdrop-filter: blur(10px) saturate(160%); border: 1px solid rgba(255, 255, 255, .95);
+    box-shadow: inset 0 1px 0 #fff, 0 6px 16px -4px rgba(23, 19, 15, .35), 0 1px 3px rgba(23, 19, 15, .15); transition: transform .15s; }
+.ht-vol .ht-adj-val { font-size: 22px; font-weight: 800; color: var(--ht-ink); }
+.ht-vol-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: grab; z-index: 2; -webkit-appearance: none; appearance: none; touch-action: none; }
+.ht-vol-input:active { cursor: grabbing; }
+/* Invisible native thumb matches the knob, so dragging lines up exactly. */
+.ht-vol-input::-webkit-slider-thumb { -webkit-appearance: none; width: calc(var(--knob) + 16px); height: 74px; }
+.ht-vol-input::-moz-range-thumb { width: calc(var(--knob) + 16px); height: 74px; border: 0; }
+.ht-vol-input:active ~ .ht-vol-track .ht-vol-knob { transform: scale(1.06); }
+.ht-vol-input:focus-visible ~ .ht-vol-track .ht-vol-knob { outline: 3px solid rgba(229, 36, 33, .45); outline-offset: 2px; }
 
 /* ---------- Digits in noise ---------- */
 .ht-slots { display: flex; justify-content: center; gap: 10px; }
@@ -284,7 +294,10 @@
     .ht-head { padding: 14px 16px; }
     .ht-sub { display: none; }
     .ht-h2 { font-size: 23px; }
-    .ht-adj { padding: 12px; gap: 10px; }
+    .ht-adj { padding: 12px 8px; gap: 8px; }
+    .ht-vol { --knob: 50px; height: 66px; }
+    .ht-vol-ticks i:nth-child(even) { display: none; }
+    .ht-vol-input::-webkit-slider-thumb { height: 66px; }
     .ht-round { width: 54px; height: 54px; }
     .ht-hear { width: 168px; height: 168px; }
     .ht-q { flex-direction: column; align-items: stretch; gap: 8px; }
@@ -298,7 +311,7 @@
 }
 
 /* ---------- Motion ---------- */
-@property --pct { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
+@property --p { syntax: "<number>"; inherits: true; initial-value: 0; }
 
 /* Each screen settles in: content rises a few pixels and fades up, in sequence. */
 .ht-body > :not(.ht-stepper) { animation: ht-in .42s cubic-bezier(.2, .7, .2, 1) both; }

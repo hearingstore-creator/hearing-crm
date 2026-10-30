@@ -72,7 +72,7 @@ Following senior-friendly and accessibility guidance (UI UX Pro Max "Accessible 
 - 17px base text, nothing under 12px, and 44–50px touch targets.
 - A **larger text** button (the "Tт" icon) in the header. The setting is remembered on that device.
 - Plain-language pitch names (Low / Middle / High / Very high pitch) with the Hz value shown small.
-- "Softer" and "Louder" labels under the − / + buttons, and a **Back** button to redo the previous sound.
+- A tactile **volume bar**: a recessed pill whose warm gradient fills as the tone gets louder, with a frosted knob showing the step number. Tap anywhere on it, drag, or use the arrow keys. Plus "Softer" / "Louder" labels under the − / + buttons, and a **Back** button to redo the previous sound.
 - The detailed audiogram is folded behind "Show detailed chart" so the results stay calm.
 - Form fields have visible labels.
 - **Print / save report:** the visitor can add an optional name and age (validated as 1–120). This prints a one-page A4 report with:
