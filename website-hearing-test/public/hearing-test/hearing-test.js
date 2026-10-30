@@ -32,8 +32,9 @@
         // 'adjust' = visitor slides each tone up until barely audible (default, easiest);
         // 'classic' = tap-when-you-hear-it with a Hughson-Westlake staircase
         toneMethod: ds.toneMethod === 'classic' ? 'classic' : 'adjust',
-        // 'full' = tones + digits-in-noise, 'tones' = tones only, 'din' = digits-in-noise only
-        mode: ['full', 'tones', 'din'].indexOf(ds.mode) >= 0 ? ds.mode : 'full',
+        // 'quick' = tones, then the noise test offered on the results (default);
+        // 'full' = tones + noise test in one go; 'tones' = tones only; 'din' = noise test only
+        mode: ['quick', 'full', 'tones', 'din'].indexOf(ds.mode) >= 0 ? ds.mode : 'quick',
         audioBase: ds.audioBase || (script && script.src ? new URL('digits/', script.src).href : 'digits/'),
         din: {
             // 14 triplets with a 4 dB fast start ≈ 1 minute; SRT spread ±1.1 dB vs ±0.7 dB for the classic 24.
@@ -117,14 +118,16 @@
             stDin: 'Noise',
             stQs: 'Questions',
             stRes: 'Results',
-            testTextAdj: 'You will hear a beep in one ear. It starts silent. Press + (or drag the slider) until you can barely hear it, then tap Continue.',
+            testTextAdj: 'You will hear a steady tone in one ear. It starts very quiet. Press + (or drag the slider) until you can barely hear it, then tap Continue. If you already hear it, just tap Continue.',
             adjTitle: 'Press <b>+</b> until you can <b>barely hear</b> the tone',
-            adjHint: 'Go up one step at a time. Stop at the first step where you can just hear the beeps.',
-            adjMove: 'Press + until you can just hear the tone.',
+            adjHint: 'Go up one step at a time. Stop at the first step where you can just hear the tone.',
             adjCant: 'I can\'t hear it at all',
             cont: 'Continue',
             louder: 'Louder',
             softer: 'Softer',
+            offerTitle: 'Check how you hear in noise',
+            offerText: 'An optional 1-minute test: pick out spoken numbers in background noise. It shows how well you follow conversation in busy places.',
+            offerBtn: 'Start the noise test',
             volKeep: 'After this step, do not change the volume until the test ends.',
             volCant: 'Can\'t hear anything? Turn your volume up, switch off silent mode, and check your headphones are connected.',
             volDone: 'Volume is set',
@@ -244,14 +247,16 @@
             stDin: 'কোলাহল',
             stQs: 'প্রশ্ন',
             stRes: 'ফলাফল',
-            testTextAdj: 'আপনি এক কানে একটি বিপ শব্দ শুনবেন। এটি নিঃশব্দ থেকে শুরু হবে। + চাপুন (বা স্লাইডার টানুন) যতক্ষণ না খুব আস্তে শুনতে পান, তারপর "এগিয়ে যান" চাপুন।',
+            testTextAdj: 'আপনি এক কানে একটানা একটি শব্দ শুনবেন। এটি খুব আস্তে শুরু হবে। + চাপুন (বা স্লাইডার টানুন) যতক্ষণ না খুব আস্তে শুনতে পান, তারপর "এগিয়ে যান" চাপুন। শুরুতেই শুনতে পেলে সরাসরি "এগিয়ে যান" চাপুন।',
             adjTitle: '<b>+</b> চাপুন যতক্ষণ না শব্দটি <b>খুব আস্তে শুনতে</b> পান',
-            adjHint: 'এক ধাপ করে বাড়ান। যে ধাপে প্রথম হালকা বিপ শুনবেন সেখানেই থামুন।',
-            adjMove: '+ চাপুন যতক্ষণ না শব্দটি হালকা শুনতে পান।',
+            adjHint: 'এক ধাপ করে বাড়ান। যে ধাপে প্রথম হালকা শব্দ শুনবেন সেখানেই থামুন।',
             adjCant: 'আমি একদমই শুনতে পাচ্ছি না',
             cont: 'এগিয়ে যান',
             louder: 'জোরে',
             softer: 'আস্তে',
+            offerTitle: 'কোলাহলে কেমন শোনেন যাচাই করুন',
+            offerText: 'ঐচ্ছিক ১ মিনিটের টেস্ট: পেছনের শব্দের মধ্যে বলা সংখ্যা চিনে নিন। এতে বোঝা যায় ভিড়ের জায়গায় কথাবার্তা কতটা বুঝতে পারেন।',
+            offerBtn: 'কোলাহল টেস্ট শুরু করুন',
             volKeep: 'এই ধাপের পর টেস্ট শেষ না হওয়া পর্যন্ত ভলিউম পরিবর্তন করবেন না।',
             volCant: 'কিছু শুনতে পাচ্ছেন না? ভলিউম বাড়ান, সাইলেন্ট মোড বন্ধ করুন এবং হেডফোন সংযুক্ত আছে কিনা দেখুন।',
             volDone: 'ভলিউম ঠিক আছে',
@@ -401,6 +406,31 @@
             var max = CAL_LEVEL - (CORR[freq] || 0) + 20 * Math.log10(1 / CAL_AMP);
             return Math.min(CONFIG.maxLevel, Math.floor(max / 5) * 5);
         },
+        // Continuous tone whose level follows the slider immediately (15 ms smoothing, no clicks).
+        hold: function (freq, ear, level) {
+            var ctx = this.ctx, self = this;
+            var osc = ctx.createOscillator(), gain = ctx.createGain(), merger = ctx.createChannelMerger(2);
+            var cur = level, muted = false;
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, ctx.currentTime);
+            osc.connect(gain);
+            if (ear !== 'R') { gain.connect(merger, 0, 0); }
+            if (ear !== 'L') { gain.connect(merger, 0, 1); }
+            merger.connect(ctx.destination);
+            osc.start();
+            function apply() { gain.gain.setTargetAtTime(muted ? 0 : self.amp(freq, cur), ctx.currentTime, 0.015); }
+            apply();
+            return {
+                set: function (l) { cur = l; apply(); },
+                mute: function (m) { muted = m; apply(); },
+                stop: function () {
+                    gain.gain.setTargetAtTime(0, ctx.currentTime, 0.01);
+                    osc.stop(ctx.currentTime + 0.08);
+                    osc.onended = function () { osc.disconnect(); gain.disconnect(); merger.disconnect(); };
+                }
+            };
+        },
         // Three 225 ms pulses with 20 ms ramps; ear: 'L', 'R' or 'both'. Returns tone duration in ms.
         pulses: function (freq, ear, level, count) {
             var ctx = this.ctx, on = 0.225, period = 0.45, ramp = 0.02;
@@ -454,10 +484,12 @@
     }
 
     function flowSteps() {
-        var s = ['setup'];
-        if (CONFIG.mode !== 'din') { s.push('R', 'L'); }
-        if (CONFIG.mode !== 'tones') { s.push('din'); }
-        s.push('qs', 'results');
+        var s = ['setup'], m = CONFIG.mode;
+        if (m !== 'din') { s.push('R', 'L'); }
+        if (m === 'full' || m === 'din') { s.push('din'); }
+        s.push('qs');
+        if (m === 'quick' && state.dinOptional) { s.push('din'); } // offered after the results
+        s.push('results');
         return s;
     }
     var STEP_LABEL = { setup: 'stSetup', R: 'stR', L: 'stL', din: 'stDin', qs: 'stQs', results: 'stRes' };
@@ -581,12 +613,22 @@
         state.redraw = function () { screenTestIntro(ear); };
         render(steps(ear) +
             (ear === 'L' ? msgBox('ok', t('switchEar')) : '') +
-            '<div class="ht-ear-hero ht-ear-hero-' + ear + '">' + ic('ear') + '</div>' +
+            earAnim(ear) +
             '<h3 class="ht-center">' + t('testTitle', { ear: t(ear === 'R' ? 'earRight' : 'earLeft') }) + '</h3>' +
             '<p class="ht-center">' + t(CONFIG.toneMethod === 'adjust' ? 'testTextAdj' : 'testTextClassic') + '</p>' +
             '<div class="ht-actions"><button type="button" class="ht-btn ht-primary ht-wide" id="ht-ready">' + t('ready') + ic('right') + '</button></div>'
         );
         on('#ht-ready', 'click', function () { if (CONFIG.toneMethod === 'adjust') { runEarAdjust(ear); } else { runEar(ear); } });
+    }
+
+    // Ear outline draws itself, then sound bars ripple out from it (mirrored for the left ear).
+    function earAnim(ear) {
+        var hs = [10, 22, 34, 20, 42, 28, 16, 30, 12];
+        return '<svg class="ht-earanim ht-earanim-' + ear + '" viewBox="0 0 132 80" aria-hidden="true">' +
+            '<g transform="translate(6 6) scale(2.8)" class="ht-earanim-ear"><path pathLength="1" d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 1 1-7 0"/><path pathLength="1" d="M15 8.5a2.5 2.5 0 0 0-5 0v1a2 2 0 1 1 0 4"/></g>' +
+            hs.map(function (h, i) {
+                return '<rect class="ht-wbar" x="' + (72 + i * 6.4) + '" y="' + (40 - h / 2) + '" width="2.6" height="' + h + '" rx="1.3" style="--i:' + i + '"/>';
+            }).join('') + '</svg>';
     }
 
     /* ---------------- Test procedure ---------------- */
@@ -691,11 +733,12 @@
     }
 
     function adjustTone(ear, freq, n, total, cb) {
-        var min = CONFIG.minLevel, max = Audio.maxLevel(freq), top = Math.round((max - min) / 5), idx = 0, moved = false;
+        var min = CONFIG.minLevel, max = Audio.maxLevel(freq), top = Math.round((max - min) / 5), idx = 0;
         render(steps(ear) +
             '<div class="ht-count">' + t('toneCount', { n: num(n), m: num(total) }) + '</div>' +
             '<h3 class="ht-adj-title">' + t('adjTitle') + '</h3>' +
-            '<div class="ht-adj-label"><span class="ht-ear ht-ear-' + ear + '">' + ic('ear') + t(ear === 'R' ? 'rightEar' : 'leftEar') + '</span><span class="ht-freq">' + num(freq) + ' Hz</span></div>' +
+            '<div class="ht-adj-label"><span class="ht-ear ht-ear-' + ear + '">' + ic('ear') + t(ear === 'R' ? 'rightEar' : 'leftEar') + '</span><span class="ht-freq">' + num(freq) + ' Hz</span>' +
+            '<span class="ht-live" id="ht-live" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>' +
             '<div class="ht-adj">' +
             '<button type="button" class="ht-round" id="ht-minus" aria-label="' + t('softer') + '">' + ic('minus') + '</button>' +
             '<div class="ht-adj-track"><output id="ht-val" class="ht-adj-val">' + num(1) + '</output>' +
@@ -703,40 +746,36 @@
             '<button type="button" class="ht-round" id="ht-plus" aria-label="' + t('louder') + '">' + ic('plus') + '</button>' +
             '</div>' +
             '<p class="ht-hint ht-center">' + t('adjHint') + '</p>' +
-            '<div class="ht-msg warn" id="ht-adj-msg" hidden>' + ic('alert') + '<span></span></div>' +
             '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-cant" hidden>' + t('adjCant') + '</button>' +
             '<button type="button" class="ht-btn ht-primary" id="ht-cont">' + t('cont') + ic('right') + '</button></div>'
         );
-        var range = $('#ht-range'), val = $('#ht-val');
+        var range = $('#ht-range'), val = $('#ht-val'), live = $('#ht-live');
+        var tone = Audio.hold(freq, ear, min);
         function set(v) {
+            var prev = idx;
             idx = Math.max(0, Math.min(top, v));
-            if (idx > 0) { moved = true; }
+            tone.set(min + idx * 5);
             range.value = idx;
             val.textContent = num(idx + 1);
             range.style.setProperty('--pct', (idx / top * 100) + '%');
+            live.style.setProperty('--lv', (0.25 + 0.75 * idx / top).toFixed(2));
+            if (idx !== prev) { val.classList.remove('pop'); void val.offsetWidth; val.classList.add('pop'); }
             $('#ht-cant').hidden = idx < top;
-            $('#ht-adj-msg').hidden = true;
         }
         set(0);
-        var timer = setInterval(function () { Audio.pulses(freq, ear, min + idx * 5, 1); }, 600);
-        Audio.pulses(freq, ear, min, 1);
+        // Silence the tone while the page is in the background.
+        function onVis() { tone.mute(document.hidden); }
+        document.addEventListener('visibilitychange', onVis);
         function finish(noResp) {
-            clearInterval(timer);
+            tone.stop();
+            document.removeEventListener('visibilitychange', onVis);
             cb({ db: noResp ? max : min + idx * 5, noResp: noResp });
         }
         range.addEventListener('input', function () { set(Number(range.value)); });
         on('#ht-minus', 'click', function () { set(idx - 1); });
         on('#ht-plus', 'click', function () { set(idx + 1); });
         on('#ht-cant', 'click', function () { finish(true); });
-        on('#ht-cont', 'click', function () {
-            if (!moved) {
-                var m = $('#ht-adj-msg');
-                m.querySelector('span').textContent = t('adjMove');
-                m.hidden = false;
-                return;
-            }
-            finish(false);
-        });
+        on('#ht-cont', 'click', function () { finish(false); });
     }
 
     async function waitIfPaused() {
@@ -969,7 +1008,10 @@
             '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-skip">' + t('skip') + '</button>' +
             '<button type="button" class="ht-btn ht-primary" id="ht-din-start">' + t('dinStart') + ic('right') + '</button></div>'
         );
-        on('#ht-skip', 'click', function () { state.din = null; screenQuestions(); });
+        on('#ht-skip', 'click', function () {
+            state.din = null;
+            if (state.dinOptional) { state.dinOptional = false; screenResults(); } else { screenQuestions(); }
+        });
         on('#ht-din-start', 'click', function () {
             var btn = $('#ht-din-start'), msg = $('#ht-din-msg');
             btn.disabled = true;
@@ -1085,7 +1127,13 @@
             } : { srt: null, levels: levels };
             document.removeEventListener('keydown', state.keyHandler);
             state.running = false;
-            screenQuestions();
+            if (state.dinOptional) {
+                state.summary = score();
+                screenResults();
+                root.dispatchEvent(new CustomEvent('hearingtest:complete', { bubbles: true, detail: state.summary }));
+            } else {
+                screenQuestions();
+            }
         })();
     }
 
@@ -1220,6 +1268,9 @@
             (tones ? '<div class="ht-ears">' + earCard('rightEar', s.right) + earCard('leftEar', s.left) + '</div>' : '') +
             dinCard +
             (s.flags.length ? '<ul class="ht-flags">' + s.flags.map(function (f) { return '<li>' + ic(f === 'flagUnreliable' ? 'alert' : 'info') + '<span>' + t(f) + '</span></li>'; }).join('') + '</ul>' : '') +
+            (CONFIG.mode === 'quick' && !s.din ? '<div class="ht-offer"><div class="ht-offer-ic">' + ic('wave') + '</div><div class="ht-offer-text">' +
+                '<div class="ht-offer-title">' + t('offerTitle') + '</div><p>' + t('offerText') + '</p>' +
+                '<button type="button" class="ht-btn ht-glass" id="ht-din-offer">' + t('offerBtn') + ic('right') + '</button></div></div>' : '') +
             (tones ? '<div class="ht-chart"><div class="ht-chart-title">' + t('chartTitle') + '</div>' + audiogram() + '</div>' : '') +
             '<p class="ht-note">' + ic('info') + '<span>' + t('note') + '</span></p>' +
             '<div class="ht-cta"><div class="ht-cta-title">' + t('ctaTitle') + '</div><div class="ht-cta-btns">' +
@@ -1232,6 +1283,8 @@
         );
         on('#ht-print', 'click', function () { window.print(); });
         on('#ht-again', 'click', function () { reset(); screenIntro(); });
+        on('#ht-din-offer', 'click', function () { state.dinOptional = true; screenDinIntro(); });
+        animateGauges();
         if (CONFIG.leadUrl) { bindLeadForm(); }
     }
 
@@ -1246,10 +1299,35 @@
             var p = pt(a), q = pt(b);
             return '<path class="' + cls + '" d="M' + p[0].toFixed(2) + ' ' + p[1].toFixed(2) + 'A' + r + ' ' + r + ' 0 0 1 ' + q[0].toFixed(2) + ' ' + q[1].toFixed(2) + '"/>';
         }
-        var m = pt(pta);
-        return '<svg class="ht-gauge" viewBox="0 0 120 68" aria-hidden="true">' +
+        var m = pt(pta), end = Math.min(Math.max(pta, lo + 0.5), hi);
+        var fill = arc(lo, end, 'g-fill').replace('<path ', '<path pathLength="1" ');
+        return '<svg class="ht-gauge" viewBox="0 0 120 68" aria-hidden="true" data-v="' + pta + '">' +
             arc(-10, 19.5, 'g-normal') + arc(20.5, 34.5, 'g-mild') + arc(35.5, 49.5, 'g-moderate') + arc(50.5, 80, 'g-significant') +
-            '<circle class="g-mark" cx="' + m[0].toFixed(2) + '" cy="' + m[1].toFixed(2) + '" r="6.5"/></svg>';
+            fill + '<circle class="g-mark" cx="' + m[0].toFixed(2) + '" cy="' + m[1].toFixed(2) + '" r="6.5"/></svg>';
+    }
+
+    // Sweeps each gauge from the start of the scale to the ear's value: arc fills, marker rides along.
+    function animateGauges() {
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        root.querySelectorAll('.ht-gauge').forEach(function (svg, n) {
+            var v = Number(svg.getAttribute('data-v')), fill = svg.querySelector('.g-fill'), mark = svg.querySelector('.g-mark');
+            if (reduce) { return; }
+            var cx = 60, cy = 58, r = 46, lo = -10, hi = 80, dur = 1100, delay = 250 + n * 150, t0 = null;
+            var target = (Math.min(Math.max(v, lo), hi) - lo) / (hi - lo);
+            fill.style.strokeDasharray = '1';
+            fill.style.strokeDashoffset = '1';
+            function frame(ts) {
+                if (!svg.isConnected) { return; }
+                if (t0 === null) { t0 = ts; }
+                var k = Math.min(1, Math.max(0, (ts - t0 - delay) / dur)), e = 1 - Math.pow(1 - k, 3), f = target * e;
+                var a = Math.PI * (1 - f);
+                mark.setAttribute('cx', (cx + r * Math.cos(a)).toFixed(2));
+                mark.setAttribute('cy', (cy - r * Math.sin(a)).toFixed(2));
+                fill.style.strokeDashoffset = String(1 - e);
+                if (k < 1) { requestAnimationFrame(frame); }
+            }
+            requestAnimationFrame(frame);
+        });
     }
 
     function audiogram() {
@@ -1358,7 +1436,7 @@
         if (state && state.keyHandler) { document.removeEventListener('keydown', state.keyHandler); }
         state = {
             results: { R: {}, L: {} }, answers: {}, catchN: 0, catchFalse: 0, stray: 0, din: null, dinDigits: { n: 0, ok: 0 },
-            retest: null, window: null, paused: false, running: false, startedAt: Date.now(), redraw: function () {}
+            retest: null, window: null, paused: false, running: false, dinOptional: false, startedAt: Date.now(), redraw: function () {}
         };
     }
 
