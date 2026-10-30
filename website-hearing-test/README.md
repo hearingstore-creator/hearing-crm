@@ -66,6 +66,26 @@ The files in `digits/` were generated with Microsoft neural voices using `script
    - Set `data-din-good` = mean + 2 SD (the normal limit) and `data-din-poor` = that value + 3 dB.
    - Ideally, an audiologist also checks a few people with known hearing loss.
 
+## Visitor-friendly features
+
+Following senior-friendly and accessibility guidance (UI UX Pro Max "Accessible & Ethical" style, WCAG):
+- 17px base text, nothing under 12px, and 44–50px touch targets.
+- A **larger text** button (the "Tт" icon) in the header. The setting is remembered on that device.
+- Plain-language pitch names (Low / Middle / High / Very high pitch) with the Hz value shown small.
+- "Softer" and "Louder" labels under the − / + buttons, and a **Back** button to redo the previous sound.
+- The detailed audiogram is folded behind "Show detailed chart" so the results stay calm.
+- Form fields have visible labels.
+- **Print / save report:** the visitor can add an optional name and age (validated as 1–120). This prints a one-page A4 report with:
+  - a prominent **"Not a clinical test"** notice
+  - the date and test type
+  - results for each ear, with the value at each pitch
+  - the audiogram
+  - the noise test result, if taken
+  - notes and a recommended next step
+  - your contact details
+  
+  "Save as PDF" in the print window creates a PDF. The name and age never leave the device. Set the brand name with `data-brand` (default "Hearing Store").
+
 ## Install on the website (Laravel)
 
 The widget uses a frosted-glass card with line icons, and is designed for **Manrope** (English) and **Hind Siliguri** (Bangla). Load both fonts from Google Fonts in the page head, as `laravel/hearing-test.blade.php` does. Without them it falls back to the system font.
@@ -92,6 +112,7 @@ The widget uses a frosted-glass card with line icons, and is designed for **Manr
 | `data-whatsapp` | Digits only. Shows a WhatsApp button with a pre-filled message. |
 | `data-booking-url` | Shows a "Book appointment" button. |
 | `data-lead-url` | Shows the call-back form and POSTs JSON here. Leave empty to show no form. |
+| `data-brand` | Clinic name on the printed report. Default `Hearing Store`. |
 | `data-tone-type` | `warble` (default) or `pure`. |
 | `data-freqs` | Pitches tested per ear, in order. Default `1000,2000,4000,500`. |
 | `data-retest` | `on` repeats 1 kHz on the first ear as a reliability check. Off by default. |

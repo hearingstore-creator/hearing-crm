@@ -20,6 +20,7 @@
         lang: ds.lang === 'bn' ? 'bn' : 'en',
         phone: ds.phone || '',                 // tel: link, e.g. +8801XXXXXXXXX
         whatsapp: ds.whatsapp || '',           // digits only, e.g. 8801XXXXXXXXX
+        brand: ds.brand || 'Hearing Store',    // shown on the printed report
         bookingUrl: ds.bookingUrl || '',       // e.g. /book-appointment or "#crm-lead-form"
         leadUrl: ds.leadUrl || '',             // website route that forwards to the CRM (see README); empty = no form
         // Test order follows clinical practice: 1 kHz first, up through the highs, then 500 Hz.
@@ -191,6 +192,40 @@
             formInvalid: 'Please enter your name and a valid mobile number.',
             print: 'Print / save results',
             retake: 'Take the test again',
+            textSize: 'Larger text',
+            pitchLow: 'Low pitch',
+            pitchMid: 'Middle pitch',
+            pitchHigh: 'High pitch',
+            pitchVHigh: 'Very high pitch',
+            showChart: 'Show detailed chart',
+            hideChart: 'Hide detailed chart',
+            printTitle: 'Print or save your results',
+            printHelp: 'Add your name and age to the report if you like. Both are optional and stay on this device.',
+            printName: 'Name (optional)',
+            printAge: 'Age (optional)',
+            printAgeErr: 'Enter an age between 1 and 120, or leave it empty.',
+            printGo: 'Print report',
+            printTip: 'To save a PDF, choose "Save as PDF" in the print window.',
+            cancel: 'Cancel',
+            rpTitle: 'Hearing screening report',
+            rpNotClinical: 'Not a clinical test',
+            rpNotClinicalText: 'This online screening is not a medical diagnosis and does not replace a hearing test by a qualified hearing care professional. Results are approximate and depend on the device, headphones and room used.',
+            rpName: 'Name',
+            rpAge: 'Age',
+            rpDate: 'Date',
+            rpTest: 'Test',
+            rpTestTone: 'Tone screening, {n} pitches per ear',
+            rpTestDin: ' + hearing in noise',
+            rpOverall: 'Overall result',
+            rpEar: 'Ear',
+            rpResult: 'Result',
+            rpAvg: 'Average',
+            rpNotes: 'Notes',
+            rpNext: 'Recommended next step',
+            rpNextNormal: 'Have your hearing checked once a year, or sooner if you notice any change.',
+            rpNextBook: 'Book a full hearing test with a hearing care professional and bring this report.',
+            rpContact: 'Contact',
+            rpYears: '{n} years',
             noAudio: 'Sorry, your browser does not support audio playback. Please try Chrome, Safari or Edge.',
             waMsg: 'Hi, I just took the online hearing test. Result: {r}. I would like to book a hearing test.'
         },
@@ -320,6 +355,40 @@
             formInvalid: 'অনুগ্রহ করে আপনার নাম ও সঠিক মোবাইল নম্বর দিন।',
             print: 'ফলাফল প্রিন্ট / সেভ করুন',
             retake: 'আবার টেস্ট দিন',
+            textSize: 'বড় লেখা',
+            pitchLow: 'নিচু সুর',
+            pitchMid: 'মাঝারি সুর',
+            pitchHigh: 'উঁচু সুর',
+            pitchVHigh: 'খুব উঁচু সুর',
+            showChart: 'বিস্তারিত চার্ট দেখুন',
+            hideChart: 'বিস্তারিত চার্ট লুকান',
+            printTitle: 'আপনার ফলাফল প্রিন্ট বা সেভ করুন',
+            printHelp: 'চাইলে রিপোর্টে আপনার নাম ও বয়স যোগ করুন। দুটোই ঐচ্ছিক এবং শুধু এই ডিভাইসে থাকে।',
+            printName: 'নাম (ঐচ্ছিক)',
+            printAge: 'বয়স (ঐচ্ছিক)',
+            printAgeErr: 'বয়স ১ থেকে ১২০-এর মধ্যে দিন, অথবা খালি রাখুন।',
+            printGo: 'রিপোর্ট প্রিন্ট করুন',
+            printTip: 'PDF হিসেবে সেভ করতে প্রিন্ট উইন্ডোতে "Save as PDF" বেছে নিন।',
+            cancel: 'বাতিল',
+            rpTitle: 'শ্রবণ স্ক্রিনিং রিপোর্ট',
+            rpNotClinical: 'এটি ক্লিনিক্যাল টেস্ট নয়',
+            rpNotClinicalText: 'এই অনলাইন স্ক্রিনিং কোনো চিকিৎসা নির্ণয় নয় এবং যোগ্য শ্রবণ বিশেষজ্ঞের পরীক্ষার বিকল্প নয়। ফলাফল আনুমানিক এবং ব্যবহৃত ডিভাইস, হেডফোন ও পরিবেশের ওপর নির্ভর করে।',
+            rpName: 'নাম',
+            rpAge: 'বয়স',
+            rpDate: 'তারিখ',
+            rpTest: 'টেস্ট',
+            rpTestTone: 'টোন স্ক্রিনিং, প্রতি কানে {n}টি সুর',
+            rpTestDin: ' + কোলাহলে শোনা',
+            rpOverall: 'সামগ্রিক ফলাফল',
+            rpEar: 'কান',
+            rpResult: 'ফলাফল',
+            rpAvg: 'গড়',
+            rpNotes: 'লক্ষণীয়',
+            rpNext: 'পরবর্তী করণীয়',
+            rpNextNormal: 'বছরে একবার, অথবা কোনো পরিবর্তন টের পেলে আগেই, শ্রবণ পরীক্ষা করান।',
+            rpNextBook: 'একজন শ্রবণ বিশেষজ্ঞের কাছে পূর্ণাঙ্গ শ্রবণ পরীক্ষা বুক করুন এবং এই রিপোর্টটি সঙ্গে আনুন।',
+            rpContact: 'যোগাযোগ',
+            rpYears: '{n} বছর',
             noAudio: 'দুঃখিত, আপনার ব্রাউজার অডিও সমর্থন করে না। Chrome, Safari বা Edge ব্যবহার করুন।',
             waMsg: 'হ্যালো, আমি অনলাইন হিয়ারিং টেস্ট দিয়েছি। ফলাফল: {r}। আমি একটি শ্রবণ পরীক্ষা বুক করতে চাই।'
         }
@@ -359,6 +428,9 @@
         printer: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
         redo: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
         wave: '<path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/>',
+        textSize: '<path d="M4 7V5h10v2"/><path d="M9 5v14"/><path d="M7 19h4"/><path d="M14 13v-1h7v1"/><path d="M17.5 12v7"/><path d="M16 19h3"/>',
+        chevron: '<path d="m6 9 6 6 6-6"/>',
+        user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
         list: '<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="m3 6 1 1 2-2"/><path d="m3 12 1 1 2-2"/><path d="m3 18 1 1 2-2"/>'
     };
 
@@ -488,12 +560,21 @@
             '<div class="ht-card">' +
             '<div class="ht-head">' + LOGO_SVG +
             '<div class="ht-head-text"><div class="ht-title">' + t('title') + '</div><div class="ht-sub">' + t('subtitle') + '</div></div>' +
+            '<button type="button" class="ht-size' + (state.large ? ' on' : '') + '" id="ht-size" aria-pressed="' + !!state.large + '" aria-label="' + t('textSize') + '" title="' + t('textSize') + '">' + ic('textSize') + '</button>' +
             '<div class="ht-lang">' +
             '<button type="button" data-lang="en" class="' + (lang === 'en' ? 'on' : '') + '">EN</button>' +
             '<button type="button" data-lang="bn" class="' + (lang === 'bn' ? 'on' : '') + '">বাংলা</button>' +
             '</div></div>' +
             '<div class="ht-body">' + html + '</div></div>';
         root.lang = lang;
+        root.classList.toggle('ht-large', !!state.large);
+        on('#ht-size', 'click', function () {
+            state.large = !state.large;
+            root.classList.toggle('ht-large', state.large);
+            this.classList.toggle('on', state.large);
+            this.setAttribute('aria-pressed', String(state.large));
+            try { localStorage.setItem('ht-large', state.large ? '1' : '0'); } catch (e) { /* storage blocked */ }
+        });
         root.querySelectorAll('.ht-lang button').forEach(function (b) {
             b.addEventListener('click', function () {
                 if (state.running) { return; } // don't re-render mid-test
@@ -514,6 +595,10 @@
         return s;
     }
     var STEP_LABEL = { setup: 'stSetup', R: 'stR', L: 'stL', din: 'stDin', qs: 'stQs', results: 'stRes' };
+
+    function pitchName(f) {
+        return t(f <= 500 ? 'pitchLow' : f <= 1000 ? 'pitchMid' : f <= 2000 ? 'pitchHigh' : 'pitchVHigh');
+    }
 
     function num(n) { return lang === 'bn' ? bnDigits(n) : String(n); }
 
@@ -739,7 +824,9 @@
         (function next() {
             if (i >= freqs.length) { state.running = false; afterEar(ear); return; }
             var f = freqs[i];
-            adjustTone(ear, f === 'retest' ? 1000 : f, done + 1, total, function (r) {
+            // Back redoes the previous sound of this ear.
+            var back = i > 0 ? function () { i--; done--; next(); } : null;
+            adjustTone(ear, f === 'retest' ? 1000 : f, done + 1, total, back, function (r) {
                 if (f === 'retest') {
                     state.retest = { first: state.results.R[1000].db, second: r.db };
                     if (!r.noResp && r.db < state.results.R[1000].db) { state.results.R[1000] = r; }
@@ -753,21 +840,23 @@
         })();
     }
 
-    function adjustTone(ear, freq, n, total, cb) {
+    function adjustTone(ear, freq, n, total, back, cb) {
         var min = CONFIG.minLevel, max = Audio.maxLevel(freq), top = Math.round((max - min) / 5), idx = 0;
         render(steps(ear) +
             '<div class="ht-count">' + t('toneCount', { n: num(n), m: num(total) }) + '</div>' +
             '<h3 class="ht-adj-title">' + t('adjTitle') + '</h3>' +
-            '<div class="ht-adj-label"><span class="ht-ear ht-ear-' + ear + '">' + ic('ear') + t(ear === 'R' ? 'rightEar' : 'leftEar') + '</span><span class="ht-freq">' + num(freq) + ' Hz</span>' +
+            '<div class="ht-adj-label"><span class="ht-ear ht-ear-' + ear + '">' + ic('ear') + t(ear === 'R' ? 'rightEar' : 'leftEar') + '</span><span class="ht-freq">' + pitchName(freq) + ' <small>' + num(freq) + ' Hz</small></span>' +
             '<span class="ht-live" id="ht-live" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div>' +
             '<div class="ht-adj">' +
-            '<button type="button" class="ht-round" id="ht-minus" aria-label="' + t('softer') + '">' + ic('minus') + '</button>' +
+            '<div class="ht-roundwrap"><button type="button" class="ht-round" id="ht-minus" aria-label="' + t('softer') + '">' + ic('minus') + '</button><span>' + t('softer') + '</span></div>' +
             '<div class="ht-adj-track"><output id="ht-val" class="ht-adj-val">' + num(1) + '</output>' +
             '<input type="range" id="ht-range" min="0" max="' + top + '" step="1" value="0" aria-label="' + t('louder') + '"></div>' +
-            '<button type="button" class="ht-round" id="ht-plus" aria-label="' + t('louder') + '">' + ic('plus') + '</button>' +
+            '<div class="ht-roundwrap"><button type="button" class="ht-round" id="ht-plus" aria-label="' + t('louder') + '">' + ic('plus') + '</button><span>' + t('louder') + '</span></div>' +
             '</div>' +
             '<p class="ht-hint ht-center">' + t('adjHint') + '</p>' +
-            '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-cant" hidden>' + t('adjCant') + '</button>' +
+            '<div class="ht-actions ht-split">' +
+            (back ? '<button type="button" class="ht-btn ht-ghost" id="ht-prev">' + ic('left') + t('back') + '</button>' : '') +
+            '<button type="button" class="ht-btn ht-ghost" id="ht-cant" hidden>' + t('adjCant') + '</button>' +
             '<button type="button" class="ht-btn ht-primary" id="ht-cont">' + t('cont') + ic('right') + '</button></div>'
         );
         var range = $('#ht-range'), val = $('#ht-val'), live = $('#ht-live');
@@ -797,6 +886,11 @@
         on('#ht-plus', 'click', function () { set(idx + 1); });
         on('#ht-cant', 'click', function () { finish(true); });
         on('#ht-cont', 'click', function () { finish(false); });
+        on('#ht-prev', 'click', function () {
+            tone.stop();
+            document.removeEventListener('visibilitychange', onVis);
+            back();
+        });
     }
 
     async function waitIfPaused() {
@@ -1292,7 +1386,8 @@
             (CONFIG.mode === 'quick' && !s.din ? '<div class="ht-offer"><div class="ht-offer-ic">' + ic('wave') + '</div><div class="ht-offer-text">' +
                 '<div class="ht-offer-title">' + t('offerTitle') + '</div><p>' + t('offerText') + '</p>' +
                 '<button type="button" class="ht-btn ht-glass" id="ht-din-offer">' + t('offerBtn') + ic('right') + '</button></div></div>' : '') +
-            (tones ? '<div class="ht-chart"><div class="ht-chart-title">' + t('chartTitle') + '</div>' + audiogram() + '</div>' : '') +
+            (tones ? '<details class="ht-chart"><summary>' + ic('chevron') + '<span class="ht-show">' + t('showChart') + '</span><span class="ht-hide">' + t('hideChart') + '</span></summary>' +
+                '<div class="ht-chart-title">' + t('chartTitle') + '</div>' + audiogram() + '</details>' : '') +
             '<p class="ht-note">' + ic('info') + '<span>' + t('note') + '</span></p>' +
             '<div class="ht-cta"><div class="ht-cta-title">' + t('ctaTitle') + '</div><div class="ht-cta-btns">' +
             (CONFIG.bookingUrl ? '<a class="ht-btn ht-primary" href="' + esc(CONFIG.bookingUrl) + '">' + ic('calendar') + t('book') + '</a>' : '') +
@@ -1300,13 +1395,92 @@
             (wa ? '<a class="ht-btn ht-wa" href="' + esc(wa) + '" target="_blank" rel="noopener">' + ic('chat') + t('whatsapp') + '</a>' : '') +
             '</div>' + (CONFIG.leadUrl ? leadForm() : '') + '</div>' +
             '<div class="ht-actions ht-split ht-noprint"><button type="button" class="ht-btn ht-ghost" id="ht-print">' + ic('printer') + t('print') + '</button>' +
-            '<button type="button" class="ht-btn ht-ghost" id="ht-again">' + ic('redo') + t('retake') + '</button></div>'
+            '<button type="button" class="ht-btn ht-ghost" id="ht-again">' + ic('redo') + t('retake') + '</button></div>' +
+            '<div id="ht-print-panel"></div>'
         );
-        on('#ht-print', 'click', function () { window.print(); });
+        on('#ht-print', 'click', function () { printPanel(); });
         on('#ht-again', 'click', function () { reset(); screenIntro(); });
         on('#ht-din-offer', 'click', function () { state.dinOptional = true; screenDinIntro(); });
         animateGauges();
         if (CONFIG.leadUrl) { bindLeadForm(); }
+    }
+
+    /* ---------------- Printable report ---------------- */
+
+    function printPanel() {
+        var box = $('#ht-print-panel');
+        if (box.innerHTML) { box.querySelector('input').focus(); return; }
+        box.innerHTML = '<form class="ht-panel ht-printform" id="ht-printform" novalidate>' +
+            '<div class="ht-printform-head">' + ic('printer') + '<div><div class="ht-offer-title">' + t('printTitle') + '</div><p>' + t('printHelp') + '</p></div></div>' +
+            '<div class="ht-printform-fields">' +
+            '<label class="ht-field"><span>' + t('printName') + '</span><input type="text" id="ht-pname" autocomplete="name" maxlength="80" value="' + esc(state.person.name) + '"></label>' +
+            '<label class="ht-field ht-field-age"><span>' + t('printAge') + '</span><input type="number" id="ht-page" inputmode="numeric" min="1" max="120" value="' + esc(state.person.age) + '" aria-describedby="ht-page-err"></label>' +
+            '</div><p class="ht-field-err" id="ht-page-err" hidden>' + t('printAgeErr') + '</p>' +
+            '<p class="ht-hint">' + t('printTip') + '</p>' +
+            '<div class="ht-actions ht-split"><button type="button" class="ht-btn ht-ghost" id="ht-pcancel">' + t('cancel') + '</button>' +
+            '<button type="submit" class="ht-btn ht-primary">' + ic('printer') + t('printGo') + '</button></div></form>';
+        var form = $('#ht-printform');
+        form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        $('#ht-pname').focus();
+        on('#ht-pcancel', 'click', function () { box.innerHTML = ''; $('#ht-print').focus(); });
+        on('#ht-page', 'input', function () { $('#ht-page-err').hidden = true; this.setAttribute('aria-invalid', 'false'); });
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var name = $('#ht-pname').value.trim(), age = $('#ht-page').value.trim(), err = $('#ht-page-err');
+            var ageOk = age === '' || (/^\d{1,3}$/.test(age) && +age >= 1 && +age <= 120);
+            err.hidden = ageOk;
+            $('#ht-page').setAttribute('aria-invalid', String(!ageOk));
+            if (!ageOk) { $('#ht-page').focus(); return; }
+            state.person = { name: name, age: age };
+            printReport();
+        });
+    }
+
+    // Builds a clean A4 report outside the widget and prints only that.
+    function printReport() {
+        var s = state.summary, tones = !!s.right, old = document.getElementById('ht-report');
+        if (old) { old.remove(); }
+        var d = new Date(), loc = lang === 'bn' ? 'bn-BD' : 'en-GB';
+        var date = d.toLocaleDateString(loc, { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+        var dash = '—', p = state.person;
+        var test = (tones ? t('rpTestTone', { n: num(CONFIG.freqs.length) }) : '') + (s.din ? (tones ? t('rpTestDin') : t('dinResTitle')) : '');
+        function row(k, v) { return '<div><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
+        function earRow(key, e, side) {
+            var cells = CHART_FREQS.map(function (f) {
+                var r = state.results[side][f];
+                return '<td>' + (r ? (r.noResp ? '&gt;' : '') + num(r.db) : dash) + '</td>';
+            }).join('');
+            return '<tr><th scope="row">' + t(key) + '</th><td class="rp-band rp-' + e.band + '">' + t('band_' + e.band) + '</td><td>' + num(e.pta) + ' dB</td>' + cells + '</tr>';
+        }
+        var rep = document.createElement('div');
+        rep.id = 'ht-report';
+        rep.className = 'ht-report';
+        rep.lang = lang;
+        rep.innerHTML =
+            '<header class="rp-head">' + LOGO_SVG + '<div><div class="rp-brand">' + esc(CONFIG.brand) + '</div><div class="rp-title">' + t('rpTitle') + '</div></div></header>' +
+            '<div class="rp-warn">' + ic('alert') + '<div><strong>' + t('rpNotClinical') + '.</strong> ' + t('rpNotClinicalText') + '</div></div>' +
+            '<dl class="rp-meta">' + row(t('rpName'), p.name ? esc(p.name) : dash) + row(t('rpAge'), p.age ? t('rpYears', { n: num(p.age) }) : dash) +
+            row(t('rpDate'), date) + row(t('rpTest'), test) + '</dl>' +
+            '<section><h2>' + t('rpOverall') + '</h2><p class="rp-summary">' + t(tones || !s.din ? 'sum_' + s.overall : 'sumdin_' + s.din.category) + '</p></section>' +
+            (tones ? '<section><table class="rp-table"><thead><tr><th scope="col">' + t('rpEar') + '</th><th scope="col">' + t('rpResult') + '</th><th scope="col">' + t('rpAvg') + '</th>' +
+                CHART_FREQS.map(function (f) { return '<th scope="col">' + num(f) + ' Hz</th>'; }).join('') + '</tr></thead><tbody>' +
+                earRow('rightEar', s.right, 'R') + earRow('leftEar', s.left, 'L') + '</tbody></table>' +
+                '<div class="rp-chart"><div class="rp-chart-title">' + t('chartTitle') + '</div>' + audiogram() + '</div></section>' : '') +
+            (s.din ? '<section><h2>' + t('dinResTitle') + '</h2><p><strong>' + t('din_' + s.din.category) + '</strong>' +
+                (s.din.srt !== null ? ' · ' + t('dinScore', { v: num(s.din.srt) }) : '') + '</p></section>' : '') +
+            (s.flags.length ? '<section><h2>' + t('rpNotes') + '</h2><ul>' + s.flags.map(function (f) { return '<li>' + t(f) + '</li>'; }).join('') + '</ul></section>' : '') +
+            '<section><h2>' + t('rpNext') + '</h2><p>' + t(s.overall === 'normal' && !s.flags.length ? 'rpNextNormal' : 'rpNextBook') + '</p>' +
+            ((CONFIG.phone || location.host) ? '<p class="rp-contact"><strong>' + t('rpContact') + ':</strong> ' + esc(CONFIG.brand) +
+                (CONFIG.phone ? ' · ' + esc(CONFIG.phone) : '') + (location.host ? ' · ' + esc(location.host) : '') + '</p>' : '') + '</section>' +
+            '<footer class="rp-foot">' + t('note') + '</footer>';
+        document.body.appendChild(rep);
+        document.body.classList.add('ht-printing');
+        var done = function () {
+            document.body.classList.remove('ht-printing');
+            window.removeEventListener('afterprint', done);
+        };
+        window.addEventListener('afterprint', done);
+        window.print();
     }
 
     // Half-circle gauge over the WHO bands (-10 to 80 dB HL), marker at the ear's average.
@@ -1395,8 +1569,8 @@
 
     function leadForm() {
         return '<form class="ht-form" id="ht-form" novalidate>' +
-            '<input type="text" name="name" placeholder="' + t('formName') + '" autocomplete="name" maxlength="100" required>' +
-            '<input type="tel" name="phone" placeholder="' + t('formPhone') + ' (01XXXXXXXXX)" autocomplete="tel" maxlength="20" required>' +
+            '<label class="ht-field"><span>' + t('formName') + '</span><input type="text" name="name" autocomplete="name" maxlength="100" required></label>' +
+            '<label class="ht-field"><span>' + t('formPhone') + '</span><input type="tel" name="phone" placeholder="01XXXXXXXXX" autocomplete="tel" inputmode="tel" maxlength="20" required></label>' +
             '<input type="text" name="website" class="ht-hp" tabindex="-1" autocomplete="off" aria-hidden="true">' +
             '<label class="ht-check"><input type="checkbox" name="consent" checked> <span>' + t('formConsent') + '</span></label>' +
             '<button type="submit" class="ht-btn ht-primary">' + ic('phone') + t('formSend') + '</button>' +
@@ -1458,8 +1632,13 @@
         if (state && state.keyHandler) { document.removeEventListener('keydown', state.keyHandler); }
         state = {
             results: { R: {}, L: {} }, answers: {}, catchN: 0, catchFalse: 0, stray: 0, din: null, dinDigits: { n: 0, ok: 0 },
-            retest: null, window: null, paused: false, running: false, dinOptional: false, startedAt: Date.now(), redraw: function () {}
+            retest: null, window: null, paused: false, running: false, dinOptional: false,
+            person: { name: '', age: '' }, large: largeText(), startedAt: Date.now(), redraw: function () {}
         };
+    }
+
+    function largeText() {
+        try { return localStorage.getItem('ht-large') === '1'; } catch (e) { return false; }
     }
 
     function boot() {
