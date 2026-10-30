@@ -25,8 +25,9 @@ laravel/
 5. **Digits in Noise (DIN):** a speech-in-noise test, the method behind WHO's hearWHO app.
    - The visitor hears three spoken digits in background noise, played to both ears, and types them on a keypad. Each round of three digits is a "triplet".
    - The noise has the same frequency profile as the digit voice. It is generated in the browser from the recordings, so no separate noise file is needed.
-   - The first triplet repeats 4 dB easier until it is answered correctly. After that, a correct triplet makes the noise louder by 2 dB and a wrong one makes it quieter by 2 dB, for 24 triplets.
-   - Score: **SRT** (speech reception threshold) = the average SNR of triplets 5 to 25. Lower is better. It is shown as Good / Borderline / Poor.
+   - The first triplet repeats 4 dB easier until it is answered correctly. The noise then gets louder in 4 dB steps until the first miss, then moves in 2 dB steps (louder after a correct answer, quieter after a wrong one).
+   - **14 triplets by default (about 1 minute).** In 5,000 simulated runs per length, 14 triplets gave a typical score error of ±1.1 dB, against ±0.7 dB for the classic 24. Fewer than 1% of runs were off by more than 3 dB, the width of the "Borderline" band. Use `data-din-trials="24"` for the classic length.
+   - Score: **SRT** (speech reception threshold) = the average SNR after the approach phase, plus the next level. Lower is better. It is shown as Good / Borderline / Poor.
    - Combined speech and noise loudness stays constant, so the volume never jumps.
    - Speech and noise come out of the same speaker, so the result depends much less on the phone and headphones than the tone test does.
    - English leaves out "seven" and Bangla leaves out "শূন্য", because both are two syllables (standard DIN practice).
@@ -41,13 +42,17 @@ Levels are **approximate dB HL**. A browser can't be calibrated to a clinical st
 
 ## Digit recordings (must be replaced before going live)
 
-The files in `digits/` are **robot-voice placeholders** generated with espeak-ng, so the test can be tried now. Before launch:
+The files in `digits/` are **robot-voice placeholders** generated with espeak-ng. The Bangla placeholders are mispronounced, so replace them before launch. There are two ways:
 
-1. Record one clear speaker (the same person for every digit) in a quiet room:
-   - English: zero, one, two, three, four, five, six, eight, nine.
-   - Bangla: এক, দুই, তিন, চার, পাঁচ, ছয়, সাত, আট, নয়.
-   - Say each digit in a neutral, even tone at the same distance from the microphone.
-2. Trim the silence at the start and end. Export mono MP3 files named `0.mp3`–`9.mp3` into `digits/en/` and `digits/bn/`. The test equalises loudness automatically.
+1. **Record a real voice (recommended).** This is what clinical DIN tests use, and it has no licensing questions.
+   - Open `hearing-test/tools/digit-recorder.html` on your website, or on a local server, on a phone or laptop. The microphone needs https or localhost.
+   - Record each digit with one clear speaker:
+     - Bangla: এক, দুই, তিন, চার, পাঁচ, ছয়, সাত, আট, নয়.
+     - English: zero, one, two, three, four, five, six, eight, nine.
+   - The tool trims silence, matches levels and saves `1.wav`, `2.wav` and so on.
+   - Copy the files into `digits/bn/` or `digits/en/` and delete the old `.mp3` files there. The test uses MP3 first and WAV if there is no MP3.
+2. **Natural text-to-speech.** Run `scripts/make-digits-tts.sh` on your own computer. It needs internet, `pip install edge-tts` and ffmpeg. It generates the digits with Microsoft neural voices (`bn-BD-NabanitaNeural` / `en-US-JennyNeural`). Check the voice licence before commercial use.
+
 3. **Re-norm the cut-offs.** DIN scores depend on the voice and the recordings, so the default `-9` / `-6` are only provisional.
    - Have at least 20 adults aged 18–30 with normal hearing (confirmed on your audiometer) take the test with `data-mode="din"`, in each language.
    - Read each score from the results screen.
@@ -83,6 +88,7 @@ The widget uses a frosted-glass card with line icons, and is designed for **Manr
 | `data-tone-method` | `adjust` (default: slider) or `classic` (tap when heard). |
 | `data-mode` | `full` (default: tones then Digits in Noise), `tones` (tones only) or `din` (Digits in Noise only, about 3 min). |
 | `data-audio-base` | Folder holding `en/` and `bn/` digit files. Defaults to `digits/` next to the script. |
+| `data-din-trials` | Number of triplets in the noise test, 8–30. Default `14`. |
 | `data-din-good`, `data-din-poor` | Score cut-offs in dB SNR. Default `-9` and `-6` (provisional, see below). |
 | `data-target` | Container selector, default `#hearing-test`. |
 | `data-freqs` | Override the frequency list, e.g. `1000,2000,4000,500`. |

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digit Recorder</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Manrope:wght@400;600;700;800&display=swap">
+<style>
+    /* Staff tool: record the spoken digits for the Digits-in-Noise test. */
+    :root { --red: #e52421; --red-deep: #c81d1a; --ink: #17130f; --muted: #6e675f; --hair: rgba(23, 19, 15, .1); --ok: #15803d; --bg: #f4f1ee; --card: #fff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 "Manrope", "Hind Siliguri", system-ui, sans-serif; padding: 24px 16px; }
+    .wrap { max-width: 680px; margin: 0 auto; display: grid; gap: 16px; }
+    h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
+    .card { background: var(--card); border: 1px solid var(--hair); border-radius: 18px; padding: 18px; }
+    .tips { margin: 0; padding-left: 20px; color: var(--muted); }
+    .tips li { margin: 3px 0; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .seg { display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(23, 19, 15, .06); }
+    .seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 999px; font: inherit; font-weight: 700; color: var(--muted); cursor: pointer; }
+    .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 10px 6px; border-top: 1px solid var(--hair); vertical-align: middle; }
+    .digit { font-size: 22px; font-weight: 800; width: 44px; text-align: center; }
+    .word { font-family: "Hind Siliguri", "Manrope", sans-serif; font-size: 18px; font-weight: 600; }
+    .status { font-size: 13px; color: var(--muted); min-width: 70px; font-variant-numeric: tabular-nums; }
+    .status.ok { color: var(--ok); font-weight: 700; }
+    .btns { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+    button.b { min-height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--hair); background: #fff; font: inherit; font-weight: 700; cursor: pointer; color: var(--ink); }
+    button.b:disabled { opacity: .4; cursor: not-allowed; }
+    button.rec { background: var(--red); border-color: var(--red); color: #fff; }
+    button.rec.live { background: var(--ink); border-color: var(--ink); animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(229, 36, 33, .25); } }
+    .primary { background: var(--red); border-color: var(--red); color: #fff; }
+    .note { font-size: 13px; color: var(--muted); }
+    .err { color: var(--red-deep); font-weight: 700; }
+    @media (max-width: 480px) { .word { font-size: 16px; } td { padding: 8px 2px; } .btns button.b { padding: 0 10px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <div>
+        <h1>Digit Recorder</h1>
+        <p class="note">Records the spoken digits for the Digits-in-Noise test. Each recording is trimmed and level-matched automatically, then saved as <code>1.wav</code>, <code>2.wav</code> … for the <code>digits/en</code> or <code>digits/bn</code> folder.</p>
+    </div>
+
+    <div class="card">
+        <ul class="tips">
+            <li>Use one speaker for every digit, ideally a clear, calm voice (a staff member is perfect).</li>
+            <li>Record in a quiet room with soft furnishings. A wardrobe full of clothes works well.</li>
+            <li>Hold the phone or microphone 15–20 cm from the mouth and keep that distance the same.</li>
+            <li>Say each digit naturally and in the same even tone, as if reading a list. Don't stress or stretch it.</li>
+            <li>Press <b>Record</b>, wait half a second, say the digit, then press <b>Stop</b>. Re-record any take you don't like.</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <div class="row" style="justify-content: space-between">
+            <div class="seg" id="lang"><button type="button" data-l="bn" class="on">বাংলা</button><button type="button" data-l="en">English</button></div>
+            <button type="button" class="b primary" id="all" disabled>Download all</button>
+        </div>
+        <p class="err" id="err" hidden></p>
+        <table><tbody id="rows"></tbody></table>
+        <p class="note">Recordings stay in this browser until you download them. Put the files in <code>public/hearing-test/digits/&lt;language&gt;/</code>, replacing the placeholder MP3 files (delete the old <code>.mp3</code> files, or WAV will not be picked up). Then re-norm the score cut-offs as described in the README.</p>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    // Same digit sets as the test: English drops "seven", Bangla drops "shunno" (both two syllables).
+    var SETS = {
+        bn: [[1, 'এক'], [2, 'দুই'], [3, 'তিন'], [4, 'চার'], [5, 'পাঁচ'], [6, 'ছয়'], [7, 'সাত'], [8, 'আট'], [9, 'নয়']],
+        en: [[0, 'zero'], [1, 'one'], [2, 'two'], [3, 'three'], [4, 'four'], [5, 'five'], [6, 'six'], [8, 'eight'], [9, 'nine']]
+    };
+    var lang = 'bn', takes = { bn: {}, en: {} }, ctx = null, stream = null, rec = null, live = null;
+    var rows = document.getElementById('rows'), err = document.getElementById('err'), allBtn = document.getElementById('all');
+
+    function bnNum(d) { return lang === 'bn' ? '০১২৩৪৫৬৭৮৯'[d] : String(d); }
+
+    function draw() {
+        rows.innerHTML = SETS[lang].map(function (p) {
+            var t = takes[lang][p[0]];
+            return '<tr><td class="digit">' + bnNum(p[0]) + '</td><td class="word">' + p[1] + '</td>' +
+                '<td class="status' + (t ? ' ok' : '') + '" id="st' + p[0] + '">' + (t ? '✓ ' + t.dur.toFixed(2) + ' s' : '–') + '</td>' +
+                '<td><div class="btns">' +
+                '<button type="button" class="b rec" data-a="rec" data-d="' + p[0] + '">Record</button>' +
+                '<button type="button" class="b" data-a="play" data-d="' + p[0] + '"' + (t ? '' : ' disabled') + '>Play</button>' +
+                '<button type="button" class="b" data-a="save" data-d="' + p[0] + '"' + (t ? '' : ' disabled') + '>Save</button>' +
+                '</div></td></tr>';
+        }).join('');
+        allBtn.disabled = !SETS[lang].some(function (p) { return takes[lang][p[0]]; });
+    }
+
+    function showErr(m) { err.hidden = false; err.textContent = m; }
+
+    async function start(d, btn) {
+        try {
+            ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+            await ctx.resume();
+            stream = stream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+        } catch (e) {
+            showErr('Microphone not available. Allow microphone access, and open this page over https or on localhost.');
+            return;
+        }
+        var chunks = [];
+        rec = new MediaRecorder(stream);
+        rec.ondataavailable = function (e) { if (e.data.size) { chunks.push(e.data); } };
+        rec.onstop = async function () {
+            try {
+                var buf = await ctx.decodeAudioData(await new Blob(chunks, { type: rec.mimeType }).arrayBuffer());
+                var out = process(buf);
+                if (!out) { showErr('Nothing was heard in that take. Try again a little louder.'); draw(); return; }
+                takes[lang][d] = out;
+                err.hidden = true;
+            } catch (e) {
+                showErr('Could not process the recording: ' + e.message);
+            }
+            draw();
+        };
+        rec.start();
+        live = d;
+        btn.textContent = 'Stop';
+        btn.classList.add('live');
+        rows.querySelectorAll('button').forEach(function (b) { if (b !== btn) { b.disabled = true; } });
+    }
+
+    function stop() { if (rec && rec.state === 'recording') { rec.stop(); } live = null; }
+
+    // Mono, trim silence (-40 dB below peak, 40 ms padding), 10 ms fades, peak to -1 dBFS.
+    function process(buf) {
+        var n = buf.length, sr = buf.sampleRate, mono = new Float32Array(n), c, i;
+        for (c = 0; c < buf.numberOfChannels; c++) {
+            var ch = buf.getChannelData(c);
+            for (i = 0; i < n; i++) { mono[i] += ch[i] / buf.numberOfChannels; }
+        }
+        var peak = 0;
+        for (i = 0; i < n; i++) { peak = Math.max(peak, Math.abs(mono[i])); }
+        if (peak < 0.01) { return null; }
+        // Envelope over 10 ms windows to find speech start and end.
+        var win = Math.round(sr * 0.01), thr = peak * 0.01, first = -1, last = -1;
+        for (i = 0; i + win <= n; i += win) {
+            var s = 0;
+            for (var k = i; k < i + win; k++) { s = Math.max(s, Math.abs(mono[k])); }
+            if (s > thr) { if (first < 0) { first = i; } last = i + win; }
+        }
+        var pad = Math.round(sr * 0.04);
+        var a = Math.max(0, first - pad), b = Math.min(n, last + pad);
+        var out = mono.slice(a, b), g = 0.89 / peak, fade = Math.round(sr * 0.01);
+        for (i = 0; i < out.length; i++) {
+            var f = Math.min(1, i / fade, (out.length - 1 - i) / fade);
+            out[i] *= g * f;
+        }
+        return { data: out, sr: sr, dur: out.length / sr };
+    }
+
+    function wav(t) {
+        var len = t.data.length, b = new ArrayBuffer(44 + len * 2), v = new DataView(b);
+        function str(o, s) { for (var i = 0; i < s.length; i++) { v.setUint8(o + i, s.charCodeAt(i)); } }
+        str(0, 'RIFF'); v.setUint32(4, 36 + len * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+        v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+        v.setUint32(24, t.sr, true); v.setUint32(28, t.sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+        str(36, 'data'); v.setUint32(40, len * 2, true);
+        for (var i = 0; i < len; i++) { var x = Math.max(-1, Math.min(1, t.data[i])); v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true); }
+        return new Blob([b], { type: 'audio/wav' });
+    }
+
+    function save(d) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(wav(takes[lang][d]));
+        a.download = d + '.wav';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }
+
+    function play(d) {
+        var t = takes[lang][d], b = ctx.createBuffer(1, t.data.length, t.sr);
+        b.getChannelData(0).set(t.data);
+        var s = ctx.createBufferSource();
+        s.buffer = b;
+        s.connect(ctx.destination);
+        s.start();
+    }
+
+    rows.addEventListener('click', function (e) {
+        var btn = e.target.closest('button');
+        if (!btn) { return; }
+        var d = Number(btn.getAttribute('data-d')), act = btn.getAttribute('data-a');
+        if (act === 'rec') { if (live === d) { stop(); } else { start(d, btn); } }
+        if (act === 'play') { play(d); }
+        if (act === 'save') { save(d); }
+    });
+    allBtn.addEventListener('click', function () {
+        var ds = SETS[lang].map(function (p) { return p[0]; }).filter(function (d) { return takes[lang][d]; });
+        ds.forEach(function (d, i) { setTimeout(function () { save(d); }, i * 400); });
+    });
+    document.getElementById('lang').addEventListener('click', function (e) {
+        var b = e.target.closest('button');
+        if (!b || live !== null) { return; }
+        lang = b.getAttribute('data-l');
+        this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); });
+        draw();
+    });
+    draw();
+})();
+</script>
+</body>
+</html>

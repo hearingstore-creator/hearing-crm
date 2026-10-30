@@ -36,7 +36,9 @@
         mode: ['full', 'tones', 'din'].indexOf(ds.mode) >= 0 ? ds.mode : 'full',
         audioBase: ds.audioBase || (script && script.src ? new URL('digits/', script.src).href : 'digits/'),
         din: {
-            trials: 24,
+            // 14 triplets with a 4 dB fast start ≈ 1 minute; SRT spread ±1.1 dB vs ±0.7 dB for the classic 24.
+            trials: ds.dinTrials ? Math.max(8, Math.min(30, Number(ds.dinTrials))) : 14,
+            fastStep: 4,
             startSnr: 0,
             step: 2,
             maxSnr: 10,
@@ -849,7 +851,10 @@
             Audio.init();
             var ctx = Audio.ctx, ds = CONFIG.din.digits[l];
             var p = Promise.all(ds.map(function (d) {
-                return fetch(CONFIG.audioBase + l + '/' + d + '.mp3')
+                // MP3 first, then WAV (the digit recorder tool saves WAV).
+                var base = CONFIG.audioBase + l + '/' + d;
+                return fetch(base + '.mp3')
+                    .then(function (r) { return r.ok ? r : fetch(base + '.wav'); })
                     .then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.arrayBuffer(); })
                     .then(function (buf) { return new Promise(function (res, rej) { ctx.decodeAudioData(buf, res, rej); }); });
             })).then(function (bufs) {
@@ -967,9 +972,10 @@
         });
     }
 
-    // Adaptive 1-up/1-down on whole-triplet correctness (Smits et al. 2004):
-    // first triplet repeats 4 dB easier until correct, then 2 dB steps for 24 triplets.
-    // Speech reception threshold (SRT) = mean SNR of triplets 5-24 plus the next one.
+    // Adaptive 1-up/1-down on whole-triplet correctness (after Smits et al. 2004):
+    // first triplet repeats 4 dB easier until correct; 4 dB steps down until the first miss,
+    // then 2 dB steps. SRT = mean SNR of the levels after the approach phase, plus the next one
+    // (classic 24-triplet run: triplets 5-25).
     function runDin() {
         var cfg = CONFIG.din;
         state.running = true;
@@ -1044,17 +1050,20 @@
             var completed = misses < 3;
             if (completed) {
                 levels.push(snr);
-                snr = Math.max(snr - cfg.step, cfg.minSnr);
+                var missed = false;
+                snr = Math.max(snr - cfg.fastStep, cfg.minSnr);
                 for (var n = 2; n <= cfg.trials; n++) {
                     prog.style.width = Math.round((n - 1) / cfg.trials * 100) + '%';
                     count.textContent = t('dinTrial', { n: num(n), m: num(cfg.trials) });
                     levels.push(snr);
                     var ok = await present(snr);
-                    snr = Math.min(Math.max(snr + (ok ? -cfg.step : cfg.step), cfg.minSnr), cfg.maxSnr);
+                    if (!ok) { missed = true; }
+                    var st = missed ? cfg.step : cfg.fastStep;
+                    snr = Math.min(Math.max(snr + (ok ? -st : st), cfg.minSnr), cfg.maxSnr);
                 }
                 levels.push(snr); // the level the 25th triplet would have used
             }
-            var used = levels.slice(4);
+            var used = levels.slice(cfg.trials >= 20 ? 4 : 6);
             state.din = completed ? {
                 srt: Math.round(used.reduce(function (s, v) { return s + v; }, 0) / used.length * 10) / 10,
                 levels: levels
