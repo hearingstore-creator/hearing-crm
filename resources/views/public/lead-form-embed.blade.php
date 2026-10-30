@@ -2,7 +2,7 @@
 /* CRM lead form popup.
  * Options on the <script> tag:
  *   data-button="false"     hide the floating button (use your own links instead)
- *   data-label="Free hearing test"  floating button text
+ *   data-label="Free hearing check"  floating button text
  *   data-auto-open="20"     open once per visit after N seconds
  * Any link or button with class "crm-lead-popup" or href="#crm-lead-form" opens the popup. JS: CRMLeadForm.open()
  */
@@ -12,18 +12,19 @@
     var opt = function (k, d) { var v = script.getAttribute && script.getAttribute('data-' + k); return v === null || v === undefined ? d : v; };
     var FORM_URL = @json($url);
     var css = ''
-        + '.crmlf-btn{position:fixed;right:22px;bottom:22px;z-index:2147483000;display:inline-flex;align-items:center;gap:10px;padding:14px 20px 14px 16px;border:0;border-radius:999px;cursor:pointer;font:700 15px/1 Inter,system-ui,sans-serif;color:#fff;background:linear-gradient(135deg,#047857,#10b981 60%,#14b8a6);box-shadow:0 14px 32px -10px rgba(5,150,105,.75);transition:transform .2s,box-shadow .2s;animation:crmlf-rise .5s cubic-bezier(.2,.8,.2,1)}'
-        + '.crmlf-btn:hover{transform:translateY(-2px);box-shadow:0 18px 38px -10px rgba(5,150,105,.85)}'
-        + '.crmlf-btn i{position:relative;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.2);font-style:normal}'
-        + '.crmlf-btn i::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid rgba(255,255,255,.55);animation:crmlf-ping 1.8s infinite}'
-        + '.crmlf-ov{position:fixed;inset:0;z-index:2147483001;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}'
+        + '.crmlf-btn{position:fixed;right:22px;bottom:22px;z-index:2147483000;display:inline-flex;align-items:center;gap:10px;padding:10px 20px 10px 10px;border:1px solid rgba(255,255,255,.45);border-radius:999px;cursor:pointer;font:600 15px/1 Poppins,Inter,system-ui,sans-serif;color:#fff;background:linear-gradient(135deg,#ff3b47,#b80d17);box-shadow:0 14px 34px rgba(200,15,25,.4),inset 0 1px 0 rgba(255,255,255,.4);transition:transform .2s,box-shadow .2s;animation:crmlf-rise .5s cubic-bezier(.2,.8,.2,1)}'
+        + '.crmlf-btn:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(200,15,25,.5),inset 0 1px 0 rgba(255,255,255,.4)}'
+        + '.crmlf-btn i{position:relative;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#fff;color:#d3141f;font-style:normal;font-size:17px}'
+        + '.crmlf-btn i::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid rgba(255,255,255,.55);animation:crmlf-ping 2.4s ease-out infinite}'
+        + '.crmlf-ov{position:fixed;inset:0;z-index:2147483001;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,2,4,.4);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}'
         + '.crmlf-ov.open{opacity:1;visibility:visible}'
-        + '.crmlf-box{width:100%;max-width:480px;height:min(800px,calc(100vh - 32px));border-radius:22px;overflow:hidden;background:#fff;box-shadow:0 40px 90px -20px rgba(0,0,0,.5);transform:translateY(20px) scale(.97);transition:transform .3s cubic-bezier(.2,.8,.2,1)}'
+        + '.crmlf-box{width:100%;max-width:420px;height:min(860px,calc(100vh - 32px));border-radius:38px;overflow:hidden;background:#2b0306;border:1px solid rgba(255,255,255,.3);box-shadow:0 40px 90px rgba(0,0,0,.5);transform:translateY(16px) scale(.96);transition:transform .45s cubic-bezier(.2,.9,.25,1)}'
         + '.crmlf-ov.open .crmlf-box{transform:none}'
         + '.crmlf-box iframe{display:block;width:100%;height:100%;border:0}'
-        + '@media(max-width:520px){.crmlf-ov{padding:0;align-items:flex-end}.crmlf-box{max-width:none;height:92vh;border-radius:22px 22px 0 0}.crmlf-btn{right:14px;bottom:14px;padding:12px 16px 12px 12px;font-size:14px}}'
+        + '@media(max-width:600px){.crmlf-ov{padding:0;align-items:flex-end}.crmlf-box{max-width:none;height:92vh;border-radius:30px 30px 0 0;border-bottom:0;transform:translateY(100%)}.crmlf-btn{right:14px;bottom:16px;padding:9px 16px 9px 9px;font-size:14px}}'
+        + '@media(prefers-reduced-motion:reduce){.crmlf-btn,.crmlf-btn i::after{animation:none}.crmlf-box{transition:none}}'
         + '@keyframes crmlf-rise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}'
-        + '@keyframes crmlf-ping{0%{transform:scale(.9);opacity:1}100%{transform:scale(1.6);opacity:0}}';
+        + '@keyframes crmlf-ping{0%{transform:scale(.8);opacity:1}100%{transform:scale(1.5);opacity:0}}';
 
     var overlay, frame, lastFocus;
 
@@ -89,7 +90,7 @@
             b.className = 'crmlf-btn';
             b.id = 'crmlf-open';
             b.innerHTML = '<i>&#9742;</i><span></span>';
-            b.lastChild.textContent = opt('label', 'Get free consultation');
+            b.lastChild.textContent = opt('label', 'Free hearing check');
             b.addEventListener('click', open);
             document.body.appendChild(b);
         }

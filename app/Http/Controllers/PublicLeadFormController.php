@@ -23,6 +23,9 @@ class PublicLeadFormController extends Controller
 {
     private const TOKEN_MAX_AGE = 7200;
 
+    /** The short list of interests shown on the form (submissions may still send any InquiryType). */
+    private const CHOICES = [InquiryType::HEARING_TEST, InquiryType::HEARING_AID, InquiryType::REPAIR, InquiryType::OTHER];
+
     public function __construct(private WebLeadIntake $intake)
     {
     }
@@ -36,7 +39,7 @@ class PublicLeadFormController extends Controller
             'form'      => $form,
             'company'   => Setting::find(1)?->company_name ?: config('app.name'),
             'token'     => $now . '.' . $this->sign($form, $now),
-            'inquiries' => InquiryType::cases(),
+            'inquiries' => self::CHOICES,
             'preset'    => $form->default_inquiry ?? [],
             'embedded'  => $request->boolean('embed'),
             'turnstile' => config('weblead.turnstile_site_key'),
