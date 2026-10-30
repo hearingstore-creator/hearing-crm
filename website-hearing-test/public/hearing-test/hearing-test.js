@@ -841,6 +841,21 @@
         return Math.sqrt(s / arr.length) || 1;
     }
 
+    // Cuts silence below -40 dB re peak (10 ms windows), keeping 30 ms of padding.
+    function trimSilence(x, sr) {
+        var peak = 0, i, k;
+        for (i = 0; i < x.length; i++) { peak = Math.max(peak, Math.abs(x[i])); }
+        var win = Math.max(1, Math.round(sr * 0.01)), thr = peak * 0.01, first = -1, last = -1;
+        for (i = 0; i < x.length; i += win) {
+            var m = 0;
+            for (k = i; k < Math.min(i + win, x.length); k++) { m = Math.max(m, Math.abs(x[k])); }
+            if (m > thr) { if (first < 0) { first = i; } last = Math.min(i + win, x.length); }
+        }
+        if (first < 0) { return x; }
+        var pad = Math.round(sr * 0.03);
+        return x.subarray(Math.max(0, first - pad), Math.min(x.length, last + pad));
+    }
+
     var Din = {
         cache: {},       // lang -> Promise<{ digits: {d: AudioBuffer}, noise: AudioBuffer }>
         set: null,
@@ -858,10 +873,10 @@
                     .then(function (r) { if (!r.ok) { throw new Error(r.status); } return r.arrayBuffer(); })
                     .then(function (buf) { return new Promise(function (res, rej) { ctx.decodeAudioData(buf, res, rej); }); });
             })).then(function (bufs) {
-                // Equalise every digit to RMS 1 so the SNR is exact for each one.
+                // Trim leading/trailing silence, then equalise every digit to RMS 1 so the SNR is exact for each one.
                 var digits = {}, all = [];
                 bufs.forEach(function (b, i) {
-                    var src = b.getChannelData(0), g = 1 / rms(src);
+                    var src = trimSilence(b.getChannelData(0), b.sampleRate), g = 1 / rms(src);
                     var out = ctx.createBuffer(1, src.length, b.sampleRate), dst = out.getChannelData(0);
                     for (var k = 0; k < src.length; k++) { dst[k] = src[k] * g; }
                     digits[ds[i]] = out;

@@ -51,7 +51,12 @@ The files in `digits/` are **robot-voice placeholders** generated with espeak-ng
      - English: zero, one, two, three, four, five, six, eight, nine.
    - The tool trims silence, matches levels and saves `1.wav`, `2.wav` and so on.
    - Copy the files into `digits/bn/` or `digits/en/` and delete the old `.mp3` files there. The test uses MP3 first and WAV if there is no MP3.
-2. **Natural text-to-speech.** Run `scripts/make-digits-tts.sh` on your own computer. It needs internet, `pip install edge-tts` and ffmpeg. It generates the digits with Microsoft neural voices (`bn-BD-NabanitaNeural` / `en-US-JennyNeural`). Check the voice licence before commercial use.
+2. **Natural text-to-speech** (Microsoft neural voices `bn-BD-NabanitaNeural` / `en-US-JennyNeural`). Run it on your own computer, which needs internet:
+   - **Windows:** install Python from python.org (tick "Add to PATH"), then double-click `scripts/make-digits-tts.bat`.
+   - **Mac or Linux:** `pip install edge-tts`, then `python scripts/make_digits_tts.py`.
+   - Options: `--bn-voice bn-BD-PradeepNeural` (male), `--en-voice en-GB-SoniaNeural`, `--rate -10%`, `--only bn`.
+   - No ffmpeg needed. The test trims silence and matches loudness itself. A file is only replaced once its new version has downloaded completely.
+   - Check the voice licence before commercial use.
 
 3. **Re-norm the cut-offs.** DIN scores depend on the voice and the recordings, so the default `-9` / `-6` are only provisional.
    - Have at least 20 adults aged 18–30 with normal hearing (confirmed on your audiometer) take the test with `data-mode="din"`, in each language.
