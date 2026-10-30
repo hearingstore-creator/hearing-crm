@@ -28,9 +28,28 @@
 
     var overlay, frame, lastFocus;
 
+    var KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'];
+
+    // First ad click / landing on the website, kept for 90 days so a visitor who comes back later is still credited
+    function firstTouch() {
+        var stored = null;
+        try { stored = JSON.parse(localStorage.getItem('crmlf_ft') || 'null'); } catch (e) {}
+        if (stored && stored.at && Date.now() - stored.at > 90 * 864e5) { stored = null; }
+        var p = new URLSearchParams(location.search), now = {}, has = false;
+        KEYS.forEach(function (k) { if (p.get(k)) { now[k] = p.get(k); has = true; } });
+        if (!stored) {
+            stored = { at: Date.now(), lp: location.href, rf: (document.referrer && document.referrer.indexOf(location.host) === -1) ? document.referrer : '', p: now };
+            try { localStorage.setItem('crmlf_ft', JSON.stringify(stored)); } catch (e) {}
+        }
+        return { current: has ? now : null, stored: stored };
+    }
+    var touch = firstTouch();
+
     function src() {
-        var p = new URLSearchParams(location.search), q = '&ref=' + encodeURIComponent(location.href);
-        ['utm_source', 'utm_medium', 'utm_campaign'].forEach(function (k) { if (p.get(k)) { q += '&' + k + '=' + encodeURIComponent(p.get(k)); } });
+        var q = '&ref=' + encodeURIComponent(location.href), params = touch.current || touch.stored.p || {};
+        KEYS.forEach(function (k) { if (params[k]) { q += '&' + k + '=' + encodeURIComponent(params[k]); } });
+        if (touch.stored.lp) { q += '&lp=' + encodeURIComponent(touch.stored.lp); }
+        if (touch.stored.rf) { q += '&rf=' + encodeURIComponent(touch.stored.rf); }
         return FORM_URL + q;
     }
 

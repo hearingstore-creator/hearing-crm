@@ -26,10 +26,20 @@ class SmsLog extends Model
         'follow_up_created',
         'read_by_agent',
         'campaign_name',
+        'automation_trigger',
+        'sms_parts',
+        'retried_at',
+        'csms_id',
+        'gateway_ref',
+        'delivery_status',
+        'delivery_detail',
+        'delivery_checked_at',
     ];
 
     protected $casts = [
         'sent_at' => 'datetime',
+        'retried_at' => 'datetime',
+        'delivery_checked_at' => 'datetime',
     ];
 
     public function getTypeLabelAttribute(): string

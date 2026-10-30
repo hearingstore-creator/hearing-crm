@@ -22,6 +22,15 @@ class Ledger extends Model
         'details',
         'type',
         'ref_invoice_no',
+        'voucher_no',
+        'payee_name',
+        'payment_method',
+        'bank_name',
+        'transaction_no',
+        'attachment_path',
+        'status',
+        'approved_by',
+        'approved_at',
     ];
 
     public function head()

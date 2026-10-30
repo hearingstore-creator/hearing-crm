@@ -1,0 +1,51 @@
+/* Edit Sale page — small supplement to sales-invoice.css (Add Sale theme). Presentation only. */
+
+.sale-edit-page .se-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border: 1px solid #e2e8f0; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; color: #334155; background: #fff;
+}
+.sale-edit-page .se-chip i { color: #94a3b8; }
+.sale-edit-page .se-chip-accent { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+.sale-edit-page .se-sub { color: #64748b; font-size: 12.5px; }
+
+.sale-edit-page .se-secondary {
+    background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 16px;
+}
+
+.sale-edit-page .se-due-date {
+    margin-top: 10px; padding: 10px 12px; background: #fff1f2;
+    border: 1px solid #fecdd3; border-radius: 8px;
+}
+.sale-edit-page .se-due-date label {
+    display: flex; justify-content: space-between; margin-bottom: 4px;
+    font-size: 11.5px; font-weight: 700; color: #b91c1c;
+}
+.sale-edit-page .se-due-date input {
+    width: 100%; border: 1px solid #fda4af; background: #fff; border-radius: 6px;
+    font-size: 12.5px; font-weight: 700; padding: 5px 8px;
+}
+
+.sale-edit-page .se-fulfil {
+    margin-top: 12px; padding: 10px 12px; background: #f8fafc;
+    border: 1px solid #e2e8f0; border-radius: 8px;
+}
+.sale-edit-page .se-fulfil-row + .se-fulfil-row { margin-top: 8px; }
+.sale-edit-page .se-fulfil-row label {
+    display: block; margin-bottom: 3px; font-size: 11.5px; font-weight: 700; color: #475569;
+}
+.sale-edit-page .se-fulfil-row .form-control,
+.sale-edit-page .se-fulfil-row select,
+.sale-edit-page .se-fulfil-row input { font-size: 12px; font-weight: 600; }
+
+.sale-edit-page .items-table input[type="number"],
+.sale-edit-page .items-table input.qty,
+.sale-edit-page .items-table input.unit-price { text-align: right; }
+
+.sale-edit-page .items-scroll:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+.sale-edit-page .btn.disabled { opacity: .6; pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .sale-edit-page * { transition: none !important; animation: none !important; }
+}

@@ -26,6 +26,9 @@ class SmsCampaign extends Model
         'follow_up_days',
         'follow_up_assigned_user',
         'follow_up_mode',
+        'scheduled_at',
+        'approved_by',
+        'approval_note',
     ];
 
     protected $casts = [
@@ -34,6 +37,7 @@ class SmsCampaign extends Model
         'sent_count' => 'integer',
         'failed_count' => 'integer',
         'sent_at' => 'datetime',
+        'scheduled_at' => 'datetime',
     ];
 
     public function getStatusLabelAttribute(): ?string

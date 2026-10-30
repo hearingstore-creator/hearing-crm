@@ -54,6 +54,11 @@ class SmsService
                 continue;
             }
             $seen[$normalized] = true;
+            if (!($recipient instanceof \App\Support\SmsPerson)
+                && !\App\Support\Region::mayMarketTo($recipient instanceof Customer ? 'customer' : 'lead', (int) $recipient->id)) {
+                $skipped++;   // no marketing consent (consent rule on)
+                continue;
+            }
 
             $data = $this->buildRecipientData($recipient);
             $message = $this->replaceVariables($campaign->message_body, $data);
@@ -66,7 +71,7 @@ class SmsService
             ];
 
             $recipientData[] = [
-                'recipient_type' => $recipient instanceof Customer ? 'customer' : 'lead',
+                'recipient_type' => $recipient instanceof \App\Support\SmsPerson ? $recipient->sms_recipient_type : ($recipient instanceof Customer ? 'customer' : 'lead'),
                 'recipient_id' => $recipient->id,
                 'phone_number' => $phone,
                 'message'      => $message,
@@ -104,6 +109,8 @@ class SmsService
                     'message' => $item['message'],
                     'type' => SmsType::BULK->value,
                     'status' => $logStatus,
+                    'csms_id' => $item['csms_id'],
+                    'gateway_ref' => isset($info['reference_id']) && is_scalar($info['reference_id']) ? (string) $info['reference_id'] : null,
                     'gateway_response' => $result['response'] ?? null,
                     'error_message' => $logError,
                     'sent_at' => now(),
@@ -131,6 +138,11 @@ class SmsService
         if ($type === 'lead_ids') {   // Deals list → Send SMS: exactly the people that were ticked
             return Lead::withoutGlobalScopes()->whereNull('deleted_at')
                 ->whereIn('id', $campaign->filter_criteria['lead_ids'] ?? [])->get();
+        }
+        if ($type === 'team') {   // doctors, referrers, employees
+            $criteria = $campaign->filter_criteria ?? [];
+
+            return app(SmsAudienceFilterService::class)->filterTeam(array_is_list($criteria) ? $criteria : []);
         }
         if (in_array($type, ['leads', 'customers'], true)) {
             $criteria = $campaign->filter_criteria ?? [];
@@ -328,6 +340,13 @@ class SmsService
             ];
         }
 
+        if ($recipient instanceof \App\Support\SmsPerson) {
+            return [
+                'name'          => $recipient->full_name,
+                'company_phone' => $companyPhone,
+            ];
+        }
+
         if ($recipient instanceof Lead) {
             return [
                 'name'          => $recipient->full_name ?? '',
@@ -341,7 +360,7 @@ class SmsService
     /**
      * Send single SMS via gateway and log the result
      */
-    public function sendAndLogSms(string $phone, string $message, string $recipientType, int $recipientId, string $csmsId = null): void
+    public function sendAndLogSms(string $phone, string $message, string $recipientType, int $recipientId, string $csmsId = null, SmsType $type = SmsType::AUTOMATED, ?string $automationTrigger = null): void
     {
         $csmsId = $csmsId ?? 'SMS-' . time() . '-' . rand(1000, 9999);
 
@@ -350,14 +369,19 @@ class SmsService
 
             $decoded = $response ? json_decode($response, true) : null;
             $success = $decoded && isset($decoded['status']) && $decoded['status'] === 'SUCCESS';
+            $gatewayRef = $decoded['smsinfo'][0]['reference_id'] ?? ($decoded['reference_id'] ?? null);
 
             SmsLog::create([
                 'recipient_type'  => $recipientType,
                 'recipient_id'    => $recipientId,
                 'phone_number'    => $phone,
                 'message'         => $message,
-                'type'            => SmsType::AUTOMATED->value,
+                'type'            => $type->value,
+                'automation_trigger' => $automationTrigger,
+                'sms_parts'       => \App\Http\Controllers\Admin\SmsController::smsParts($message),
                 'status'          => $success ? SmsStatus::SENT->value : SmsStatus::FAILED->value,
+                'csms_id'         => $csmsId,
+                'gateway_ref'     => is_scalar($gatewayRef) ? (string) $gatewayRef : null,
                 'gateway_response' => $response,
                 'error_message'   => !$success ? ($decoded['error_message'] ?? 'Unknown error') : null,
                 'sent_at'         => now(),
@@ -368,8 +392,11 @@ class SmsService
                 'recipient_id'    => $recipientId,
                 'phone_number'    => $phone,
                 'message'         => $message,
-                'type'            => SmsType::AUTOMATED->value,
+                'type'            => $type->value,
+                'automation_trigger' => $automationTrigger,
+                'sms_parts'       => \App\Http\Controllers\Admin\SmsController::smsParts($message),
                 'status'          => SmsStatus::FAILED->value,
+                'csms_id'         => $csmsId,
                 'error_message'   => $e->getMessage(),
                 'sent_at'         => now(),
             ]);

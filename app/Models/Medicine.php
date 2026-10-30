@@ -11,11 +11,6 @@ class Medicine extends Model
     use HasFactory, HelperTrait;
     
     protected $guarded = ['id'];
-
-    public function unit()
-    {
-        return $this->belongsTo(Unit::class, 'unit_id');
-    }
     
     public function leaf()
     {
@@ -25,10 +20,5 @@ class Medicine extends Model
     public function batch()
     {
        return $this->hasMany(Batch::class);
-    }
-
-    public function manufacturer()
-    {
-        return $this->belongsTo(Manufacturer::class, 'manufacturer_id', 'id');
     }
 }

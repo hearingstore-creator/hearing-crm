@@ -434,16 +434,16 @@ $(function () {
         if ($breakdown.length) {
             var parts = [];
             if (totalProductCommission > 0) {
-                parts.push('Doctor Products: ৳' + totalProductCommission.toFixed(2) + ((catOverrideCount + modelOverrideCount) > 0 ? ' (' + (modelOverrideCount > 0 ? modelOverrideCount + ' model' : '') + (modelOverrideCount > 0 && catOverrideCount > 0 ? ', ' : '') + (catOverrideCount > 0 ? catOverrideCount + ' category' : '') + ' rules)' : ''));
+                parts.push('Doctor Products: ' + (window.CRM_CURRENCY || '৳') + totalProductCommission.toFixed(2) + ((catOverrideCount + modelOverrideCount) > 0 ? ' (' + (modelOverrideCount > 0 ? modelOverrideCount + ' model' : '') + (modelOverrideCount > 0 && catOverrideCount > 0 ? ', ' : '') + (catOverrideCount > 0 ? catOverrideCount + ' category' : '') + ' rules)' : ''));
             }
             if (totalServiceCommission > 0) {
-                parts.push('Doctor Services: ৳' + totalServiceCommission.toFixed(2) + (srvOverrideCount > 0 ? ' (' + srvOverrideCount + ' srv overrides)' : ''));
+                parts.push('Doctor Services: ' + (window.CRM_CURRENCY || '৳') + totalServiceCommission.toFixed(2) + (srvOverrideCount > 0 ? ' (' + srvOverrideCount + ' srv overrides)' : ''));
             }
             if (secCommission > 0) {
-                parts.push('Accompanying Referrer: ৳' + secCommission.toFixed(2));
+                parts.push('Accompanying Referrer: ' + (window.CRM_CURRENCY || '৳') + secCommission.toFixed(2));
             }
             if (parts.length > 0) {
-                var totalLabel = secCommission > 0 ? ' &nbsp;|&nbsp; <b>Total: ৳' + combinedCommission.toFixed(2) + '</b>' : '';
+                var totalLabel = secCommission > 0 ? ' &nbsp;|&nbsp; <b>Total: ' + (window.CRM_CURRENCY || '৳') + combinedCommission.toFixed(2) + '</b>' : '';
                 $breakdown.html('<i class="fas fa-calculator mr-1"></i>' + parts.join(' &nbsp;|&nbsp; ') + totalLabel).slideDown(100);
             } else {
                 $breakdown.slideUp(100);
@@ -1055,6 +1055,16 @@ $(function () {
         $form.append(oldBatchInput);
         $form.append(oldSerialInput);
 
+        // Send the sale only once: a double click must not post it twice
+        if (this.id === 'saleForm') {
+            if ($form.data('sending')) {
+                return false;
+            }
+            $form.data('sending', true);
+            $('button[type="submit"][form="saleForm"], #saleForm button[type="submit"], #btn-quick-checkout')
+                .prop('disabled', true).addClass('disabled');
+        }
+
         // Submit the form programmatically
         this.submit();
     });
@@ -1084,7 +1094,7 @@ $(function () {
         $('#secondary_reference_by').val('').trigger('change');
         $('#secondary_reference_amount').val('0.00');
         $('#secondary_notes').val('');
-        $('#secondary_comm_display').val('৳0.00');
+        $('#secondary_comm_display').val((window.CRM_CURRENCY || '৳') + '0.00');
         $('#summary-secondary-comm-row').hide();
         calculateDoctorCommission();
     });
@@ -1093,7 +1103,7 @@ $(function () {
         var pri = parseFloat($('#primary_reference_amount').val()) || (parseFloat($('.reference-amount').val()) || 0);
         var sec = parseFloat($('#secondary_reference_amount').val()) || 0;
         var tot = pri + sec;
-        $('#secondary_comm_display').val('৳' + sec.toFixed(2));
+        $('#secondary_comm_display').val((window.CRM_CURRENCY || '৳') + sec.toFixed(2));
         if (sec > 0) {
             $('#summary-secondary-comm-row').show();
         } else {

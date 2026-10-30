@@ -783,7 +783,7 @@ class CustomerController extends Controller
             'type'            => ['required', 'string', Rule::in(Helper::transactionType())],
             'paid_amount'     => ['required', 'numeric', 'min:0.01', 'max:99999999'],
             'date'            => ['required', 'date'],
-            'sale_invoice_no' => ['nullable', 'string', 'exists:sale_masters,sale_invoice_no'],
+            'sale_invoice_no' => ['nullable', 'string', 'exists:sale_masters,sale_invoice_no,deleted_at,NULL'],
             'new_due_date'    => ['nullable', 'date'],
             'details'         => ['nullable', 'string', 'max:1000'],
         ]);

@@ -42,6 +42,12 @@ class Proposal extends Model
         'notes',
         'status',
         'converted_sale_id',
+        'public_token',
+        'payment_url',
+        'viewed_at',
+        'responded_at',
+        'responded_name',
+        'response_note',
     ];
 
     protected $casts = [
@@ -53,6 +59,8 @@ class Proposal extends Model
         'vat_amount' => 'decimal:2',
         'grand_total' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'viewed_at' => 'datetime',
+        'responded_at' => 'datetime',
     ];
 
     /**

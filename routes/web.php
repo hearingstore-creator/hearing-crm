@@ -42,6 +42,15 @@ Route::get('/', function () {
 // Public website lead form (open directly or as a popup via embed.js)
 Route::middleware('throttle:60,1')->group(function () {
     Route::get('f/{key}', [\App\Http\Controllers\PublicLeadFormController::class, 'show'])->name('public.form');
+    // One-question satisfaction survey from an SMS link
+    Route::get('s/{token}', [\App\Http\Controllers\PublicSurveyController::class, 'show'])->name('public.survey')->middleware('throttle:60,1');
+    Route::post('s/{token}', [\App\Http\Controllers\PublicSurveyController::class, 'answer'])->name('public.survey.answer')->middleware('throttle:10,1');
+    // Google Ads offline conversions (scheduled fetch by Google; key = GOOGLE_CONVERSIONS_KEY)
+    Route::get('exports/google-ads-conversions.csv', [\App\Http\Controllers\Api\ConversionExportController::class, 'google'])->name('exports.google-conversions')->middleware('throttle:30,1');
+    // A quotation the patient opens from its private link, accepts or declines
+    Route::get('q/{token}', [\App\Http\Controllers\PublicQuoteController::class, 'show'])->name('public.quote')->middleware('throttle:60,1');
+    Route::post('q/{token}/accept', [\App\Http\Controllers\PublicQuoteController::class, 'accept'])->name('public.quote.accept')->middleware('throttle:10,1');
+    Route::post('q/{token}/decline', [\App\Http\Controllers\PublicQuoteController::class, 'decline'])->name('public.quote.decline')->middleware('throttle:10,1');
     Route::get('f/{key}/embed.js', [\App\Http\Controllers\PublicLeadFormController::class, 'embed'])->name('public.form.embed');
     Route::post('f/{key}', [\App\Http\Controllers\PublicLeadFormController::class, 'submit'])
         ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class)->name('public.form.submit');
@@ -74,6 +83,9 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('/dashboard/today/chart/{chart}', [\App\Http\Controllers\Admin\DashboardTodayController::class, 'chart'])->name('dashboard.today.chart');
     Route::get('/dashboard/audience/{segment}', [\App\Http\Controllers\Admin\DashboardAudienceController::class, 'export'])->name('dashboard.audience.export');
     Route::resource('leads', 'LeadController');
+    // A person's data request: download everything, or erase them (Super Admin)
+    Route::get('leads/{id}/data-export', [\App\Http\Controllers\Admin\PersonDataController::class, 'export'])->whereNumber('id')->name('leads.data-export');
+    Route::post('leads/{id}/erase', [\App\Http\Controllers\Admin\PersonDataController::class, 'erase'])->whereNumber('id')->name('leads.erase');
     // Old add/edit follow-up forms retired: activities are added from the lead profile / Deals board
     Route::patch('leads/follow-ups/{id}/complete', [LeadController::class, 'completeFollowUp']);
     Route::post('leads-import', [LeadController::class, 'importLeads']);
@@ -103,8 +115,13 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('deals/{id}/lost', [DealController::class, 'lost'])->whereNumber('id')->name('deals.lost');
     Route::post('deals/{id}/reopen', [DealController::class, 'reopen'])->whereNumber('id')->name('deals.reopen');
     Route::post('deals/{id}/transfer', [DealController::class, 'transfer'])->whereNumber('id')->name('deals.transfer');
+    Route::post('deals/{id}/pipeline', [DealController::class, 'changePipeline'])->whereNumber('id')->name('deals.pipeline');
 
     Route::get('pipeline-settings', [PipelineSettingsController::class, 'index'])->name('pipeline.settings');
+    Route::post('pipeline-settings/pipelines', [PipelineSettingsController::class, 'storePipeline']);
+    Route::put('pipeline-settings/pipelines/{id}', [PipelineSettingsController::class, 'updatePipeline'])->whereNumber('id');
+    Route::post('pipeline-settings/pipelines/{id}/archive', [PipelineSettingsController::class, 'archivePipeline'])->whereNumber('id');
+    Route::post('pipeline-settings/pipelines/{id}/restore', [PipelineSettingsController::class, 'restorePipeline'])->whereNumber('id');
     Route::post('pipeline-settings/stages', [PipelineSettingsController::class, 'storeStage']);
     Route::post('pipeline-settings/stages/reorder', [PipelineSettingsController::class, 'reorder']);
     Route::put('pipeline-settings/stages/{id}', [PipelineSettingsController::class, 'updateStage']);
@@ -116,6 +133,10 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::put('pipeline-settings/office-hours', [PipelineSettingsController::class, 'updateHours']);
     Route::post('pipeline-settings/holidays', [PipelineSettingsController::class, 'storeHoliday']);
     Route::delete('pipeline-settings/holidays/{id}', [PipelineSettingsController::class, 'destroyHoliday']);
+    Route::post('pipeline-settings/assignment-rules', [PipelineSettingsController::class, 'storeRule']);
+    Route::put('pipeline-settings/assignment-rules/{id}', [PipelineSettingsController::class, 'updateRule'])->whereNumber('id');
+    Route::delete('pipeline-settings/assignment-rules/{id}', [PipelineSettingsController::class, 'destroyRule'])->whereNumber('id');
+    Route::put('pipeline-settings/lead-score', [PipelineSettingsController::class, 'updateScoring']);
 
     // Header bell + deal reports
     Route::get('notifications/settings', [\App\Http\Controllers\Admin\NotificationController::class, 'settings'])->name('notifications.settings');
@@ -124,10 +145,39 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('notifications/read-all', [\App\Http\Controllers\Admin\NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::get('deal-reports', [\App\Http\Controllers\Admin\DealReportController::class, 'index'])->name('deal-reports.index');
 
+    // Follow-up sequences (SMS, email, WhatsApp, call tasks over days) and starting / stopping one on a deal
+    Route::get('sequences', [\App\Http\Controllers\Admin\SequenceController::class, 'index'])->name('sequences.index');
+    Route::get('sequences/create', [\App\Http\Controllers\Admin\SequenceController::class, 'create'])->name('sequences.create');
+    Route::post('sequences', [\App\Http\Controllers\Admin\SequenceController::class, 'store'])->name('sequences.store');
+    Route::get('sequences/{id}/edit', [\App\Http\Controllers\Admin\SequenceController::class, 'edit'])->whereNumber('id')->name('sequences.edit');
+    Route::put('sequences/{id}', [\App\Http\Controllers\Admin\SequenceController::class, 'update'])->whereNumber('id')->name('sequences.update');
+    Route::post('sequences/{id}/toggle', [\App\Http\Controllers\Admin\SequenceController::class, 'toggle'])->whereNumber('id')->name('sequences.toggle');
+    Route::delete('sequences/{id}', [\App\Http\Controllers\Admin\SequenceController::class, 'destroy'])->whereNumber('id')->name('sequences.destroy');
+    Route::post('deals/{id}/sequence', [\App\Http\Controllers\Admin\SequenceController::class, 'enroll'])->whereNumber('id')->name('deals.sequence.start');
+    Route::post('deals/{id}/trials', [\App\Http\Controllers\Admin\DealTrialController::class, 'store'])->whereNumber('id')->name('deals.trials.store');
+    Route::post('deals/{id}/trials/take-home', [\App\Http\Controllers\Admin\DealTrialController::class, 'takeHome'])->whereNumber('id')->name('deals.trials.take-home');
+    Route::post('deal-trials/{id}/close', [\App\Http\Controllers\Admin\DealTrialController::class, 'close'])->whereNumber('id')->name('deals.trials.close');
+    Route::post('sequence-enrollments/{id}/stop', [\App\Http\Controllers\Admin\SequenceController::class, 'stop'])->whereNumber('id')->name('deals.sequence.stop');
+
+    // Marketing: campaigns, monthly spend (books the advertising expense), and the return report
+    Route::get('marketing/campaigns', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'index'])->name('marketing.campaigns.index');
+    Route::post('marketing/campaigns', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'store'])->name('marketing.campaigns.store');
+    Route::put('marketing/campaigns/{id}', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'update'])->name('marketing.campaigns.update');
+    Route::delete('marketing/campaigns/{id}', [\App\Http\Controllers\Admin\MarketingCampaignController::class, 'destroy'])->name('marketing.campaigns.destroy');
+    Route::get('marketing/spend', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'index'])->name('marketing.spend.index');
+    Route::post('marketing/spend', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'store'])->name('marketing.spend.store');
+    Route::post('marketing/spend/link-expense', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'linkExpense'])->name('marketing.spend.link');
+    Route::post('marketing/spend/import', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'importPreview'])->name('marketing.spend.import');
+    Route::post('marketing/spend/import/confirm', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'importConfirm'])->name('marketing.spend.import.confirm');
+    Route::delete('marketing/spend/{id}', [\App\Http\Controllers\Admin\MarketingSpendController::class, 'destroy'])->name('marketing.spend.destroy');
+    Route::get('marketing/roi', [\App\Http\Controllers\Admin\MarketingRoiController::class, 'index'])->name('marketing.roi.index');
+    Route::get('marketing/roi/export', [\App\Http\Controllers\Admin\MarketingRoiController::class, 'export'])->name('marketing.roi.export');
+
     // Website leads: inbox, capture forms, blocklist
     Route::get('web-leads', [\App\Http\Controllers\Admin\WebLeadController::class, 'index'])->name('web-leads.index');
     Route::post('web-leads/{id}/retry', [\App\Http\Controllers\Admin\WebLeadController::class, 'retry'])->whereNumber('id');
     Route::post('web-leads/{id}/spam', [\App\Http\Controllers\Admin\WebLeadController::class, 'spam'])->whereNumber('id');
+    Route::post('web-leads/events/{id}/retry', [\App\Http\Controllers\Admin\WebLeadController::class, 'retryEvent'])->whereNumber('id')->name('web-leads.events.retry');
     Route::post('web-leads/forms', [\App\Http\Controllers\Admin\WebLeadController::class, 'storeForm']);
     Route::put('web-leads/forms/{id}', [\App\Http\Controllers\Admin\WebLeadController::class, 'updateForm'])->whereNumber('id');
     Route::post('web-leads/forms/{id}/secret', [\App\Http\Controllers\Admin\WebLeadController::class, 'regenerateSecret'])->whereNumber('id');
@@ -178,6 +228,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('proposal/{id}/status', [\App\Http\Controllers\Admin\ProposalController::class, 'updateStatus'])->name('proposal.status');
     Route::post('proposal/{id}/convert-to-sale', [\App\Http\Controllers\Admin\ProposalController::class, 'convertToSale'])->name('proposal.convert');
     Route::post('proposal/{id}/email', [\App\Http\Controllers\Admin\ProposalController::class, 'sendEmail'])->name('proposal.email');
+    Route::post('proposal/{id}/share', [\App\Http\Controllers\Admin\ProposalController::class, 'share'])->name('proposal.share');
     Route::get('proposal/{id}/pdf', [\App\Http\Controllers\Admin\ProposalController::class, 'downloadPdf'])->name('proposal.pdf');
     Route::get('proposal-add-row-item', [\App\Http\Controllers\Admin\ProposalController::class, 'addRowItem'])->name('proposal.add-row');
     Route::resource('proposal', 'ProposalController');
@@ -253,9 +304,9 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('doctors-due/{id}', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'getDoctorDue'])->name('doctors.due');
     Route::get('doctors-period-unsettled', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'getPeriodUnsettled'])->name('doctors.period-unsettled');
     Route::post('doctors-payment/settle/{saleId}', [\App\Http\Controllers\Admin\DoctorPaymentController::class, 'settleReferral'])->name('doctors.payment.settle');
-    Route::resource('manufacturer-return', 'ManufacturerReturnController');
+    Route::resource('manufacturer-return', 'ManufacturerReturnController')->only(['index', 'store', 'show', 'destroy']);
 
-    Route::resource('customer-return', 'CustomerReturnController');
+    Route::resource('customer-return', 'CustomerReturnController')->only(['index', 'store', 'show', 'destroy']);
     Route::post('customer/add-return', [CustomerReturnController::class, 'customerAddReturn'])->name('customer.add-return');
     Route::get('customer-return-list', [CustomerReturnController::class, 'customerReturnList'])->name('customer-return.list');
 
@@ -288,7 +339,6 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::post('sales/service-detail/{id}/book-later', [SaleController::class, 'markServiceBookLater'])->name('sales.service-book-later');
 
     Route::resource('sale', 'SaleController');
-    Route::get('sale-list', [SaleController::class, 'saleList'])->name('sale.list');
     Route::get('sale-add-row-item', [SaleController::class, 'addRowItem'])->name('sale.add-row');
     Route::get('sale-add-service-row-item', [SaleController::class, 'addServiceRowItem'])->name('sale.add-service-row');
     Route::get('product-serial-numbers/{id}', [SaleController::class, 'getProductSerialNumbers'])->name('sale.product.serial');
@@ -298,7 +348,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     // Sales Returns & Credit Notes
     Route::get('sale-returns/items/by-sale', [\App\Http\Controllers\Admin\SaleReturnController::class, 'getSaleItems'])->name('sale-returns.items');
     Route::get('sale-returns/customer-invoices', [\App\Http\Controllers\Admin\SaleReturnController::class, 'getCustomerInvoices'])->name('sale-returns.customer-invoices');
-    Route::resource('sale-returns', \App\Http\Controllers\Admin\SaleReturnController::class);
+    Route::resource('sale-returns', \App\Http\Controllers\Admin\SaleReturnController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
 
     // Repair, Replacement & Warranty Module
     // Repair, Replacement & Warranty Module (Plan B with Plan A Legacy Switch)
@@ -346,15 +396,20 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
 
 
     Route::resource('income-expense-head', 'IncomeExpenseHeadController');
-    Route::resource('income', 'IncomeController');
+    Route::get('voucher-book', [\App\Http\Controllers\Admin\VoucherBookController::class, 'index'])->name('voucher-book');
+    Route::get('income/{id}/attachment', [IncomeController::class, 'attachment'])->name('income.attachment');
+    Route::post('income/{id}/approve', [IncomeController::class, 'approve'])->name('income.approve');
+    Route::post('expense/{id}/approve', [\App\Http\Controllers\Admin\ExpenseController::class, 'approve'])->name('expense.approve');
+    Route::resource('income', 'IncomeController')->only(['index', 'create', 'store', 'show', 'destroy']);
     Route::get('income-list', [IncomeController::class, 'incomeList'])->name('income.list');
+    Route::get('expense/{id}/attachment', [\App\Http\Controllers\Admin\ExpenseController::class, 'attachment'])->name('expense.attachment');
     Route::resource('expense', 'ExpenseController');
 
     Route::get('employee-list', [EmployeeController::class, 'employeeList'])->name('employee.list');
     Route::get('employee-search', [HomeController::class, 'employeeSearch'])->name('employee.search');
 
 
-    Route::resource('setting', 'SettingController');
+    Route::resource('setting', 'SettingController')->only(['create', 'update']);
 
     Route::get('settings-hub', [\App\Http\Controllers\Admin\SettingsHubController::class, 'index'])->name('settings.hub');
     Route::get('activity-log/export', [\App\Http\Controllers\Admin\ActivityLogController::class, 'export'])->name('activity-log.export');
@@ -422,6 +477,15 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     Route::get('sms', [SmsController::class, 'index'])->name('sms.index');
     Route::post('sms/recipients', [SmsController::class, 'getRecipients']);
     Route::post('sms/send', [SmsController::class, 'sendCampaign'])->name('sms.send');
+    Route::post('sms/quick-send', [SmsController::class, 'quickSend'])->name('sms.quick-send');
+    Route::post('sms/test-send', [SmsController::class, 'testSend'])->name('sms.test-send');
+    Route::post('sms/gateway-balance', [SmsController::class, 'gatewayBalance'])->name('sms.gateway-balance');
+    Route::post('sms/campaigns/{id}/approve', [SmsController::class, 'approveCampaign'])->name('sms.campaigns.approve');
+    Route::post('sms/campaigns/{id}/reject', [SmsController::class, 'rejectCampaign'])->name('sms.campaigns.reject');
+    Route::post('sms-log/refresh-delivery', [SmsController::class, 'refreshDelivery'])->name('sms.log.refresh-delivery');
+    Route::delete('sms/campaigns/{id}/cancel', [SmsController::class, 'cancelScheduled'])->name('sms.campaigns.cancel');
+    Route::post('sms-log/retry-failed', [SmsController::class, 'retryFailed'])->name('sms.log.retry-failed');
+    Route::post('sms-log/{id}/resend', [SmsController::class, 'resend'])->name('sms.log.resend');
     Route::get('sms-log', [SmsController::class, 'logIndex'])->name('sms.log');
     Route::get('sms-analytics', [SmsController::class, 'analytics'])->name('sms.analytics');
     Route::post('sms/opt-outs', [SmsController::class, 'optOutStore'])->name('sms.opt-outs.store');
@@ -437,6 +501,7 @@ Route::group(['namespace' => '\App\Http\Controllers\Admin', 'prefix' => 'admin',
     
     // SMS Automations
     Route::resource('sms-automations', App\Http\Controllers\Admin\SmsAutomationController::class)->except(['show']);
+    Route::post('sms-automations/mode', [App\Http\Controllers\Admin\SmsAutomationController::class, 'mode'])->name('sms-automations.mode');
     Route::post('sms-automations/{id}/toggle', [App\Http\Controllers\Admin\SmsAutomationController::class, 'toggle']);
 
     // SMS Templates — Full CRUD

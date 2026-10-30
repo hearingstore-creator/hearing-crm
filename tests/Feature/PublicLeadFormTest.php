@@ -67,6 +67,22 @@ class PublicLeadFormTest extends TestCase
         $this->assertSame(['hearing_test'], $s->inquiry_for);
     }
 
+    public function test_ad_tracking_and_consent_still_reach_the_submission(): void
+    {
+        $page = $this->get('/f/consultation')->assertOk();
+        $page->assertSee('name="consent"', false)->assertSee("'gclid'", false)->assertSee("data.append('landing_page'", false);
+
+        $this->postJson('/f/consultation', [
+            'name' => 'Rahim Uddin', 'phone' => '01712345678', 'consent' => '1', 't' => $this->token(),
+            'utm_source' => 'google', 'gclid' => 'abc123', 'landing_page' => 'https://hearingstore.com.bd/offer',
+        ])->assertOk();
+
+        $s = LeadSubmission::firstOrFail();
+        $this->assertSame('abc123', $s->gclid);
+        $this->assertSame('https://hearingstore.com.bd/offer', $s->landing_page);
+        $this->assertTrue((bool) $s->consent);
+    }
+
     public function test_a_bad_phone_number_is_rejected(): void
     {
         $this->postJson('/f/consultation', ['name' => 'Rahim Uddin', 'phone' => '12345', 't' => $this->token()])

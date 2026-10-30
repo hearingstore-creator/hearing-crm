@@ -25,6 +25,7 @@
          data-value="{{ (float) $deal->value }}" data-name="{{ $lead->full_name ?? 'Deal' }}"
          data-inquiry='@json($deal->inquiry_for ?? [])' data-vendor="{{ $deal->vendor_id }}" data-owner="{{ $deal->owner_id }}">
     <div class="dc-top">
+        @include('admin.deal._score', ['deal' => $deal])
         @if ($temp)
             <span class="dc-temp t-{{ $temp->value }}" title="{{ $temp->label() }}"><i class="{{ $temp->icon() }}"></i></span>
         @endif

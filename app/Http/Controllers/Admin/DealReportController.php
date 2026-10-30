@@ -33,6 +33,12 @@ class DealReportController extends Controller
         }
         $isHq = !auth()->user()->branchId();
         $group = in_array($request->group, ['branch', 'owner', 'source', 'campaign'], true) ? $request->group : 'campaign';
+        // One pipeline at a time: funnel, time in stage and forecast only make sense against one set of stages
+        $pipeline = ($request->filled('pipeline') ? Pipeline::find((int) $request->pipeline) : null) ?? Pipeline::default();
+        $request->merge(['pipeline' => $pipeline->id]);
+        $pipelines = Pipeline::where(fn ($q) => $q->whereNull('archived_at')->where('is_active', true))->orWhere('is_default', true)
+            ->orWhereIn('id', Deal::withoutGlobalScopes()->select('pipeline_id')->distinct())
+            ->orderByDesc('is_default')->orderBy('sort_order')->orderBy('id')->get(['id', 'name', 'is_default', 'archived_at']);
 
         $deals = $this->scoped($request, $isHq)
             ->whereBetween('deals.created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
@@ -40,14 +46,14 @@ class DealReportController extends Controller
                 'lead:id,full_name', 'lead.customer' => fn ($q) => $q->withoutGlobalScopes()->select('id', 'lead_id', 'created_at')])
             ->get();
         $ids = $deals->pluck('id');
-        $stages = Pipeline::default()->activeStages()->get(['id', 'name', 'sort_order', 'color', 'probability']);
+        $stages = $pipeline->activeStages()->get(['id', 'name', 'sort_order', 'color', 'probability']);
 
         $won = $deals->where('status', Deal::WON);
         $lost = $deals->where('status', Deal::LOST);
         $closed = $won->count() + $lost->count();
 
         return view('admin.deal-report.index', [
-            'from' => $from, 'to' => $to, 'group' => $group, 'isHq' => $isHq,
+            'from' => $from, 'to' => $to, 'group' => $group, 'isHq' => $isHq, 'pipeline' => $pipeline, 'pipelines' => $pipelines,
             'branches' => \App\Classes\Helper::branchOptions(),
             'summary' => [
                 'deals'    => $deals->count(),
@@ -63,12 +69,14 @@ class DealReportController extends Controller
             'breakdown' => $this->breakdown($deals, $group),
             'members'   => $this->members($deals),
             'forecast'  => $this->forecast($request, $isHq, $stages),
+            'trials'    => $this->trials($from, $to, $isHq ? null : auth()->user()->branchId()),
+            'feedback'  => \App\Services\RetentionService::summary($from, $to, $isHq ? null : auth()->user()->branchId()),
         ]);
     }
 
     private function scoped(Request $request, bool $isHq): Builder
     {
-        $q = Deal::query();
+        $q = Deal::query()->where('deals.pipeline_id', (int) $request->pipeline);
         if (auth()->user()->isProfessional()) {
             $q->where('deals.owner_id', auth()->id());
         }
@@ -208,6 +216,31 @@ class DealReportController extends Controller
             'count' => (int) ($rows[$s->id]->c ?? 0), 'value' => (float) ($rows[$s->id]->v ?? 0),
             'weighted' => (float) ($rows[$s->id]->v ?? 0) * $s->probability / 100,
         ])->all();
+    }
+
+    /**
+     * Trials of the period: per model, how many deals tried it and how many of those were won;
+     * and how the trials went (the reasons people did not buy).
+     */
+    private function trials(Carbon $from, Carbon $to, ?int $branchId): array
+    {
+        $rows = DB::table('deal_trials as t')->join('deals as d', 'd.id', '=', 't.deal_id')->whereNull('d.deleted_at')
+            ->whereBetween('t.created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->when($branchId, fn ($q) => $q->where('d.vendor_id', $branchId))
+            ->get(['t.deal_id', 't.product_label', 't.result', 't.kind', 'd.status']);
+
+        $byModel = $rows->groupBy('product_label')->map(function ($list, $label) {
+            $deals = $list->unique('deal_id');
+            $won = $deals->where('status', Deal::WON)->count();
+
+            return ['model' => $label, 'tried' => $deals->count(), 'won' => $won, 'rate' => $deals->count() ? round($won / $deals->count() * 100) : null,
+                'takeHome' => $list->where('kind', 'take_home')->count()];
+        })->sortByDesc('tried')->values()->all();
+
+        $results = $rows->whereNotNull('result')->groupBy('result')->map->count()->sortDesc();
+
+        return ['byModel' => $byModel, 'results' => $results, 'total' => $rows->unique('deal_id')->count(),
+            'won' => $rows->unique('deal_id')->where('status', Deal::WON)->count()];
     }
 
     private function date(?string $value, Carbon $default): Carbon

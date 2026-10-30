@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\SmsFilterGroup;
+use App\Support\SmsPerson;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -144,18 +145,88 @@ class SmsAudienceFilterService
     }
 
     /**
+     * Doctors, referrers (quack / agent), employees and branch managers.
+     * Filters: group (doctor|quack|agent|employee|branch), role (employee role ids), person ("doctor:ID" / "user:ID" picks).
+     * Groups and picked people are added together; with neither, nobody is selected. Inactive people are left out.
+     */
+    public function filterTeam(array $filters): Collection
+    {
+        $groups = [];
+        $roles = [];
+        $picked = [];
+        foreach ($filters as $filter) {
+            $values = (array) ($filter['values'] ?? []);
+            match ($filter['field'] ?? '') {
+                'group' => $groups = array_merge($groups, $values),
+                'role' => $roles = array_merge($roles, $values),
+                'person' => $picked = array_merge($picked, $values),
+                default => null,
+            };
+        }
+
+        $people = collect();
+
+        $doctorTypes = array_values(array_intersect($groups, ['doctor', 'quack', 'agent']));
+        $doctorIds = collect($picked)->filter(fn ($p) => str_starts_with($p, 'doctor:'))->map(fn ($p) => (int) substr($p, 7))->all();
+        if ($doctorTypes || $doctorIds) {
+            \App\Models\Doctor::query()->where('status', 1)
+                ->where(function ($q) use ($doctorTypes, $doctorIds) {
+                    if ($doctorTypes) {
+                        $q->whereIn('referrer_type', $doctorTypes);
+                    }
+                    if ($doctorIds) {
+                        $q->orWhereIn('id', $doctorIds);
+                    }
+                })
+                ->orderBy('name')->get()
+                ->each(function ($d) use (&$people) {
+                    $type = ($d->referrer_type ?? 'doctor') === 'doctor' ? 'doctor' : 'referrer';
+                    $people->push(new SmsPerson($d->id, (string) $d->name, $d->contact_number ?: null, $type, $d->referrer_type_label ?? ucfirst((string) $d->referrer_type)));
+                });
+        }
+
+        $userIds = collect($picked)->filter(fn ($p) => str_starts_with($p, 'user:'))->map(fn ($p) => (int) substr($p, 5))->all();
+        $wantEmployees = in_array('employee', $groups, true);
+        $wantBranches = in_array('branch', $groups, true);
+        if ($wantEmployees || $wantBranches || $userIds) {
+            \App\Models\User::query()->where('status', 1)
+                ->where(function ($q) use ($wantEmployees, $wantBranches, $roles, $userIds) {
+                    if ($wantEmployees) {
+                        $q->orWhere(function ($e) use ($roles) {
+                            $e->where(fn ($t) => $t->whereNull('type')->orWhere('type', '!=', 'vendor'));
+                            if ($roles) {
+                                $e->whereHas('roles', fn ($r) => $r->whereIn('roles.id', $roles));
+                            }
+                        });
+                    }
+                    if ($wantBranches) {
+                        $q->orWhere('type', 'vendor');
+                    }
+                    if ($userIds) {
+                        $q->orWhereIn('id', $userIds);
+                    }
+                })
+                ->orderBy('name')->get()
+                ->each(function ($u) use (&$people) {
+                    $people->push(new SmsPerson($u->id, (string) $u->name, $u->mobile_no ?: null, $u->type === 'vendor' ? 'branch' : 'employee', $u->type === 'vendor' ? 'Branch' : 'Employee'));
+                });
+        }
+
+        return $people->values();
+    }
+
+    /**
      * Get summary stats for a filtered collection.
      */
     public function getSummaryStats(Collection $records, string $type): array
     {
-        $phoneField = $type === 'leads' ? 'phone_number' : null;
 
         $total = $records->count();
         $validPhones = 0;
         $missingPhones = 0;
 
         foreach ($records as $record) {
-            $phone = $type === 'leads'
+            $phone = in_array($type, ['leads', 'team'], true)
                 ? $record->phone_number
                 : ($record->lead->phone_number ?? null);
 

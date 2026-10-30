@@ -19,6 +19,11 @@
             <p>Track invoices, payments, and revenue</p>
         </div>
         <div class="header-actions">
+            @if (request()->boolean('cancelled'))
+                <a href="{{ url('admin/sale') }}" class="btn btn-outline-secondary btn-sm" id="btn-active-sales"><i class="fas fa-arrow-left mr-1"></i>Active invoices</a>
+            @else
+                <a href="{{ url('admin/sale?cancelled=1') }}" class="btn btn-outline-danger btn-sm" id="btn-cancelled-sales"><i class="fas fa-ban mr-1"></i>Cancelled invoices</a>
+            @endif
             <a href="{{ url('admin/sales/fulfillment') }}" class="btn btn-outline-primary btn-sm">
                 <i class="fas fa-clipboard-check mr-1"></i>Report &amp; Delivery Hub
             </a>
@@ -256,8 +261,10 @@
                                 <span style="color: var(--success-600); font-weight: 500;">৳{{ number_format($item->paid, 2) }}</span>
                             </td>
                             <td>
-                                @php $due = $item->total_amount - $item->paid; @endphp
-                                @if($due > 0)
+                                @php $due = $item->total_amount - $item->paid; $isCancelled = $item->trashed(); @endphp
+                                @if($isCancelled)
+                                    <span class="crm-status-badge badge-status-lost" title="{{ $item->cancel_reason }}"><span class="dot"></span>Cancelled</span>
+                                @elseif($due > 0)
                                     <span class="crm-status-badge badge-status-lost">
                                         <span class="dot"></span>
                                         ৳{{ number_format($due, 2) }}
@@ -274,7 +281,7 @@
                             </td>
                             <td>
                                 <div class="crm-actions">
-                                    @if($due > 0.009)
+                                    @if($due > 0.009 && !$isCancelled)
                                         <a href="{{ url('admin/customer-payment?customer_id=' . $item->customer_id . '&invoice_no=' . $item->sale_invoice_no) }}" class="action-btn" style="color: #10b981;" title="Collect Due Payment">
                                             <i class="fas fa-hand-holding-usd"></i>
                                         </a>
@@ -288,7 +295,7 @@
                                         </a>
                                     @endcan
                                     @php $ownScope = (int) $item->vendor_id === (int) \App\Classes\Helper::currentBranchId(); @endphp
-                                    @if ($ownScope)
+                                    @if ($ownScope && !$isCancelled)
                                     @can('permission','sale_list.edit')
                                         <a href="{{ url('admin/sale/'.$item->id.'/edit') }}" class="action-btn btn-edit" title="Edit">
                                             <i class="fas fa-pen"></i>

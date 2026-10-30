@@ -100,8 +100,10 @@ function populateStep2() {
     var r = state.results;
     $('#abStep2Recipients').text(r ? r.stats.total : 0);
     $('#abStep2Ready').text(r ? r.stats.ready_to_send : 0);
-    $('#abStep2Audience').text(state.type === 'leads' ? 'Leads' : 'Customers');
+    $('#abStep2Audience').text(typeLabel());
     $('#abStep2Filters').text(state.filters.length);
+    if (state.type === 'team') { $('#abFollowUpToggle').prop('checked', false).trigger('change'); }
+    $('#abFollowUpSection').toggle(state.type !== 'team');
     validateStep2();
 }
 
@@ -163,7 +165,7 @@ $('#abFollowUpToggle').on('change', function() {
 function populateStep3() {
     var r = state.results;
     $('#abReviewName').text(state.campaignName);
-    $('#abReviewAudience').text(state.type === 'leads' ? 'Leads' : 'Customers');
+    $('#abReviewAudience').text(typeLabel());
     $('#abReviewRecipients').text(r ? r.stats.total : 0);
     $('#abReviewReady').text(r ? r.stats.ready_to_send : 0);
     $('#abReviewMessage').text(getMessageBody());
@@ -388,7 +390,7 @@ function renderBuilder() {
 
 /* ─── Summary ────────────────────────────────── */
 function renderSummary(data) {
-    $('#abSummaryType').text(state.type === 'leads' ? 'Leads' : 'Customers');
+    $('#abSummaryType').text(typeLabel());
     if (!data) { $('#abSummaryCount').text('0'); $('#abValidPhones,#abMissingPhones,#abReadyToSend').text('0'); updateNextBtn(0); return; }
     $('#abSummaryCount').text(data.stats.total);
     $('#abValidPhones').text(data.stats.valid_phones);
@@ -511,6 +513,28 @@ $('#abClearAll').on('click', function() {
 });
 
 /* ─── Helpers ────────────────────────────────── */
+/* ─── Schedule + test send (step 3) ───────────── */
+$('#abScheduledAt').on('input change', function() {
+    var scheduled = !!$(this).val();
+    $('#abSendBtn').html(scheduled
+        ? '<i class="far fa-clock mr-1"></i> Schedule Campaign'
+        : '<i class="fas fa-paper-plane mr-1"></i> Send Campaign Now');
+});
+$('#abTestSend').on('click', function() {
+    var btn = $(this).prop('disabled', true);
+    var out = $('#abTestResult').removeClass('text-danger text-success').text('Sending...');
+    $.ajax({
+        url: BASE + '/sms/test-send', method: 'POST',
+        headers: {'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json'},
+        data: { message: getMessageBody(), phone: $.trim($('#abTestPhone').val()) }
+    }).done(function(r) { out.addClass('text-success').text(r.message); })
+      .fail(function(xhr) { out.addClass('text-danger').text((xhr.responseJSON && xhr.responseJSON.message) || 'Could not send the test.'); })
+      .always(function() { btn.prop('disabled', false); });
+});
+
+function typeLabel() {
+    return state.type === 'leads' ? 'Leads' : (state.type === 'team' ? 'Team & Doctors' : 'Customers');
+}
 function esc(s) {
     if (s == null) return '';
     var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML;

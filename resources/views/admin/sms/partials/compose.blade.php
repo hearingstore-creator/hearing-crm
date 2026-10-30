@@ -19,7 +19,57 @@
             <div class="stat-icon-mini" style="background: var(--warning-100); color: var(--warning-600);"><i class="fas fa-robot"></i></div>
             <div class="stat-info"><div class="stat-count">{{ $automations->where('is_active', true)->count() }}</div><div class="stat-label" style="font-size:11px;color:var(--page-text-muted);">Active Automations</div></div>
         </div>
+        @if (isset($gateway))
+        <div class="crm-stat-card" onclick="void(0)" style="cursor:default;" id="smsBalanceCard">
+            <div class="stat-icon-mini" style="background: {{ $gateway['low'] ? 'var(--danger-100, #FEE2E2)' : 'var(--success-100)' }}; color: {{ $gateway['low'] ? 'var(--danger-600, #DC2626)' : 'var(--success-600)' }};"><i class="fas fa-wallet"></i></div>
+            <div class="stat-info">
+                <div class="stat-count" id="smsBalanceValue">{{ $gateway['balance'] !== null ? number_format((float) $gateway['balance'], 2) : '—' }}</div>
+                <div class="stat-label" style="font-size:11px;color:var(--page-text-muted);">
+                    Gateway balance
+                    <a href="#" id="smsBalanceRefresh" title="Ask the gateway now" style="margin-left:4px;"><i class="fas fa-sync-alt"></i></a>
+                </div>
+                <div style="font-size:10px;color:var(--page-text-muted);" id="smsBalanceNote">
+                    @if ($gateway['checked_at']) checked {{ $gateway['checked_at']->copy()->timezone(config('app.timezone'))->format('d M, g:i A') }} @else not checked yet @endif
+                    @if ($gateway['low']) · <strong style="color:var(--danger-600,#DC2626);">low</strong> @endif
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
+
+    @if (isset($pendingApproval) && $pendingApproval->count())
+        <div class="crm-table-card" style="margin-bottom: 16px; padding: 12px 16px; border-left:4px solid var(--warning-500);">
+            <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--page-text-muted); margin-bottom:6px;"><i class="fas fa-user-check mr-1"></i>Waiting for approval</div>
+            @foreach ($pendingApproval as $camp)
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:6px 0; border-top:1px solid var(--gray-100); font-size:13px;">
+                    <span><strong>{{ $camp->name }}</strong> <span class="text-muted">· {{ $camp->total_recipients }} doctors / staff · "{{ \Illuminate\Support\Str::limit($camp->message_body, 70) }}"</span></span>
+                    @if (auth()->user()->hasAccess('compose_&_send.approve'))
+                        <span style="display:flex; gap:6px; white-space:nowrap;">
+                            <form action="{{ route('sms.campaigns.approve', $camp->id) }}" method="POST">@csrf<button class="btn btn-success btn-sm" type="submit" onclick="return confirm('Send this message to {{ $camp->total_recipients }} people?');">Approve &amp; send</button></form>
+                            <form action="{{ route('sms.campaigns.reject', $camp->id) }}" method="POST" onsubmit="this.note.value = prompt('Reason (optional)') || ''">@csrf<input type="hidden" name="note"><button class="btn btn-outline-danger btn-sm" type="submit">Reject</button></form>
+                        </span>
+                    @else
+                        <span class="badge badge-warning">Waiting for a manager</span>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    @endif
+
+    @if (isset($scheduled) && $scheduled->count())
+        <div class="crm-table-card" style="margin-bottom: 16px; padding: 12px 16px;">
+            <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--page-text-muted); margin-bottom:6px;"><i class="far fa-clock mr-1"></i>Scheduled campaigns</div>
+            @foreach ($scheduled as $camp)
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--gray-100); font-size:13px;">
+                    <span><strong>{{ $camp->name }}</strong> <span class="text-muted">· {{ $camp->scheduled_at?->copy()->timezone(config('app.timezone'))->format('g:i A, d M Y') }}</span></span>
+                    <form action="{{ route('sms.campaigns.cancel', $camp->id) }}" method="POST" onsubmit="return confirm('Cancel this scheduled campaign? Nothing will be sent.');">
+                        @csrf @method('DELETE')
+                        <button class="btn btn-outline-danger btn-sm" type="submit">Cancel</button>
+                    </form>
+                </div>
+            @endforeach
+        </div>
+    @endif
 
     {{-- Step Indicator --}}
     <div class="ab-steps-bar">
@@ -51,6 +101,9 @@
                     <div class="ab-type-switch" id="abTypeSwitch">
                         <button class="ab-type-btn active" data-type="leads"><i class="fas fa-user-plus mr-1"></i> Leads</button>
                         <button class="ab-type-btn" data-type="customers"><i class="fas fa-users mr-1"></i> Customers</button>
+                        @if (auth()->user()->hasAccess('compose_&_send.team'))
+                            <button class="ab-type-btn" data-type="team" title="Doctors, referrers and employees"><i class="fas fa-user-md mr-1"></i> Team &amp; Doctors</button>
+                        @endif
                     </div>
                 </div>
                 <div class="ab-section">
@@ -188,8 +241,8 @@
                     </div>
                 </div>
 
-                {{-- Follow-up Auto-Creation --}}
-                <div class="crm-form-section">
+                {{-- Follow-up Auto-Creation (lead follow-ups: not offered for doctors / employees) --}}
+                <div class="crm-form-section" id="abFollowUpSection">
                     <div class="crm-form-section-header">
                         <div class="section-icon" style="background: var(--success-500);"><i class="fas fa-calendar-plus"></i></div>
                         <h6>Auto-Create Follow-up</h6>
@@ -318,6 +371,19 @@
                             </p>
                         </div>
 
+                        {{-- Test first: one real SMS with sample details --}}
+                        <div style="text-align:left; border:1px dashed var(--gray-200); border-radius:8px; padding:10px 12px; margin-bottom:14px;">
+                            <label style="font-weight:600;font-size:12px;margin-bottom:4px;">Send a test to your phone</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="abTestPhone" class="form-control" placeholder="{{ auth()->user()->mobile_no ?: '01XXXXXXXXX' }}" value="">
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-outline-primary" id="abTestSend"><i class="fas fa-vial mr-1"></i>Test</button>
+                                </div>
+                            </div>
+                            <small class="text-muted">Uses sample details such as "Sample Patient". It is a real SMS and counts as one. Leave the number empty to use your own.</small>
+                            <div id="abTestResult" style="font-size:12px;margin-top:4px;"></div>
+                        </div>
+
                         <form id="abSendForm" method="POST" action="{{ url('admin/sms/send') }}">
                             @csrf
                             <input type="hidden" name="campaign_name" id="abFormCampaignName">
@@ -329,6 +395,12 @@
                             <input type="hidden" name="follow_up_days" id="abFormFollowUpDays" value="">
                             <input type="hidden" name="follow_up_assigned_user" id="abFormFollowUpUser" value="">
                             <input type="hidden" name="follow_up_mode" id="abFormFollowUpMode" value="">
+
+                            <div style="text-align:left; margin-bottom:14px;">
+                                <label style="font-weight:600;font-size:12px;margin-bottom:4px;">Send time (optional)</label>
+                                <input type="datetime-local" name="scheduled_at" id="abScheduledAt" class="form-control form-control-sm" min="{{ now(config('app.timezone'))->format('Y-m-d\TH:i') }}">
+                                <small class="text-muted">Leave empty to send now. Bangladesh time. The audience is worked out again at send time.</small>
+                            </div>
 
                             <div class="ab-summary-actions">
                                 <button type="button" class="btn btn-outline-secondary btn-sm btn-block" id="abBackStep2"><i class="fas fa-arrow-left mr-1"></i> Back to Compose</button>
@@ -392,3 +464,22 @@
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+$('#smsBalanceRefresh').on('click', function (e) {
+    e.preventDefault();
+    var icon = $(this).find('i').addClass('fa-spin');
+    $.ajax({ url: '{{ route('sms.gateway-balance') }}', method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' } })
+        .done(function (r) {
+            $('#smsBalanceValue').text(r.balance);
+            $('#smsBalanceNote').text('checked ' + r.checked_at + (r.low ? ' · low' : ''));
+        })
+        .fail(function (xhr) {
+            var r = xhr.responseJSON || {};
+            $('#smsBalanceNote').text(r.message || 'Could not reach the gateway.').attr('title', r.raw || '');
+        })
+        .always(function () { icon.removeClass('fa-spin'); });
+});
+</script>
+@endpush

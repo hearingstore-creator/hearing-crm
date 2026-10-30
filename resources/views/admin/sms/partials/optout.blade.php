@@ -25,6 +25,20 @@
         </form>
         @endif
 
+        @if (isset($replies) && $replies->count())
+            <div style="margin:0 0 18px; padding:12px 14px; border:1px solid var(--gray-100); border-radius:10px;">
+                <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--page-text-muted); margin-bottom:6px;"><i class="fas fa-reply mr-1"></i>Replies from patients</div>
+                @foreach ($replies as $r)
+                    <div style="display:flex; gap:12px; padding:5px 0; border-top:1px solid var(--gray-100); font-size:13px;">
+                        <span style="font-family:monospace; min-width:110px;">{{ $r->phone_number }}</span>
+                        <span style="flex:1;">{{ \Illuminate\Support\Str::limit($r->message, 120) }}</span>
+                        @if ($r->action === 'stop')<span class="badge badge-danger" title="Added to the opt-out list">STOP</span>@endif
+                        <span class="text-muted" style="white-space:nowrap;">{{ $r->received_at?->copy()->timezone(config('app.timezone'))->format('d M, g:i A') }}</span>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         @if($optOuts->isEmpty())
             <div class="so-empty" id="soEmpty">
                 <i class="fas fa-check-circle"></i>

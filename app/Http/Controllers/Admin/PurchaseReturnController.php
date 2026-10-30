@@ -28,7 +28,8 @@ class PurchaseReturnController extends Controller
         $this->middleware('permission:purchase_return.index')->only(['index']);
         $this->middleware('permission:purchase_return.create')->only(['create', 'store', 'getPurchaseItems', 'getPurchasesBySupplier', 'lookupSerial']);
         $this->middleware('permission:purchase_return.view')->only(['show']);
-        $this->middleware('permission:purchase_return.edit')->only(['edit', 'update', 'unconfirm']);
+        // Confirming posts the debit note to the supplier ledger, so it needs the same right as undoing it
+        $this->middleware('permission:purchase_return.edit')->only(['edit', 'update', 'confirm', 'unconfirm']);
         $this->middleware('permission:purchase_return.delete')->only(['destroy']);
     }
 
@@ -218,7 +219,7 @@ class PurchaseReturnController extends Controller
         }
 
         // Check if sold
-        $isSold = DB::table('sale_details')
+        $isSold = DB::table('sale_details')->whereNull('deleted_at')
             ->where('product_id', $detail->product_id)
             ->where(function ($sq) use ($serial) {
                 $sq->whereJsonContains('serial_no', $serial)
@@ -320,7 +321,7 @@ class PurchaseReturnController extends Controller
             }
             $serials = array_values(array_filter(array_map('trim', (array) $serials)));
 
-            $soldSerials = DB::table('sale_details')
+            $soldSerials = DB::table('sale_details')->whereNull('deleted_at')
                 ->where('product_id', $d->product_id)
                 ->whereNotNull('serial_no')
                 ->pluck('serial_no')
@@ -621,7 +622,7 @@ class PurchaseReturnController extends Controller
             $attachmentPath = $return->attachment;
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
-                $filename = 'pr_' . $return->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $filename = 'pr_' . $return->id . '_' . time() . '.' . Helper::safeUploadExtension($file);
                 $file->move(public_path('uploads/purchase_returns'), $filename);
                 $attachmentPath = 'uploads/purchase_returns/' . $filename;
             }

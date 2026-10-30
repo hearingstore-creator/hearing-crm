@@ -111,7 +111,7 @@
 
     <div class="no-print">
         <button class="btn-print" onclick="window.print()">Print Quotation / Estimate (Ctrl+P)</button>
-        <button style="padding: 8px 16px; margin-left: 10px; cursor: pointer;" onclick="window.close()">Close Window</button>
+        <button style="padding: 8px 16px; margin-left: 10px; cursor: pointer;" onclick="window.close(); setTimeout(function () { window.location.href = '{{ route('repairs.show', $job->id) }}'; }, 250);">Close Window</button>
     </div>
 
     <div class="page-container">

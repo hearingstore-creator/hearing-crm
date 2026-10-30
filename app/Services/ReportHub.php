@@ -44,6 +44,7 @@ class ReportHub
             'admin/report/doctor-referral'  => 'Doctor and referral summary',
         ]],
         'Leads & Marketing' => ['fa-bullseye', [
+            'admin/marketing/roi'      => 'Spend, cost per lead and per sale, return by channel and campaign',
             'admin/report/lead-funnel' => 'Enquiry to sale funnel by source and staff',
             'admin/sms-analytics'      => 'Messages sent, delivered and failed',
         ]],

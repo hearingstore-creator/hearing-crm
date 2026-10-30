@@ -32,12 +32,12 @@ class DealController extends Controller
     private const PER_COLUMN = 25;
     private const PER_LIST = 50;
     private const BULK_MAX = 200;
-    private const LIST_SORTS = ['created', 'value', 'stage', 'next', 'name', 'age'];
+    private const LIST_SORTS = ['created', 'value', 'stage', 'next', 'name', 'age', 'score'];
 
     public function __construct(private DealService $deals)
     {
         $this->middleware('permission:deal_board.index')->only(['index', 'column', 'show', 'bulk', 'myDay']);
-        $this->middleware('permission:deal_board.move')->only(['move', 'storeActivity', 'completeActivity', 'storeNote', 'pinNote', 'destroyNote', 'logContact']);
+        $this->middleware('permission:deal_board.move')->only(['move', 'storeActivity', 'completeActivity', 'storeNote', 'pinNote', 'destroyNote', 'logContact', 'changePipeline']);
         $this->middleware('permission:add_appointment.create')->only(['bookAppointment']);
         $this->middleware('permission:deal_board.won')->only(['won']);
         $this->middleware('permission:deal_board.lost')->only(['lost']);
@@ -47,13 +47,16 @@ class DealController extends Controller
 
     public function index(Request $request): View
     {
-        $pipeline = Pipeline::default();
+        $pipeline = $this->boardPipeline($request);
         $stages = $pipeline->activeStages()->get();
         $status = in_array($request->status, [Deal::WON, Deal::LOST, 'list'], true) ? $request->status : Deal::OPEN;
+        $request->merge(['pipeline' => $pipeline->id]);   // every board query below is limited to this pipeline
 
         $data = [
             'pipeline'     => $pipeline,
+            'pipelines'    => Pipeline::usable()->get(['id', 'name', 'is_default']),
             'stages'       => $stages,
+            'trialModels'  => \App\Models\Product::withoutGlobalScopes()->leftJoin('brands as b', 'b.id', '=', 'products.brand_id')->whereNotNull('products.model')->where('products.model', '!=', '')->orderBy('b.brand_name')->orderBy('products.model')->limit(500)->get(['products.id', 'products.model', 'b.brand_name'])->mapWithKeys(fn ($p) => [$p->id => trim(($p->brand_name ? $p->brand_name . ' ' : '') . $p->model)]),
             'status'       => $status,
             'filters'      => $request->only(['q', 'branch', 'owner', 'temperature', 'source']),
             'branches'     => \App\Classes\Helper::branchOptions(),
@@ -236,6 +239,21 @@ class DealController extends Controller
         return response()->json(['message' => 'Deal transferred to ' . $branch . '.'] + $this->cardPayload($deal));
     }
 
+    /** Move an open deal to another pipeline: it starts again in that pipeline's first stage (logged in history). */
+    public function changePipeline(Request $request, int $id): JsonResponse
+    {
+        $deal = $this->visible()->open()->with(['stage', 'pipeline'])->findOrFail($id);
+        $data = $request->validate([
+            'pipeline_id' => ['required', 'integer', Rule::in(Pipeline::usable()->whereKeyNot($deal->pipeline_id)->pluck('id')->all())],
+            'note'        => ['nullable', 'string', 'max:1000'],
+        ], ['pipeline_id.required' => 'Choose the pipeline to move this deal to.', 'pipeline_id.in' => 'Choose another pipeline that is switched on.']);
+
+        $to = Pipeline::findOrFail($data['pipeline_id']);
+        $this->deals->moveToPipeline($deal, $to, $data['note'] ?? null);
+
+        return response()->json(['message' => 'Deal moved to ' . $to->name . ' (' . $deal->stage->name . ').', 'pipeline_id' => $to->id]);
+    }
+
     /**
      * List view bulk actions on the ticked open deals (max 200). Each deal goes through DealService,
      * exactly like the single-deal action, so history and notifications stay the same.
@@ -381,7 +399,8 @@ class DealController extends Controller
             'otherDeals' => Deal::withoutGlobalScopes()->with(['stage:id,name,color', 'vendor:id,name'])
                 ->where('lead_id', $deal->lead_id)->where('id', '!=', $deal->id)->whereNull('deleted_at')->latest('id')->get(),
             'timeline'   => $this->timeline($deal),
-            'stages'     => Pipeline::default()->activeStages()->get(['id', 'name', 'color', 'sort_order']),
+            'stages'     => $deal->pipeline->activeStages()->get(['id', 'name', 'color', 'sort_order']),
+            'pipelines'  => Pipeline::usable()->get(['id', 'name']),
             'types'      => \App\Enums\ActivityType::cases(),
             'assignees'  => collect($this->ownerOptions())->flatten(1)->sortBy('name')->values(),
             'can'        => $this->abilities(),
@@ -391,6 +410,10 @@ class DealController extends Controller
             'appointments' => \App\Models\Appointment::with(['service:id,name', 'user:id,name', 'professionalTimeSlot.timeSlot'])
                 ->where('lead_id', $deal->lead_id)->whereDate('appointment_date', '>=', today()->subDays(30))
                 ->orderBy('appointment_date')->limit(20)->get(),
+            'enrollments' => \App\Models\SequenceEnrollment::with('sequence:id,name')->where('deal_id', $deal->id)->latest('id')->limit(5)->get(),
+            'trials'      => \App\Models\DealTrial::where('deal_id', $deal->id)->latest('id')->get(),
+            'trialModels' => \App\Models\Product::withoutGlobalScopes()->leftJoin('brands as b', 'b.id', '=', 'products.brand_id')->whereNotNull('products.model')->where('products.model', '!=', '')->orderBy('b.brand_name')->orderBy('products.model')->limit(500)->get(['products.id', 'products.model', 'b.brand_name'])->mapWithKeys(fn ($p) => [$p->id => trim(($p->brand_name ? $p->brand_name . ' ' : '') . $p->model)]),
+            'sequenceOptions' => \App\Models\Sequence::orderByDesc('is_active')->orderBy('name')->whereHas('steps')->get(['id', 'name', 'is_active']),
             'services'   => $this->abilities()['appointment']
                 ? \App\Models\AppointmentService::where('status', 1)->orderBy('name')->get(['id', 'name']) : collect(),
         ]);
@@ -633,6 +656,7 @@ class DealController extends Controller
             'temperature'      => ['nullable', new Enum(LeadTemperature::class)],
             'value'            => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'note'             => ['nullable', 'string', 'max:1000'],
+            'pipeline_id'      => ['nullable', 'integer', Rule::in(Pipeline::usable()->pluck('id')->all())],
             'hearing_loss'                => ['nullable', 'array'],
             'hearing_loss.*.enabled'      => ['nullable', 'boolean'],
             'hearing_loss.*.degree'       => ['nullable', new Enum(\App\Enums\HearingDegree::class)],
@@ -646,6 +670,7 @@ class DealController extends Controller
             'source'      => $data['source'] ?? null,
             'temperature' => $data['temperature'] ?? null,
             'value'       => $data['value'] ?? null,
+            'pipeline_id' => $data['pipeline_id'] ?? null,
         ], fn ($v) => $v !== null);
 
         $hearing = collect($data['hearing_loss'] ?? [])->only(['right', 'left'])
@@ -677,7 +702,7 @@ class DealController extends Controller
                     'lead_status'      => \App\Enums\LeadStatus::NEW->value,
                     'lead_type'        => \App\Enums\LeadType::NEW_CUSTOMER->value,
                 ]);
-                $deal = $this->deals->openInitialDeal($lead);
+                $deal = $this->deals->openInitialDeal($lead, array_intersect_key($attributes, ['pipeline_id' => true]));
                 app(\App\Services\SmsAutomationService::class)->fireAfterCommit(\App\Enums\SmsAutomationTrigger::LEAD_CREATED,
                     $lead->phone_number, 'lead', $lead->id, ['name' => $lead->full_name, 'customer_name' => $lead->full_name], 'lead-welcome:' . $lead->id);
             }
@@ -799,6 +824,9 @@ class DealController extends Controller
             'lead.customer.membershipTier:id,name',
         ]);
 
+        if ($request->filled('pipeline')) {
+            $query->where('deals.pipeline_id', (int) $request->pipeline);
+        }
         if (!auth()->user()->branchId() && $request->filled('branch')) {
             $request->branch === 'hq'
                 ? $query->whereNull('deals.vendor_id')
@@ -851,6 +879,7 @@ class DealController extends Controller
     {
         match ($sort) {
             'value' => $query->orderBy('deals.value', $dir),
+            'score' => $query->orderByRaw('deals.score IS NULL')->orderBy('deals.score', $dir),
             'age'   => $query->orderBy('deals.stage_entered_at', $dir === 'asc' ? 'desc' : 'asc'),
             'stage' => $query->orderBy(PipelineStage::select('sort_order')->whereColumn('pipeline_stages.id', 'deals.stage_id'), $dir),
             'name'  => $query->orderBy(\App\Models\Lead::withoutGlobalScopes()->select('full_name')->whereColumn('leads.id', 'deals.lead_id'), $dir),
@@ -886,6 +915,24 @@ class DealController extends Controller
             // Query builder: position changes must not bump updated_at (used for the concurrency check)
             DB::table('deals')->where('id', $dealId)->update(['position' => $position]);
         }
+    }
+
+    /**
+     * The pipeline shown on the board: ?pipeline= (remembered for the user), else the one the user last chose,
+     * else the default. Switched-off and archived pipelines are never shown.
+     */
+    private function boardPipeline(Request $request): Pipeline
+    {
+        $user = auth()->user();
+        if ($request->filled('pipeline') && ($chosen = Pipeline::usable()->find((int) $request->pipeline))) {
+            if ((int) $user->deal_pipeline_id !== $chosen->id) {
+                $user->forceFill(['deal_pipeline_id' => $chosen->id])->saveQuietly();
+            }
+
+            return $chosen;
+        }
+
+        return Pipeline::usableOrDefault($user->deal_pipeline_id ? (int) $user->deal_pipeline_id : null);
     }
 
     private function cardPayload(Deal $deal): array

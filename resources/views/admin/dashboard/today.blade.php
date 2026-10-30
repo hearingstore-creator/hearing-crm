@@ -466,9 +466,9 @@
         <div class="td-card" id="td-chart-revenue-card">
             <h3>
                 <span class="t-halo" style="width:34px; height:34px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; background:#8b5cf6; color:#ffffff; font-size:15px; box-shadow:0 4px 12px -3px #8b5cf6;"><i class="fas fa-chart-line"></i></span>
-                Sales this month vs last
+                Invoiced this month vs last
             </h3>
-            <div class="td-note" id="td-rev-note">Running total by day of month</div>
+            <div class="td-note" id="td-rev-note">Before returns · running total by day of month</div>
             @if ($can('revenue_chart'))
                 <div class="td-chart-box"><canvas id="td-chart-revenue_month" data-chart-name="revenue_month" aria-label="Sales this month against last month"></canvas></div>
             @else
@@ -483,7 +483,7 @@
                 <span class="t-halo" style="width:34px; height:34px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; background:#10b981; color:#ffffff; font-size:15px; box-shadow:0 4px 12px -3px #10b981;"><i class="fas fa-chart-pie"></i></span>
                 Sales by category
             </h3>
-            <div class="td-note" id="td-cat-note">{{ $periods[$period] }}</div>
+            <div class="td-note" id="td-cat-note">{{ $periods[$period] }} · before returns</div>
             @if ($can('top_products'))
                 <div class="td-chart-box"><canvas id="td-chart-sales_by_category" data-chart-name="sales_by_category" aria-label="Sales by product category"></canvas></div>
             @else

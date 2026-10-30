@@ -34,7 +34,7 @@
                 Revenue by month
                 <a class="td-more" href="{{ $report('admin/report/sales-performance') }}" id="td-s-report-sales">Sales performance</a>
             </h3>
-            <div class="td-note">Last 12 months, against the same months a year earlier and purchases</div>
+            <div class="td-note">Invoiced, before returns · last 12 months, against the same months a year earlier and purchases</div>
             <div class="td-chart-box"><canvas class="td-cv" data-cv="{{ json_encode(['kind' => 'line', 'fmt' => 'money', 'labels' => $r['labels'], 'sets' => [['label' => 'Sales', 'data' => $r['sales'], 'color' => $C['sales'], 'fill' => true], ['label' => 'A year earlier', 'data' => $r['sales_ly'], 'color' => $C['last'], 'dash' => true], ['label' => 'Purchases', 'data' => $r['purchases'], 'color' => $C['purchases']]]]) }}"></canvas></div>
         </div>
     @endif

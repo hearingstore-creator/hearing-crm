@@ -30,7 +30,7 @@ class StockGuard
      * @param int|null $saleMasterId existing sale being edited; its own units count as available
      * @throws StockGuardException
      */
-    public function assertSaleLines(array $lines, ?int $vendorId, ?int $saleMasterId = null): void
+    public function assertSaleLines(array $lines, ?int $vendorId, ?int $saleMasterId = null, ?int $customerId = null): void
     {
         $problems = [];
         $this->lockProducts(array_column($lines, 'product_id'));
@@ -92,6 +92,10 @@ class StockGuard
                             $problems[] = "Serial {$serial} was never purchased for {$label} in this branch.";
                         } elseif (($stock['balance'][$key] ?? 0) < 1) {
                             $problems[] = "Serial {$serial} ({$label}) is already sold or returned to the supplier.";
+                        } elseif ($trial = app(TrialService::class)->heldBy($serial, $customerId)) {
+                            $problems[] = "Serial {$serial} ({$label}) is out on a take-home trial with "
+                                . (DB::table('leads')->where('id', $trial->lead_id)->value('full_name') ?? 'another patient')
+                                . ' (due back ' . $trial->return_due?->format('d M') . '). Close that trial first.';
                         }
                     }
                 }

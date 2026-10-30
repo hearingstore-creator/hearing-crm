@@ -21,7 +21,7 @@
         for (var i = 0; i < B.stages.length; i++) { if (B.stages[i].id === id) { return B.stages[i]; } }
         return null;
     }
-    function money(v) { return '৳' + Math.round(+v || 0).toLocaleString('en-US'); }
+    function money(v) { return (window.CRM_CURRENCY || '৳') + Math.round(+v || 0).toLocaleString('en-US'); }
     function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
 
     function toast(msg, type) {
@@ -577,6 +577,17 @@
         $.ajax({ url: B.base + '/notes/' + $btn.data('id') + (del ? '' : '/pin'), type: del ? 'DELETE' : 'POST' })
             .done(function (res) { toast(res.message); openDrawer(drawerId, 'notes'); })
             .fail(function (xhr) { $btn.prop('disabled', false); toast(errorsOf(xhr)[0], 'err'); });
+    });
+
+    // ------------------------------------------------------------------ drawer: move to another pipeline
+    $drawer.on('click', '.js-dd-pipeline', function () {
+        var $btn = $(this);
+        var name = $('#dd-pipeline-to option:selected').text();
+        if (!window.confirm('Move this deal to "' + name + '"? It starts again in that pipeline\'s first stage.')) { return; }
+        busy($btn, true);
+        $.post(B.base + '/' + $btn.data('id') + '/pipeline', { pipeline_id: $('#dd-pipeline-to').val() })
+            .done(function (res) { toast(res.message); reloadSoon(); })
+            .fail(function (xhr) { busy($btn, false); toast(errorsOf(xhr)[0], 'err'); });
     });
 
     // ------------------------------------------------------------------ drawer: book appointment

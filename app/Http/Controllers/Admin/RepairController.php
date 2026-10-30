@@ -1094,63 +1094,40 @@ class RepairController extends Controller
     }
 
     /**
-     * Helper: Touchpoint 1 - Intake SMS
+     * Helper: Touchpoint 1 - Intake SMS. Goes through the SMS Center automation "Repair Received":
+     * its text, its on/off switch, the SMS mode and the daily cap all apply, and it shows in the Send Log.
      */
     protected function sendIntakeSms(RepairJob $job): void
     {
-        $phone = $job->customer?->lead?->phone_number;
-        if (empty($phone)) {
-            return;
-        }
-
-        $patientName = $job->customer?->lead?->full_name ?? 'Valued Customer';
-        $branchName = $job->vendor?->name ?? 'Hearing Care Clinic';
-        $promised = $job->promised_date ? $job->promised_date->format('d M') : 'soon';
-
-        $text = "Dear {$patientName}, your hearing aid (S/N: {$job->original_serial_no}) is received at {$branchName}. Job Card: #{$job->job_no}. Est. completion: {$promised}. Thank you.";
-
-        $this->dispatchSms($phone, $text, $job->job_no, 'intake');
+        $this->fireRepairSms(\App\Enums\SmsAutomationTrigger::REPAIR_RECEIVED, $job, 'repair-received:' . $job->id);
     }
 
     /**
-     * Helper: Touchpoint 2 - Ready for Pickup SMS
+     * Helper: Touchpoint 2 - Ready for Pickup SMS (automation "Repair Ready for Pickup"; once per job).
      */
     protected function sendReadySms(RepairJob $job): void
     {
-        $phone = $job->customer?->lead?->phone_number;
+        $this->fireRepairSms(\App\Enums\SmsAutomationTrigger::REPAIR_READY, $job, 'repair-ready:' . $job->id);
+    }
+
+    protected function fireRepairSms(\App\Enums\SmsAutomationTrigger $trigger, RepairJob $job, string $onceKey): void
+    {
+        $customer = $job->customer;
+        $phone = $customer?->lead?->phone_number;
         if (empty($phone)) {
             return;
         }
 
-        $patientName = $job->customer?->lead?->full_name ?? 'Valued Customer';
-        $branchName = $job->vendor?->name ?? 'Hearing Care Clinic';
-        $due = number_format($job->customer_due, 2);
-
-        $text = "Dear {$patientName}, your device is ready for pickup at {$branchName}. Job: #{$job->job_no}. Due: Tk {$due}. Please bring your Job Card. Ph: {$job->vendor?->phone_number}";
-
-        $this->dispatchSms($phone, $text, $job->job_no, 'ready_for_pickup');
+        app(\App\Services\SmsAutomationService::class)->fireAfterCommit($trigger, $phone, 'customer', (int) $customer->id, [
+            'name'          => $customer->lead->full_name ?? 'Valued Customer',
+            'job_no'        => $job->job_no,
+            'serial_text'   => $job->original_serial_no ? " (S/N: {$job->original_serial_no})" : '',
+            'branch'        => $job->vendor?->name ?? 'Hearing Care Clinic',
+            'branch_phone'  => $job->vendor?->phone_number ?? '',
+            'promised_date' => $job->promised_date ? $job->promised_date->format('d M') : 'soon',
+            'due'           => number_format($job->customer_due, 2),
+        ], $onceKey);
     }
-
-    protected function dispatchSms(string $phone, string $message, string $refNo, string $event): void
-    {
-        try {
-            $sms = app(SMS::class);
-            $csmsId = 'REP-' . substr(md5($refNo . time()), 0, 12);
-            $sms->singleSms($phone, $message, $csmsId);
-
-            SmsLog::create([
-                'phone_number' => $phone,
-                'message'      => $message,
-                'type'         => 'repair_notice',
-                'status'       => 'SENT',
-                'sent_at'      => now(),
-                'campaign_name'=> "Repair Notice ({$event}) #{$refNo}",
-            ]);
-        } catch (\Exception $e) {
-            Log::warning("Repair SMS dispatch failed for {$phone}: " . $e->getMessage());
-        }
-    }
-
     /**
      * Authorize Warranty or Paid Replacement & Track Serial Lineage (Phase 3)
      */
@@ -1466,7 +1443,7 @@ class RepairController extends Controller
                 @mkdir($uploadDir, 0777, true);
             }
 
-            $filename = 'repair_' . $job->id . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $filename = 'repair_' . $job->id . '_' . time() . '_' . uniqid() . '.' . Helper::safeUploadExtension($file);
             $file->move($uploadDir, $filename);
 
             RepairAttachment::create([
@@ -1561,7 +1538,7 @@ class RepairController extends Controller
                 if (!file_exists($uploadDir)) {
                     @mkdir($uploadDir, 0777, true);
                 }
-                $filename = 'void_' . $job->id . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $filename = 'void_' . $job->id . '_' . time() . '_' . uniqid() . '.' . Helper::safeUploadExtension($file);
                 $file->move($uploadDir, $filename);
 
                 RepairAttachment::create([

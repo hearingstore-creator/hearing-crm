@@ -268,7 +268,7 @@ class PaymentReconciliationController extends Controller
     {
         $request->validate([
             'sale_ids'          => ['required', 'array', 'min:1'],
-            'sale_ids.*'        => ['integer', 'exists:sale_masters,id'],
+            'sale_ids.*'        => ['integer', 'exists:sale_masters,id,deleted_at,NULL'],
             'settlement_date'   => ['required', 'date'],
             'batch_no'          => ['required', 'string', 'max:100'],
             'pos_terminal_name' => ['nullable', 'string', 'max:100'],

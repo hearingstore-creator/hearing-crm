@@ -90,7 +90,9 @@ class DoctorPaymentController extends Controller
             'saleMaster.saleDetails.product',
             'doctor',
             'doctorChamber'
-        ])->pending();
+        ])->pending()
+            // Only referrals on sales this user can see (branch scope; cancelled sales drop out)
+            ->whereHas('saleMaster');
 
         if ($request->filled('pending_doctor_id')) {
             $pendingQuery->where('doctor_id', $request->pending_doctor_id);
@@ -308,6 +310,13 @@ class DoctorPaymentController extends Controller
             $doctorLedger->settlement_period_start = $request->settlement_period_start;
             $doctorLedger->settlement_period_end = $request->settlement_period_end;
             $doctorLedger->save();
+
+            // Optional "commission paid" SMS to the doctor / referrer (SMS Center automation, off unless switched on)
+            try {
+                app(\App\Services\SmsAutomationService::class)->onReferralPaid($doctorLedger);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Referral payment SMS skipped: ' . $e->getMessage());
+            }
 
             // 2. Post to General Company Ledger (CRUCIAL FOR PROFIT ACCURACY)
             // Ensure Income/Expense Head exists for Doctor Payment

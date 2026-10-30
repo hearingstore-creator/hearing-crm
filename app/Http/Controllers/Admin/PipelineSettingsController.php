@@ -28,15 +28,22 @@ class PipelineSettingsController extends Controller
         $this->middleware('permission:pipeline_settings.manage');
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $pipeline = Pipeline::default();
+        $pipeline = $this->pipeline($request);
         $stages = $pipeline->stages()->get();
         $openCounts = Deal::withoutGlobalScopes()->whereNull('deleted_at')->where('status', Deal::OPEN)
+            ->where('pipeline_id', $pipeline->id)
             ->selectRaw('stage_id, COUNT(*) as c')->groupBy('stage_id')->pluck('c', 'stage_id');
+        $pipelines = Pipeline::orderByRaw('archived_at IS NOT NULL')->orderByDesc('is_default')->orderBy('sort_order')->orderBy('id')->get();
+        $pipelineOpen = Deal::withoutGlobalScopes()->whereNull('deleted_at')->where('status', Deal::OPEN)
+            ->selectRaw('pipeline_id, COUNT(*) as c')->groupBy('pipeline_id')->pluck('c', 'pipeline_id');
 
         return view('admin.deal.settings', [
             'pipeline'    => $pipeline,
+            'pipelines'   => $pipelines,
+            'pipelineOpen' => $pipelineOpen,
+            'isDefault'   => $pipeline->is_default,
             'stages'      => $stages->whereNull('archived_at')->values(),
             'archived'    => $stages->whereNotNull('archived_at')->values(),
             'openCounts'  => $openCounts,
@@ -45,14 +52,102 @@ class PipelineSettingsController extends Controller
             'lostReasons' => LostReason::orderBy('sort_order')->orderBy('id')->get(),
             'owners'      => $this->headOfficeUsers(),
             'holidays'    => \App\Models\OfficeHoliday::where('date', '>=', today())->orderBy('date')->get(),
-            'logs'        => PipelineSettingsLog::with(['user:id,name', 'stage:id,name'])->latest('id')->limit(40)->get(),
+            'logs'        => PipelineSettingsLog::with(['user:id,name', 'stage:id,name'])
+                ->where(fn ($q) => $q->where('pipeline_id', $pipeline->id)->orWhereNull('pipeline_id'))->latest('id')->limit(40)->get(),
+            'rules'       => \App\Models\LeadAssignmentRule::orderBy('sort_order')->orderBy('id')->get(),
+            'ruleUsers'   => User::where('status', 1)->where(fn ($q) => $q->whereNull('type')->orWhere('type', '!=', 'vendor'))->orderBy('name')->get(['id', 'name', 'vendor_id']),
+            'branchList'  => \App\Classes\Helper::branchOptions(),
+            'scoreWeights' => app(\App\Services\LeadScorer::class)->weights(),
         ]);
     }
 
+    // ── pipelines ──
+
+    public function storePipeline(Request $request): RedirectResponse
+    {
+        $data = $this->validatePipeline($request);
+        $default = Pipeline::default();
+
+        $pipeline = DB::transaction(function () use ($data, $default) {
+            $pipeline = Pipeline::create($data + [
+                'is_default' => false, 'is_active' => true,
+                'sort_order' => (int) Pipeline::max('sort_order') + 10,
+                'default_owner_id' => $default->default_owner_id,
+            ]);
+            // Every pipeline starts with a locked "New" stage (where new deals land) and one working stage
+            PipelineStage::create(['pipeline_id' => $pipeline->id, 'name' => 'New', 'color' => '#64748b', 'probability' => 10,
+                'required_fields' => [], 'sort_order' => 10, 'is_system' => true]);
+            PipelineStage::create(['pipeline_id' => $pipeline->id, 'name' => 'Contacted', 'color' => '#0ea5e9', 'probability' => 30,
+                'rotting_days' => 7, 'required_fields' => [], 'sort_order' => 20]);
+
+            return $pipeline;
+        });
+        PipelineSettingsLog::record('pipeline_added', null, [], ['name' => $pipeline->name], $pipeline->id);
+
+        return redirect(url('admin/pipeline-settings?pipeline=' . $pipeline->id))
+            ->with('success', 'Pipeline "' . $pipeline->name . '" created. Add its stages below.');
+    }
+
+    /** Rename, describe, switch on / off. The default pipeline can never be switched off. */
+    public function updatePipeline(Request $request, int $id): RedirectResponse
+    {
+        $pipeline = Pipeline::findOrFail($id);
+        $data = $this->validatePipeline($request, $pipeline);
+        $data['is_active'] = $pipeline->is_default || $request->boolean('is_active');
+
+        $old = $pipeline->only(['name', 'description', 'is_active']);
+        $pipeline->update($data);
+        if ($old != $pipeline->only(['name', 'description', 'is_active'])) {
+            PipelineSettingsLog::record('pipeline_updated', null, $old, $pipeline->only(['name', 'description', 'is_active']), $pipeline->id);
+        }
+
+        return back()->with('success', 'Pipeline "' . $pipeline->name . '" saved.');
+    }
+
+    /** Archive (never delete): only an empty, non-default pipeline. Its deals and history stay readable in reports. */
+    public function archivePipeline(int $id): RedirectResponse
+    {
+        $pipeline = Pipeline::whereNull('archived_at')->findOrFail($id);
+        if ($pipeline->is_default) {
+            return back()->with('warning', '"' . $pipeline->name . '" is the default pipeline. It cannot be archived.');
+        }
+        $open = Deal::withoutGlobalScopes()->whereNull('deleted_at')->open()->where('pipeline_id', $pipeline->id)->count();
+        if ($open) {
+            return back()->with('warning', '"' . $pipeline->name . '" still has ' . $open . ' open deal(s). Close them or move them to another pipeline first.');
+        }
+
+        $pipeline->update(['archived_at' => now(), 'is_active' => false]);
+        PipelineSettingsLog::record('pipeline_archived', null, [], ['name' => $pipeline->name], $pipeline->id);
+
+        return redirect(url('admin/pipeline-settings'))->with('success', 'Pipeline "' . $pipeline->name . '" archived.');
+    }
+
+    public function restorePipeline(int $id): RedirectResponse
+    {
+        $pipeline = Pipeline::whereNotNull('archived_at')->findOrFail($id);
+        $pipeline->update(['archived_at' => null, 'is_active' => false]);
+        PipelineSettingsLog::record('pipeline_restored', null, [], ['name' => $pipeline->name], $pipeline->id);
+
+        return redirect(url('admin/pipeline-settings?pipeline=' . $pipeline->id))
+            ->with('success', 'Pipeline "' . $pipeline->name . '" restored (switched off). Switch it on when it is ready.');
+    }
+
+    private function validatePipeline(Request $request, ?Pipeline $pipeline = null): array
+    {
+        $data = $request->validate([
+            'name'        => ['required', 'string', 'max:100', Rule::unique('pipelines', 'name')->ignore($pipeline?->id)],
+            'description' => ['nullable', 'string', 'max:255'],
+        ], ['name.unique' => 'There is already a pipeline with this name.']);
+
+        return ['name' => trim($data['name']), 'description' => $data['description'] ?? null];
+    }
+
+    // ── stages ──
+
     public function storeStage(Request $request): RedirectResponse
     {
-        $pipeline = Pipeline::default();
-        $data = $this->validateStage($request);
+        $pipeline = $this->pipeline($request);
+        $data = $this->validateStage($request, null, $pipeline);
         $data['pipeline_id'] = $pipeline->id;
         $data['sort_order'] = (int) $pipeline->stages()->max('sort_order') + 10;
 
@@ -65,7 +160,7 @@ class PipelineSettingsController extends Controller
     public function updateStage(Request $request, int $id): RedirectResponse
     {
         $stage = PipelineStage::findOrFail($id);
-        $data = $this->validateStage($request, $stage);
+        $data = $this->validateStage($request, $stage, $stage->pipeline);
         $old = $this->loggable($stage);
 
         $stage->update($data);
@@ -81,7 +176,7 @@ class PipelineSettingsController extends Controller
     public function reorder(Request $request)
     {
         $ids = $request->validate(['ids' => ['required', 'array'], 'ids.*' => ['integer']])['ids'];
-        $stages = Pipeline::default()->activeStages()->get()->keyBy('id');
+        $stages = $this->pipeline($request)->activeStages()->get()->keyBy('id');
         $ordered = collect($ids)->map(fn ($id) => (int) $id)->filter(fn ($id) => $stages->has($id))
             ->sortBy(fn ($id) => $stages[$id]->is_system ? 0 : 1)->values();
 
@@ -107,7 +202,8 @@ class PipelineSettingsController extends Controller
         $target = null;
         if ($openDeals->isNotEmpty()) {
             $targetId = $request->validate([
-                'move_to' => ['required', Rule::exists('pipeline_stages', 'id')->whereNull('archived_at')->whereNot('id', $stage->id)],
+                'move_to' => ['required', Rule::exists('pipeline_stages', 'id')->whereNull('archived_at')->whereNot('id', $stage->id)
+                    ->where('pipeline_id', $stage->pipeline_id)],
             ], ['move_to.required' => 'Choose where the open deals in this stage should go.'])['move_to'];
             $target = PipelineStage::findOrFail($targetId);
         }
@@ -165,7 +261,7 @@ class PipelineSettingsController extends Controller
 
     public function updateOwner(Request $request): RedirectResponse
     {
-        $pipeline = Pipeline::default();
+        $pipeline = $this->pipeline($request);
         $ownerId = $request->validate([
             'default_owner_id' => ['required', Rule::in($this->headOfficeUsers()->pluck('id')->all())],
         ])['default_owner_id'];
@@ -175,6 +271,89 @@ class PipelineSettingsController extends Controller
         PipelineSettingsLog::record('default_owner_changed', null, ['default_owner' => $old], ['default_owner' => $pipeline->fresh()->defaultOwner?->name], $pipeline->id);
 
         return back()->with('success', 'New deals will now be owned by ' . $pipeline->fresh()->defaultOwner?->name . '.');
+    }
+
+    // ── lead assignment rules ──
+
+    public function storeRule(Request $request): RedirectResponse
+    {
+        $rule = \App\Models\LeadAssignmentRule::create($this->validateRule($request) + ['created_by' => auth()->id()]);
+        PipelineSettingsLog::record('assignment_rule_added', null, [], ['rule' => $rule->name], Pipeline::default()->id);
+
+        return redirect(url('admin/pipeline-settings') . '#lead-assignment')->with('success', 'Assignment rule "' . $rule->name . '" added.');
+    }
+
+    public function updateRule(Request $request, int $id): RedirectResponse
+    {
+        $rule = \App\Models\LeadAssignmentRule::findOrFail($id);
+        $rule->update($this->validateRule($request) + ['updated_by' => auth()->id()]);
+        PipelineSettingsLog::record('assignment_rule_changed', null, [], ['rule' => $rule->name], Pipeline::default()->id);
+
+        return redirect(url('admin/pipeline-settings') . '#lead-assignment')->with('success', 'Rule saved.');
+    }
+
+    public function destroyRule(int $id): RedirectResponse
+    {
+        $rule = \App\Models\LeadAssignmentRule::findOrFail($id);
+        $rule->delete();
+        PipelineSettingsLog::record('assignment_rule_deleted', null, ['rule' => $rule->name], [], Pipeline::default()->id);
+
+        return redirect(url('admin/pipeline-settings') . '#lead-assignment')->with('success', 'Rule deleted. Deals keep their owners.');
+    }
+
+    private function validateRule(Request $request): array
+    {
+        $data = $request->validate([
+            'name'        => ['required', 'string', 'max:100'],
+            'sort_order'  => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'sources'     => ['nullable', 'array'],
+            'sources.*'   => [Rule::in(array_column(\App\Enums\SourceOfEntry::cases(), 'value'))],
+            'inquiries'   => ['nullable', 'array'],
+            'inquiries.*' => [Rule::in(array_column(\App\Enums\InquiryType::cases(), 'value'))],
+            'vendor_ids'  => ['nullable', 'array'],
+            'vendor_ids.*' => ['integer', 'min:0'],
+            'pipeline_ids' => ['nullable', 'array'],
+            'pipeline_ids.*' => ['integer', 'exists:pipelines,id'],
+            'method'      => ['required', Rule::in(array_keys(\App\Models\LeadAssignmentRule::METHODS))],
+            'user_ids'    => ['required', 'array', 'min:1'],
+            'user_ids.*'  => ['integer', Rule::exists('users', 'id')->where('status', 1)],
+            'set_vendor_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('type', 'vendor')],
+            'max_open'    => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'reassign_after_minutes' => ['nullable', 'integer', 'min:5', 'max:10080'],
+        ], ['user_ids.required' => 'Choose at least one person who can receive these leads.']);
+
+        return [
+            'name' => $data['name'], 'sort_order' => $data['sort_order'] ?? 10,
+            'sources' => array_values($data['sources'] ?? []) ?: null,
+            'inquiries' => array_values($data['inquiries'] ?? []) ?: null,
+            'vendor_ids' => array_values(array_map('intval', $data['vendor_ids'] ?? [])) ?: null,
+            'pipeline_ids' => array_values(array_map('intval', $data['pipeline_ids'] ?? [])) ?: null,
+            'method' => $data['method'], 'user_ids' => array_values(array_map('intval', $data['user_ids'])),
+            'set_vendor_id' => $data['set_vendor_id'] ?? null, 'max_open' => $data['max_open'] ?? null,
+            'reassign_after_minutes' => $data['reassign_after_minutes'] ?? null,
+            'include_manual' => $request->boolean('include_manual'), 'is_active' => $request->boolean('is_active'),
+        ];
+    }
+
+    /** Lead score weights (points per reason); empty = the default. */
+    public function updateScoring(Request $request): RedirectResponse
+    {
+        $keys = array_keys(config('lead_scoring.weights', []));
+        $data = $request->validate(['weights' => ['nullable', 'array'], 'weights.*' => ['nullable', 'integer', 'min:-50', 'max:50']]);
+        $pipeline = Pipeline::default();
+        $custom = [];
+        foreach ($keys as $key) {
+            $v = $data['weights'][$key] ?? null;
+            if ($v !== null && $v !== '' && (int) $v !== (int) config("lead_scoring.weights.$key.points")) {
+                $custom[$key] = (int) $v;
+            }
+        }
+        $old = $pipeline->scoring;
+        $pipeline->update(['scoring' => $custom ?: null]);
+        PipelineSettingsLog::record('lead_score_changed', null, ['weights' => $old], ['weights' => $custom], $pipeline->id);
+        \Illuminate\Support\Facades\Artisan::call('crm:automations', ['task' => 'scores']);
+
+        return redirect(url('admin/pipeline-settings') . '#lead-score')->with('success', 'Lead score weights saved and every open deal re-scored.');
     }
 
     /** Office hours + weekly holidays: new-lead call deadlines only count inside them. */
@@ -220,7 +399,15 @@ class PipelineSettingsController extends Controller
 
     // ------------------------------------------------------------------
 
-    private function validateStage(Request $request, ?PipelineStage $stage = null): array
+    /** The pipeline being edited (?pipeline= / pipeline_id), else the default. */
+    private function pipeline(Request $request): Pipeline
+    {
+        $id = (int) ($request->input('pipeline_id') ?: $request->query('pipeline'));
+
+        return ($id ? Pipeline::find($id) : null) ?? Pipeline::default();
+    }
+
+    private function validateStage(Request $request, ?PipelineStage $stage = null, ?Pipeline $pipeline = null): array
     {
         $data = $request->validate([
             'name'              => ['required', 'string', 'max:60'],
@@ -237,6 +424,10 @@ class PipelineSettingsController extends Controller
         if ($stage?->is_system) {
             $data['status_key'] = $stage->status_key;
             $data['required_fields'] = [];
+        }
+        // Only the default pipeline mirrors to leads.lead_status
+        if ($pipeline && !$pipeline->is_default) {
+            $data['status_key'] = null;
         }
 
         return $data;

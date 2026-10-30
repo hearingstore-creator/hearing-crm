@@ -19,7 +19,7 @@ class SmsAutomationController extends Controller
         $this->middleware(fn ($request, $next) => \App\Classes\Helper::headOfficeOnly($request, $next));
         $this->middleware('permission:sms_automation.index')->only(['index']);
         $this->middleware('permission:sms_automation.create')->only(['create', 'store']);
-        $this->middleware('permission:sms_automation.edit')->only(['edit', 'update', 'toggle']);
+        $this->middleware('permission:sms_automation.edit')->only(['edit', 'update', 'toggle', 'mode']);
         $this->middleware('permission:sms_automation.delete')->only(['destroy']);
     }
 
@@ -93,6 +93,32 @@ class SmsAutomationController extends Controller
         $automation->delete();
 
         return redirect('/admin/sms#automation-tab')->with('success', 'Deleted Successfully');
+    }
+
+    /**
+     * The cost-control switch for every automation: all / essential only / off, and the price used for cost figures.
+     */
+    public function mode(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'mode' => 'required|in:all,essential,off',
+            'cost_per_sms' => 'nullable|numeric|min:0|max:100',
+            'low_balance' => 'nullable|numeric|min:0|max:100000000',
+        ]);
+
+        $setting = \App\Models\Setting::findOrFail(1);
+        $setting->sms_automation_mode = $data['mode'];
+        if (isset($data['cost_per_sms'])) {
+            $setting->sms_cost_per_sms = $data['cost_per_sms'];
+        }
+        if ($request->has('low_balance')) {
+            $setting->sms_low_balance = $request->filled('low_balance') ? $data['low_balance'] : null;
+        }
+        $setting->save();
+
+        $label = ['all' => 'All active automations will send.', 'essential' => 'Only essential messages (appointments, tickets, repair and pickup) will send.', 'off' => 'All automatic SMS are paused.'][$data['mode']];
+
+        return redirect('admin/sms#automation-tab')->with('success', 'SMS mode saved. ' . $label);
     }
 
     /**

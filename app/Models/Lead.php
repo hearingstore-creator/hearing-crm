@@ -53,6 +53,20 @@ class Lead extends Model
         // Lead Status
         'lead_status',
         'lead_temperature',
+        'campaign_id',
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_content',
+        'utm_term',
+        'gclid',
+        'fbclid',
+        'landing_page',
+        'referrer_url',
+        'marketing_consent',
+        'consent_at',
+        'consent_source',
+        'erased_at',
     ];
 
     protected $casts = [

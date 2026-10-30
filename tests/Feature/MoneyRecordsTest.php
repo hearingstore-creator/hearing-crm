@@ -57,6 +57,28 @@ class MoneyRecordsTest extends TestCase
         $this->assertTrue(DB::table('activity_logs')->where('action', 'sale_cancelled')->where('new_values', 'like', '%Patient changed mind%')->exists());
     }
 
+    public function test_sale_cancel_also_reverses_due_collected_later(): void
+    {
+        $this->postSale($this->admin, $this->customerId, [[$this->productId, null, ['SN-1'], 1]], 80)->assertSessionHasNoErrors();
+        $sale = DB::table('sale_masters')->orderByDesc('id')->first();
+        $inv = $sale->sale_invoice_no;
+
+        $this->actingAs($this->admin)->from('/admin/sales/due-list')->post('/admin/sales/collect-due', [
+            'sale_invoice_no' => $inv, 'paid_amount' => 120, 'date' => date('Y-m-d'),
+        ])->assertSessionHas('success');
+        $this->assertDatabaseHas('customer_ledgers', ['ref_invoice_no' => $inv, 'type' => 'Receive', 'credit' => 120]);
+        $this->assertEqualsWithDelta(200, $this->companyNet($inv), 0.01);
+
+        $this->actingAs($this->admin)->from('/admin/sale')->delete("/admin/sale/{$sale->id}", ['reason' => 'Entered for wrong patient'])
+            ->assertSessionHas('success');
+
+        // Neither the first payment nor the later collection stays as income or as patient credit
+        $this->assertEqualsWithDelta(0, $this->partyNet('customer_ledgers', $inv), 0.01);
+        $this->assertEqualsWithDelta(0, $this->companyNet($inv), 0.01);
+        $this->assertDatabaseHas('customer_ledgers', ['ref_invoice_no' => $inv, 'type' => 'Receive (Reversed)']);
+        $this->assertDatabaseHas('ledgers', ['ref_invoice_no' => $inv, 'type' => 'Receive Reversal', 'income_amount' => -120]);
+    }
+
     public function test_purchase_and_supplier_payment_cancel_reverse_ledgers(): void
     {
         $this->postPurchase($this->admin, $this->supplierId, [[$this->productId, '', 'SN-9', 1]], 40)->assertSessionHasNoErrors();

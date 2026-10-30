@@ -59,7 +59,7 @@
     }
 
     var money = new Intl.NumberFormat('en-IN', {maximumFractionDigits: 0});
-    function fmt(v, format) { return (format === 'money' ? '৳' : '') + money.format(v || 0); }
+    function fmt(v, format) { return (format === 'money' ? (window.CRM_CURRENCY || '৳') : '') + money.format(v || 0); }
 
     var tileThemes = {
         sales_today:     { accent: '#10b981', halo: '#10b981' },
@@ -270,7 +270,7 @@
     var builders = {
         revenue_month: function (d, canvas) {
             document.getElementById('td-rev-note').textContent = d.this_label + ' so far ' + fmt(d.total, 'money') +
-                ' · same day last month ' + fmt(d.same_day_last, 'money');
+                ' · same day last month ' + fmt(d.same_day_last, 'money') + ' · before returns';
 
             var ctx = canvas.getContext('2d');
             var grad = ctx.createLinearGradient(0, 0, 0, 240);
@@ -369,8 +369,8 @@
                                 font: { size: 11, family: 'Inter, system-ui, sans-serif' },
                                 color: '#64748b',
                                 callback: function (v) {
-                                    if (v >= 100000) return '৳' + (v / 100000).toFixed(1) + 'L';
-                                    if (v >= 1000) return '৳' + (v / 1000).toFixed(0) + 'k';
+                                    if (v >= 100000) return (window.CRM_CURRENCY || '৳') + (v / 100000).toFixed(1) + 'L';
+                                    if (v >= 1000) return (window.CRM_CURRENCY || '৳') + (v / 1000).toFixed(0) + 'k';
                                     return fmt(v, 'money');
                                 }
                             }
@@ -388,7 +388,7 @@
             };
         },
         sales_by_category: function (d) {
-            document.getElementById('td-cat-note').textContent = d.period + ' · total ' + fmt(d.total, 'money');
+            document.getElementById('td-cat-note').textContent = d.period + ' · total ' + fmt(d.total, 'money') + ' · before returns';
             if (!d.values.length) return null;
 
             var catPalette = ['#4f46e5', '#059669', '#d97706', '#0891b2', '#7c3aed', '#e11d48', '#94a3b8'];
@@ -487,7 +487,7 @@
                             ctx.fillStyle = '#0f172a';
                             var formattedTotal = fmt(d.total, 'money');
                             if (d.total >= 100000) {
-                                formattedTotal = '৳' + (d.total / 100000).toFixed(2) + 'L';
+                                formattedTotal = (window.CRM_CURRENCY || '৳') + (d.total / 100000).toFixed(2) + 'L';
                             }
                             ctx.fillText(formattedTotal, x, y + 10);
                             ctx.restore();

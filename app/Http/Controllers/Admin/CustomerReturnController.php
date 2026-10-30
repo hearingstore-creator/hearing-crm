@@ -71,6 +71,7 @@ class CustomerReturnController extends Controller
     {
         $data = CustomerReturnMaster::join('sale_masters', 'sale_masters.sale_invoice_no', '=', 'customer_return_masters.sale_invoice_no')
             ->join('customers', 'customers.id', '=', 'sale_masters.customer_id')
+            ->whereNull('sale_masters.deleted_at')
             ->select('customer_return_masters.*', 'customers.name')
             ->orderBy('id', 'desc')
             ->get();

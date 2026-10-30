@@ -1,5 +1,5 @@
 @extends('admin.layouts.master')
-@section('page_title', 'Website Leads')
+@section('page_title', 'Lead Inbox')
 @section('breadcrumb_parent', 'Leads')
 @section('breadcrumb_parent_url', url('admin/deals'))
 
@@ -18,6 +18,15 @@
         'spam'      => ['Spam', 'fa-ban', 'wl-spam'],
         'failed'    => ['Failed', 'fa-exclamation-triangle', 'wl-failed'],
     ];
+    $sourceMeta = [
+        'website'   => ['Website', 'fas fa-globe'],
+        'facebook'  => ['Facebook', 'fab fa-facebook'],
+        'instagram' => ['Instagram', 'fab fa-instagram'],
+        'whatsapp'  => ['WhatsApp', 'fab fa-whatsapp'],
+        'google'    => ['Google', 'fab fa-google'],
+        'phone_call'=> ['Missed call / phone', 'fas fa-phone'],
+        'webhook'   => ['Webhook', 'fas fa-plug'],
+    ];
     $tabUrl = fn ($t, $extra = []) => url('admin/web-leads') . '?' . http_build_query(array_filter(['tab' => $t === 'inbox' ? null : $t] + $extra));
 @endphp
 
@@ -26,14 +35,15 @@
 
     <div class="crm-page-header crm-animate-in">
         <div class="page-title-group">
-            <h1><i class="fas fa-globe" style="color: var(--accent-500); margin-right: 8px;"></i>Website Leads</h1>
-            <p>Every website enquiry lands here first, then becomes a person + deal in <b>New</b> with a call activity.</p>
+            <h1><i class="fas fa-inbox" style="color: var(--accent-500); margin-right: 8px;"></i>Lead Inbox</h1>
+            <p>Website, Facebook / Instagram lead forms, WhatsApp, Google lead forms and webhooks land here first, then become a person + deal in <b>New</b> with a call activity.</p>
         </div>
         <div class="header-actions">
             <div class="deal-views" role="tablist" aria-label="Website lead sections">
                 <a href="{{ $tabUrl('inbox') }}" id="wl-tab-inbox" class="{{ $tab === 'inbox' ? 'active' : '' }}"><i class="fas fa-inbox"></i> Inbox</a>
                 @if ($canManage)
                     <a href="{{ $tabUrl('forms') }}" id="wl-tab-forms" class="{{ $tab === 'forms' ? 'active' : '' }}"><i class="fas fa-plug"></i> Forms</a>
+                    <a href="{{ $tabUrl('connections') }}" id="wl-tab-connections" class="{{ $tab === 'connections' ? 'active' : '' }}"><i class="fas fa-satellite-dish"></i> Connections</a>
                     <a href="{{ $tabUrl('blocklist') }}" id="wl-tab-blocklist" class="{{ $tab === 'blocklist' ? 'active' : '' }}"><i class="fas fa-shield-alt"></i> Blocklist</a>
                 @endif
             </div>
@@ -83,6 +93,10 @@
                     <option value="{{ $key }}" @selected($status === $key)>{{ $label }} ({{ $counts[$key] ?? 0 }})</option>
                 @endforeach
             </select>
+            <select name="source" id="wl-source" class="form-control" aria-label="Source">
+                <option value="">All sources</option>
+                @foreach ($sourceMeta as $key => [$label])<option value="{{ $key }}" @selected(request('source') === $key)>{{ $label }}</option>@endforeach
+            </select>
             <button type="submit" class="btn btn-primary" id="wl-filter-apply"><i class="fas fa-filter mr-1"></i>Apply</button>
             @if ($status || request('q'))<a href="{{ url('admin/web-leads') }}" class="btn btn-secondary" id="wl-filter-reset">Reset</a>@endif
         </form>
@@ -112,7 +126,8 @@
                                         <div class="wl-tags">@foreach ($s->inquiry_for as $iq)<span>{{ \App\Enums\InquiryType::tryFrom($iq)?->label() ?? $iq }}</span>@endforeach</div>
                                     @endif
                                     @if ($s->message)<div class="wl-msg" title="{{ $s->message }}">{{ \Illuminate\Support\Str::limit($s->message, 90) }}</div>@endif
-                                    <span class="wl-muted">{{ $s->form->name ?? 'Deleted form' }}</span>
+                                    @php [$srcLabel, $srcIcon] = $sourceMeta[$s->source ?: 'website'] ?? [ucfirst((string) $s->source), 'fa-plug']; @endphp
+                                    <span class="wl-muted"><i class="{{ $srcIcon }}"></i> {{ $srcLabel }} · {{ $s->form->name ?? 'Deleted form' }}</span>
                                 </td>
                                 <td>
                                     @if ($s->utm_campaign || $s->utm_source)
@@ -239,7 +254,7 @@ $response = curl_exec($ch);   // 202 = received</pre>
             @endforelse
         </div>
 
-    @else
+    @elseif ($tab === 'blocklist')
         <div class="wl-grid crm-animate-in delay-1">
             <div class="crm-table-card wl-card">
                 <h2 class="wl-h"><i class="fas fa-user-slash"></i> Block a contact</h2>
@@ -287,6 +302,8 @@ $response = curl_exec($ch);   // 202 = received</pre>
             </table>
             @if ($blocked->hasPages())<div class="crm-table-footer">{{ $blocked->links() }}</div>@endif
         </div>
+    @elseif ($tab === 'connections')
+        @include('admin.web-lead.partials.connections')
     @endif
 </div>
 @endsection

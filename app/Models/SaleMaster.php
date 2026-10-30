@@ -6,10 +6,14 @@ use App\Classes\Helper;
 use App\Traits\HelperTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SaleMaster extends Model
 {
-    use HasFactory, HelperTrait;
+    // HelperTrait's soft delete also records deleted_by
+    use HasFactory, HelperTrait, SoftDeletes {
+        HelperTrait::runSoftDelete insteadof SoftDeletes;
+    }
     
     protected $fillable = [
         'sale_invoice_no',

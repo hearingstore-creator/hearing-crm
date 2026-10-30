@@ -233,7 +233,7 @@ a.md-main:hover b { color:var(--accent-600); }
             <a href="{{ url('admin/sale?start_date=' . now()->toDateString() . '&end_date=' . now()->toDateString()) }}" class="kpi k-green" id="kpi-today-sales">
                 <span class="k-ic"><i class="fas fa-cash-register"></i></span>
                 <div>
-                    <div class="k-lbl">Today's Sales</div>
+                    <div class="k-lbl">Invoiced Today</div>
                     <div class="k-val">৳{{ number_format($ov['today_sales'] ?? 0) }}</div>
                     <div class="k-sub"><b>{{ $ov['today_sales_count'] ?? 0 }}</b> invoice(s) · Due ৳{{ number_format($statistics['sales']['today']['due'] ?? 0) }}</div>
                 </div>
@@ -244,9 +244,9 @@ a.md-main:hover b { color:var(--accent-600); }
             <a href="{{ url('admin/sale') }}" class="kpi k-violet" id="kpi-revenue">
                 <span class="k-ic"><i class="fas fa-chart-line"></i></span>
                 <div>
-                    <div class="k-lbl">Total Revenue</div>
+                    <div class="k-lbl">Total Invoiced</div>
                     <div class="k-val">৳{{ number_format($ov['total_sales'] ?? 0) }}</div>
-                    <div class="k-sub">This month <b>৳{{ number_format($statistics['sales']['month']['amount'] ?? 0) }}</b></div>
+                    <div class="k-sub">Before returns · this month <b>৳{{ number_format($statistics['sales']['month']['amount'] ?? 0) }}</b></div>
                 </div>
                 <span class="k-go">View <i class="fas fa-arrow-right"></i></span>
             </a>
@@ -467,7 +467,7 @@ a.md-main:hover b { color:var(--accent-600); }
         <div class="crm-table-card">
             <div class="crm-table-header"><div class="table-title-group"><h2><i class="fas fa-balance-scale" style="color:var(--success-500);"></i> Financial Summary</h2></div>@if (!empty($analytics['receivables_aging']) && empty($analytics['receivables_aging']['error']))<a href="#w-receivables_aging" style="font-size:11px;color:var(--accent-500);font-weight:600;text-decoration:none;" id="link-dues-aging">View dues aging →</a>@endif</div>
             <div style="padding:20px;">
-                <div class="ledger-row"><span style="color:var(--page-text-muted);">Total Sales</span><span style="font-weight:600;">৳{{ number_format($ov['total_sales'] ?? 0) }}</span></div>
+                <div class="ledger-row"><span style="color:var(--page-text-muted);">Total Invoiced (before returns)</span><span style="font-weight:600;">৳{{ number_format($ov['total_sales'] ?? 0) }}</span></div>
                 <div class="ledger-row"><span style="color:var(--page-text-muted);">Collected</span><span style="font-weight:600;color:var(--success-600);">৳{{ number_format($statistics['sales']['total']['paid'] ?? 0) }}</span></div>
                 <div class="ledger-row"><span style="color:var(--page-text-muted);">Customer Due</span><span style="font-weight:600;color:var(--danger-600);">৳{{ number_format($statistics['sales']['total']['due'] ?? 0) }}</span></div>
                 @if ($can('total_purchases'))

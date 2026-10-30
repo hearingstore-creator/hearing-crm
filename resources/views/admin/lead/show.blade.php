@@ -26,6 +26,10 @@
                     <i class="fas fa-file-invoice mr-1"></i>Create Quotation
                 </a>
             @endcan
+            @if (auth()->user()->isSuperAdmin() && !$lead->erased_at)
+                <a href="{{ route('leads.data-export', $lead->id) }}" class="btn btn-outline-secondary btn-sm" title="Everything held about this person, as a file"><i class="fas fa-file-export mr-1"></i>Data export</a>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-toggle="collapse" data-target="#lead-erase"><i class="fas fa-user-slash mr-1"></i>Erase</button>
+            @endif
             @if ($lead->lead_status != 'won')
                 @can('permission', 'lead_list.edit')
                     <a href="{{ route('leads.edit', $lead->id) }}" class="btn btn-primary btn-sm">
@@ -37,6 +41,19 @@
     </div>
 
     @include('admin.alert_message')
+    @if ($lead->erased_at)
+        <div class="alert alert-secondary" style="font-size:13px;">Personal details were erased on {{ \Illuminate\Support\Carbon::parse($lead->erased_at)->format('d M Y') }} at the person's request.</div>
+    @elseif (auth()->user()->isSuperAdmin())
+        <div class="collapse" id="lead-erase">
+            <form method="POST" action="{{ route('leads.erase', $lead->id) }}" class="alert alert-danger" style="font-size:13px;">
+                @csrf
+                <b>Erase this person's personal details</b> – name, phone, email, address, notes and messages. Invoices and payments stay, without the name. This cannot be undone.
+                <input type="text" name="reason" class="form-control form-control-sm my-2" maxlength="500" placeholder="Reason, e.g. asked by email on 3 Nov to be removed" required>
+                <label class="mb-2" style="font-weight:400;"><input type="checkbox" name="confirm" value="1" required> I understand this cannot be undone</label><br>
+                <button type="submit" class="btn btn-danger btn-sm">Erase personal details</button>
+            </form>
+        </div>
+    @endif
 
     {{-- Hero Card --}}
     <div class="crm-hero-card crm-animate-in delay-1">

@@ -9,6 +9,7 @@
 @endpush
 
 @section('content')
+@php $canSmsTeam = auth()->user()->hasAccess('compose_&_send.team') && ! auth()->user()->branchId(); @endphp
 <div class="container-fluid" style="padding: 0 24px;">
 
     <div class="crm-page-header crm-animate-in">
@@ -190,6 +191,9 @@
                                 @can('permission','doctor_list.edit')
                                     <a href="{{ url('admin/doctor/'.$item->id.'/edit') }}" class="action-btn btn-edit" title="Edit Doctor & Rules"><i class="fas fa-pen"></i></a>
                                 @endcan
+                                @if ($canSmsTeam ?? false)
+                                    <a href="#" class="action-btn btn-quick-sms" data-type="doctor" data-id="{{ $item->id }}" data-name="{{ $item->name }}" data-phone="{{ $item->contact_number }}" title="Send SMS"><i class="fas fa-sms"></i></a>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -206,4 +210,7 @@
         </div>
     </div>
 </div>
+@if ($canSmsTeam ?? false)
+    @include('admin.sms.partials.quick-send')
+@endif
 @endsection

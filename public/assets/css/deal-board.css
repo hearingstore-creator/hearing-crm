@@ -434,3 +434,25 @@ body.is-dragging-deal .deal-dock { transform: translate(-50%, 0); pointer-events
 
 /* Drawer: result chips under a planned call */
 .dd-results { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+/* Lead score badge (LeadScorer): hot / warm / cold */
+.dc-score { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: help; margin-right: 4px; flex-shrink: 0; }
+.dc-score.s-hot { background: #fee2e2; color: #b91c1c; }
+.dc-score.s-warm { background: #fef3c7; color: #b45309; }
+.dc-score.s-cold { background: #e2e8f0; color: #475569; }
+[data-theme="dark"] .dc-score.s-hot { background: rgba(239, 68, 68, .2); color: #fca5a5; }
+[data-theme="dark"] .dc-score.s-warm { background: rgba(245, 158, 11, .2); color: #fcd34d; }
+[data-theme="dark"] .dc-score.s-cold { background: rgba(148, 163, 184, .2); color: #cbd5e1; }
+
+/* ── Pipelines (settings tabs + board switcher) ── */
+.ps-pipeline-tabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ps-pipeline-tab { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--card-border); border-radius: 999px; font-size: 13px; font-weight: 700; color: var(--page-text); text-decoration: none; background: var(--card-bg); }
+.ps-pipeline-tab:hover { border-color: var(--accent-500); color: var(--page-text); text-decoration: none; }
+.ps-pipeline-tab.active { border-color: var(--accent-500); background: color-mix(in srgb, var(--accent-500) 12%, transparent); }
+.ps-pipeline-tab.archived { opacity: .65; }
+.ps-pipeline-tab small { font-weight: 500; color: var(--page-text-muted); }
+.ps-pipeline-form { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(200px, 2fr) auto; gap: 10px; margin-top: 12px; }
+.ps-pipeline-form .form-control { height: 34px; font-size: 13px; border-radius: 8px; }
+@media (max-width: 700px) { .ps-pipeline-form { grid-template-columns: 1fr; } }
+.deal-pipeline-switch { height: 34px; font-size: 13px; font-weight: 700; border-radius: 8px; max-width: 240px; }
+.dd-pipeline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }

@@ -6,12 +6,10 @@ use App\Classes\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Designation;
 use App\Models\Employee;
-use App\Models\EmployeeLedger;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -106,6 +104,7 @@ class EmployeeController extends Controller
             [
                 'name' => ['required', 'string'],
                 'mobile_no' => ['required', 'string'],
+                'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             ],
             [
                 'designation_id.required' => 'The designation field is required.',
@@ -156,6 +155,7 @@ class EmployeeController extends Controller
         $this->validate($request, [
             'name' => ['required', 'string'],
             'mobile_no' => ['required', 'string'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
         $requestAll = $request->all();
@@ -173,51 +173,6 @@ class EmployeeController extends Controller
         }
 
         return redirect()->back()->with('warning', 'Not Updated');
-    }
-
-    /**
-     * @return \Illuminate\Contracts\View\View
-     */
-    public function employeeSalaryReport(): View
-    {
-        return view('admin.employee.salary_report');
-    }
-
-    /**
-     * @return \Illuminate\Http\JsonResponse
-     * @throws \Exception
-     */
-    public function employeeSalaryReportList(): JsonResponse
-    {
-        $data = EmployeeLedger::leftJoin('employees', 'employees.id', '=', 'employee_ledgers.employee_id')
-            ->whereNull('employee_ledgers.deleted_at')
-            ->select(
-                'employee_ledgers.id',
-                'employees.name',
-                'employees.salary',
-                DB::raw("SUM(employee_ledgers.credit) - SUM(employee_ledgers.debit) as due")
-            )
-            ->groupBy('employees.id')
-            ->get();
-
-        return DataTables::of($data)
-            ->addIndexColumn()
-            ->addColumn('due', function ($row) {
-                if ($row->due < 0) {
-                    return 0;
-                }
-
-                return $row->due;
-            })
-            ->addColumn('advanced', function ($row) {
-                if ($row->due <= 0) {
-                    return (-1) * $row->due;
-                }
-
-                return 0;
-            })
-            ->rawColumns(['due', 'advanced'])
-            ->toJson();
     }
 
     /**

@@ -99,6 +99,9 @@
         .lf-note { display: none; }
         .show-note .lf-note { display: block; }
         .show-note .lf-note-link { display: none; }
+        .lf-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--muted); cursor: pointer; margin: 2px 4px 0; }
+        .lf-consent input { width: 18px; height: 18px; margin: 1px 0 0; flex: none; accent-color: #fff; }
+        .lf-consent em { font-style: normal; opacity: .75; }
         .lf-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
         .lf-alert { display: none; margin: 0 0 14px; padding: 11px 14px; border-radius: 14px; font-size: 13.5px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 180, 185, .45); color: var(--err); }
         .lf-alert.show { display: block; }
@@ -144,6 +147,7 @@
         }
     </style>
 </head>
+@php($needsConsent = \App\Support\Region::needsConsent())
 <body class="{{ $embedded ? 'is-embed' : '' }}">
 <div class="lf-bg" aria-hidden="true"></div>
 
@@ -181,7 +185,7 @@
 
         <div class="lf-field" data-field="phone">
             <label class="lf-label" for="lf-phone" data-t="phone"></label>
-            <input class="lf-in" type="tel" id="lf-phone" name="phone" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="01XXXXXXXXX" required>
+            <input class="lf-in" type="tel" id="lf-phone" name="phone" maxlength="20" inputmode="tel" autocomplete="tel" placeholder="{{ \App\Support\Region::isBangladesh() ? '01XXXXXXXXX' : '+' . \App\Support\Region::phonePrefix() . ' …' }}" required>
             <div class="lf-err"></div>
         </div>
 
@@ -199,6 +203,11 @@
         <div class="lf-field lf-note" data-field="message">
             <label class="lf-label" for="lf-message" data-t="noteLabel"></label>
             <textarea class="lf-in" id="lf-message" name="message" maxlength="2000"></textarea>
+            <div class="lf-err"></div>
+        </div>
+
+        <div class="lf-field" data-field="consent">
+            <label class="lf-consent"><input type="checkbox" name="consent" value="1" id="lf-consent" @if ($needsConsent) required @endif><span><span data-t="consent"></span>@unless ($needsConsent) <em data-t="optional"></em>@endunless</span></label>
             <div class="lf-err"></div>
         </div>
 
@@ -224,6 +233,7 @@
 
 <script>
 (function () {
+    var BD = {{ \App\Support\Region::isBangladesh() ? 'true' : 'false' }}, NEEDS_CONSENT = {{ $needsConsent ? 'true' : 'false' }};
     var T = {
         en: {
             who: 'Your daughter', line: 'Dad, dinner is ready.', lost: [2, 5, 13, 18],
@@ -234,7 +244,9 @@
             addNote: '+ Add a note (optional)', noteLabel: 'Anything we should know?', notePh: 'e.g. My father struggles on phone calls',
             cta: 'Call me back', sending: 'Sending…', private: 'Your details stay private.',
             doneTitle: 'Thank you!', doneText: 'A specialist will call you within 15 minutes during office hours.', close: 'Close', back: 'Back to website',
-            errName: 'Please enter your name.', errPhone: 'Please enter a valid mobile number (e.g. 017XXXXXXXX).',
+            consent: 'I agree to receive messages about hearing care and offers. I can say STOP at any time.', optional: '(optional)',
+            errName: 'Please enter your name.', errPhone: BD ? 'Please enter a valid mobile number (e.g. 017XXXXXXXX).' : 'Please enter a valid mobile number with the country code.',
+            errConsent: 'Please tick that you agree to be contacted.',
             errNet: 'Network problem. Please check your connection and try again.', errAny: 'Something went wrong. Please try again.'
         },
         bn: {
@@ -246,7 +258,9 @@
             addNote: '+ কিছু লিখতে চাইলে', noteLabel: 'আমাদের কিছু জানাতে চান?', notePh: 'যেমন: বাবা ফোনে কথা বুঝতে পারেন না',
             cta: 'আমাকে কল করুন', sending: 'পাঠানো হচ্ছে…', private: 'আপনার তথ্য গোপন থাকবে।',
             doneTitle: 'ধন্যবাদ!', doneText: 'অফিস সময়ে ১৫ মিনিটের মধ্যে আমাদের বিশেষজ্ঞ আপনাকে কল করবেন।', close: 'বন্ধ করুন', back: 'ওয়েবসাইটে ফিরে যান',
-            errName: 'অনুগ্রহ করে আপনার নাম লিখুন।', errPhone: 'সঠিক মোবাইল নম্বর লিখুন (যেমন 017XXXXXXXX)।',
+            consent: 'শ্রবণ সেবা ও অফারের বিষয়ে বার্তা পেতে আমি সম্মত। যেকোনো সময় STOP লিখে বন্ধ করতে পারব।', optional: '(ঐচ্ছিক)',
+            errName: 'অনুগ্রহ করে আপনার নাম লিখুন।', errPhone: BD ? 'সঠিক মোবাইল নম্বর লিখুন (যেমন 017XXXXXXXX)।' : 'দেশের কোডসহ সঠিক মোবাইল নম্বর লিখুন।',
+            errConsent: 'যোগাযোগের জন্য সম্মতির ঘরে টিক দিন।',
             errNet: 'নেটওয়ার্ক সমস্যা। আবার চেষ্টা করুন।', errAny: 'কিছু ভুল হয়েছে। আবার চেষ্টা করুন।'
         }
     };
@@ -322,12 +336,19 @@
         var name = document.getElementById('lf-name').value.trim(), phone = document.getElementById('lf-phone').value.replace(/[\s-]/g, '');
         var errs = {};
         if (name.length < 2) { errs.name = [t.errName]; }
-        if (!/^(\+?88)?01[3-9]\d{8}$/.test(phone)) { errs.phone = [t.errPhone]; }
+        if (BD ? !/^(\+?88)?01[3-9]\d{8}$/.test(phone) : !/^\+?\d{8,15}$/.test(phone)) { errs.phone = [t.errPhone]; }
+        if (NEEDS_CONSENT && !document.getElementById('lf-consent').checked) { errs.consent = [t.errConsent]; }
         if (Object.keys(errs).length) { showError('', errs); return; }
 
         var data = new FormData(form);
-        ['utm_source', 'utm_medium', 'utm_campaign'].forEach(function (k) { if (qs.get(k)) { data.append(k, qs.get(k)); } });
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'].forEach(function (k) { if (qs.get(k)) { data.append(k, qs.get(k)); } });
+        if (qs.get('c') && !qs.get('utm_campaign')) {   // campaign QR code / printed link
+            data.append('utm_campaign', qs.get('c'));
+            if (!qs.get('utm_source')) { data.append('utm_source', 'qr'); data.append('utm_medium', 'offline'); }
+        }
         data.append('page_url', qs.get('ref') || document.referrer || location.href);
+        data.append('landing_page', qs.get('lp') || qs.get('ref') || location.href);
+        if (qs.get('rf') || (document.referrer && document.referrer.indexOf(location.host) === -1)) { data.append('referrer_url', qs.get('rf') || document.referrer); }
 
         btn.disabled = true;
         btn.querySelector('span').textContent = t.sending;

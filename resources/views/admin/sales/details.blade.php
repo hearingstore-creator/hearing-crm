@@ -71,6 +71,38 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
+
+/* Print: neutralise AdminLTE fixed-layout rules so the invoice paper flows across A4 pages */
+@media print {
+    html, body, .wrapper, .content-wrapper, .content-wrapper > *, .sale-page, .inv-layout {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    .wrapper { display: block !important; position: static !important; }
+    .content-wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        position: static !important;
+        transform: none !important;
+        width: 100% !important;
+    }
+    .main-header, .main-sidebar, .main-footer, .control-sidebar, .sidebar-overlay,
+    .no-print, .inv-side, .crm-page-header, .stepper-container, .services-panel-card {
+        display: none !important;
+    }
+    .crm-animate-in { animation: none !important; opacity: 1 !important; transform: none !important; }
+    .inv-layout { display: block !important; margin: 0 !important; padding: 0 !important; }
+    .inv-paper {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+}
 </style>
 @endpush
 
@@ -118,6 +150,9 @@
     if ($due <= 0.009) { $status = 'paid'; $statusLabel = 'Paid'; }
     elseif ($paid > 0) { $status = 'partial'; $statusLabel = 'Partially Paid'; }
     else { $status = 'unpaid'; $statusLabel = 'Unpaid'; }
+    // A cancelled invoice is kept for reference only: no payments, edits or service actions
+    $isCancelled = $saleMaster->trashed();
+    if ($isCancelled) { $status = 'unpaid'; $statusLabel = 'Cancelled'; }
     $paidPct = $grandTotal > 0 ? min(100, max(0, round($paid / $grandTotal * 100))) : 100;
 
     $paymentLabel = \App\Classes\Helper::paymentType()[$saleMaster->payment_id] ?? null;
@@ -138,7 +173,7 @@
             <p>Issued {{ $saleMaster->date->format('d M Y') }} to {{ $customerLead->full_name ?? 'Customer' }}</p>
         </div>
         <div class="header-actions">
-            @if ($due > 0.009)
+            @if ($due > 0.009 && !$isCancelled)
                 <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#collectDueModal">
                     <i class="fas fa-hand-holding-usd mr-1"></i>Collect Due
                 </button>
@@ -146,9 +181,15 @@
             @can('permission', 'sale_list.index')
                 <a href="{{ url('admin/sale') }}" class="btn btn-secondary btn-sm" id="btn-back-sales"><i class="fas fa-arrow-left mr-1"></i>Sales List</a>
             @endcan
-            <button type="button" onclick="window.print()" class="btn btn-primary btn-sm" id="btn-print-top"><i class="fas fa-print mr-1"></i>Print / PDF</button>
+            <button type="button" onclick="crmPrintInvoice()" data-print-size class="btn btn-primary btn-sm" id="btn-print-top"><i class="fas fa-print mr-1"></i>Print / PDF</button>
         </div>
     </div>
+    @if ($isCancelled)
+        <div class="alert alert-danger no-print" id="sale-cancelled-banner" role="alert">
+            <i class="fas fa-ban mr-1"></i><strong>Cancelled</strong> on {{ $saleMaster->deleted_at->format('d M Y, h:i A') }}@if ($saleMaster->cancel_reason) — {{ $saleMaster->cancel_reason }}@endif.
+            Its stock and ledger entries were reversed. This copy is kept for reference only.
+        </div>
+    @endif
 
     {{-- Interactive Fulfillment Stepper Bar (Screen-only) --}}
     @php
@@ -192,9 +233,11 @@
                         <i class="fas fa-flask mr-1"></i>Lab: {{ $saleMaster->lab_name }}
                     </span>
                 @endif
+                @unless ($isCancelled)
                 <button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#updateFulfillmentModal" style="border-radius: 8px; font-size: 12px; font-weight: 600; padding: 4px 10px;">
                     <i class="fas fa-edit mr-1"></i>Edit Promised Date / Lab
                 </button>
+                @endunless
             </div>
         </div>
 
@@ -314,7 +357,9 @@
                                 </td>
                                 <td style="text-align: center;" id="sale-sd-actions-{{ $sd->id }}">
                                     <div class="d-flex justify-content-center align-items-center" style="gap: 6px;">
-                                        @if ($fStatus === 'not_booked')
+                                        @if ($isCancelled)
+                                            <span class="text-muted" style="font-size: 12px;">Invoice cancelled</span>
+                                        @elseif ($fStatus === 'not_booked')
                                             {{-- Walk-in: Done now --}}
                                             @if ($bType === 'walk_in')
                                                 <button type="button" class="btn btn-success btn-sm btn-done-modal" data-id="{{ $sd->id }}" data-service="{{ $sd->serviceType?->service_type_name }}" data-patient="{{ $customerLead?->full_name ?? 'Patient' }}">
@@ -374,7 +419,7 @@
                 @include('admin.partials.document_header', [
                     'vendor'       => $saleMaster->vendor,
                     'setting'      => $setting,
-                    'documentType' => 'TAX INVOICE',
+                    'documentType' => 'INVOICE',
                     'documentNo'   => '#' . $saleMaster->sale_invoice_no,
                     'date'         => $saleMaster->date,
                     'status'       => $statusLabel,
@@ -669,21 +714,23 @@
             <div class="inv-side-card">
                 <h4>Actions</h4>
                 <div class="side-actions">
+                    @unless ($isCancelled)
                     <button type="button" class="side-btn" style="background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%); color: #fff; font-weight: 600;" data-toggle="modal" data-target="#updateFulfillmentModal">
                         <i class="fas fa-clipboard-check"></i> {{ $saleMaster->isServiceSale() ? 'Update Report Status' : 'Update Fulfillment' }}
                     </button>
-                    @if ($due > 0.009)
+                    @endunless
+                    @if ($due > 0.009 && !$isCancelled)
                         <button type="button" class="side-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; font-weight: 600;" data-toggle="modal" data-target="#collectDueModal">
                             <i class="fas fa-hand-holding-usd"></i> Collect Due Payment
                         </button>
                     @endif
-                    <button type="button" onclick="window.print()" class="side-btn primary" id="btn-print-side">
+                    <button type="button" onclick="crmPrintInvoice()" data-no-print-size class="side-btn primary" id="btn-print-side">
                         <i class="fas fa-print"></i> Print / Save as PDF
                     </button>
                     <a href="{{ route('sale.pos-print', $saleMaster->id) }}" target="_blank" class="side-btn" id="btn-pos-print">
                         <i class="fas fa-receipt ic-blue"></i> POS Receipt
                     </a>
-                    @if ((int) $saleMaster->vendor_id === (int) \App\Classes\Helper::currentBranchId())
+                    @if (!$isCancelled && (int) $saleMaster->vendor_id === (int) \App\Classes\Helper::currentBranchId())
                     @can('permission', 'sale_list.edit')
                         <a href="{{ url('admin/sale/' . $saleMaster->id . '/edit') }}" class="side-btn" id="btn-edit-sale">
                             <i class="fas fa-pen ic-amber"></i> Edit Sale
@@ -868,6 +915,62 @@
 @endif
 
 @push('scripts')
+<script>
+/* Print only the invoice paper, inside an isolated iframe (independent of the admin layout). */
+function crmPrintInvoice() {
+    var paper = document.getElementById('print-area');
+    if (!paper) { window.print(); return; }
+
+    var clone = paper.cloneNode(true);
+    clone.querySelectorAll('.no-print').forEach(function (n) { n.remove(); });
+    clone.classList.remove('crm-animate-in');
+
+    var sizes = (window.CRMPrint && window.CRMPrint.sizes) || {};
+    var cur = (window.CRMPrint && window.CRMPrint.current()) || 'A4';
+    var pg = sizes[cur] || { size: 'A4 portrait', margin: '10mm' };
+
+    var css = [
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+        "{{ asset('assets/css/theme.css') }}",
+        "{{ asset('assets/css/crm-module.css') }}",
+        "{{ asset('assets/css/sales-invoice.css') }}"
+    ].map(function (h) { return '<link rel="stylesheet" href="' + h + '">'; }).join('');
+
+    var old = document.getElementById('crm-print-frame');
+    if (old) old.remove();
+    var frame = document.createElement('iframe');
+    frame.id = 'crm-print-frame';
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    document.body.appendChild(frame);
+
+    var doc = frame.contentWindow.document;
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Invoice #{{ $saleMaster->sale_invoice_no }}</title>' + css +
+        '<style>@page{size:' + pg.size + ';margin:' + pg.margin + ';}' +
+        'html,body{margin:0;padding:0;background:#fff;font-family:Inter,system-ui,sans-serif;}' +
+        '.inv-paper{box-shadow:none!important;border-radius:0;margin:0;max-width:none;width:100%;}' +
+        '.inv-pad{padding:8px 4px!important;}' +
+        '.inv-paper,.inv-paper *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
+        '.inv-parties{grid-template-columns:1.5fr 1fr!important;}' +
+        '.inv-parties>.inv-party+.inv-party{border-left:1px dashed #e2e8f0!important;padding-left:20px!important;}' +
+        '.inv-bottom{grid-template-columns:1fr 300px!important;}' +
+        '.inv-foot{grid-template-columns:repeat(3,1fr)!important;}' +
+        '.inv-head{flex-wrap:nowrap;}.inv-items tr{page-break-inside:avoid;}</style>' +
+        '</head><body>' + clone.outerHTML + '</body></html>');
+    doc.close();
+
+    var done = false;
+    function go() {
+        if (done) return; done = true;
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+        catch (e) { window.print(); }
+    }
+    frame.onload = function () { setTimeout(go, 600); };
+    setTimeout(go, 2500); // fallback if onload never fires
+}
+</script>
 <script>
 $(document).ready(function() {
     // Auto-open collect due modal if passed in query (?collect_due=1)

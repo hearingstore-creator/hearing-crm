@@ -41,6 +41,9 @@ class StageGate
         if (in_array('trial_product', $required, true)) {
             $rules['trial_product'] = ['required', 'string', 'max:150'];
         }
+        // how the in-session trial went (optional; feeds the trial reports)
+        $rules['trial_result'] = ['nullable', \Illuminate\Validation\Rule::in(array_keys(\App\Models\DealTrial::RESULTS))];
+        $rules['trial_product_id'] = ['nullable', 'integer', 'exists:products,id'];
         if (in_array('trial_return_date', $required, true)) {
             $rules['trial_return_date'] = ['required', 'date', 'after_or_equal:today'];
         }

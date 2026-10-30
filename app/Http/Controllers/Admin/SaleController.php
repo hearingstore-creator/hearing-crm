@@ -29,11 +29,13 @@ use App\Models\Stock;
 use App\Models\User;
 use App\Services\MembershipService;
 use App\Services\LedgerReversal;
+use App\Services\SaleTotals;
 use App\Services\StockGuard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Models\Proposal;
 use App\Models\LoyaltySetting;
@@ -44,6 +46,13 @@ use Yajra\DataTables\Facades\DataTables;
 
 class SaleController extends Controller
 {
+    /** Invoice-level amounts typed on the sale form (create and edit): numbers, never negative. */
+    private const AMOUNT_RULES = [
+        'vat'              => ['nullable', 'numeric', 'min:0'],
+        'invoice_discount' => ['nullable', 'numeric', 'min:0'],
+        'redeem_points'    => ['nullable', 'numeric', 'min:0'],
+    ];
+
     /**
      * Configure middleware to handle authorization for different sale operations
      *
@@ -52,6 +61,7 @@ class SaleController extends Controller
     public function __construct()
     {
         $this->middleware('permission:sale_list.index')->only(['index']);
+        $this->middleware('permission:patient_due_list.index|sale_list.index')->only(['dueList']);
         $this->middleware('permission:add_sale.create')->only(['create', 'store']);
         $this->middleware('permission:sale_list.edit')->only(['edit', 'update']);
         $this->middleware('permission:sale_list.view')->only(['show']);
@@ -92,6 +102,11 @@ class SaleController extends Controller
         $bf = fn ($q) => Helper::applyBranchFilter($q, $data['branchFilter']);
 
         $query = $bf(SaleMaster::with(relations: ['customer.lead:id,full_name', 'vendor']));
+
+        // Cancelled invoices are kept but listed only on request; summary cards below never count them
+        if ($request->boolean('cancelled')) {
+            $query->onlyTrashed();
+        }
 
         if ($request->filled('sale_invoice_no')) {
             $query->where('sale_invoice_no', $request->sale_invoice_no);
@@ -141,48 +156,6 @@ class SaleController extends Controller
         ];
 
         return view('admin.sales.index', $data);
-    }
-
-    /**
-     * Get the list of sales for DataTables.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function saleList(): JsonResponse
-    {
-        $data = SaleMaster::join('customers', 'customers.id', '=', 'sale_masters.customer_id')
-            ->select('sale_masters.*', 'customers.name')
-            ->orderBy('id', 'desc')
-            ->get();
-
-        return DataTables::of($data)
-            ->addIndexColumn()
-                ->addColumn('action', function ($row) {
-                    $action = '<div class="d-flex flex-wrap align-items-center">';
-                    if (Helper::hasPermission('sale_list.edit')) {
-                        $action .= '<a href="' . route('sale.edit', $row->sale_invoice_no) . '" class="btn btn-success btn-sm mr-1" title="Edit"><i class="fas fa-edit"></i></a>';
-                    }
-                    if (Helper::hasPermission('sale_list.view')) {
-                        $action .= '<a href="' . route('sale.show', $row->sale_invoice_no) . '" class="btn btn-info btn-sm mr-1" title="Details"><i class="fas fa-eye"></i></a>';
-                    }
-
-                    $action .= '<a href="' . route('sale.pos-print', $row->sale_invoice_no) . '" class="btn btn-secondary btn-sm mr-1" target="_blank" title="POS Print"><i class="fas fa-print"></i></a>';
-
-                    if (Helper::hasPermission('sale_return.create')) {
-                        $action .= '<a href="' . route('sale-returns.create', ['sale_invoice_no' => $row->sale_invoice_no]) . '" class="btn btn-warning btn-sm mr-1" title="Return / Credit Note"><i class="fas fa-undo-alt"></i></a>';
-                    }
-
-                    if (auth()->user()->isSuperAdmin()) {
-                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" onsubmit="return confirmCancelWithReason(event, \'this sale invoice\')">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
-                    }
-                    
-                    $action .= '</div>';
-                    return $action;
-                })
-            ->rawColumns(['action'])
-            ->toJson();
-        
-        
     }
 
     /**
@@ -306,13 +279,19 @@ class SaleController extends Controller
             'delivery_date_time' => ['nullable', 'date'],
             'lab_name' => ['nullable', 'string', 'max:255'],
             'delivery_status' => ['nullable', 'in:' . implode(',', array_column(DeliveryStatus::cases(), 'value'))],
-        ];
+            // Totals come from the form: at least make sure they are amounts
+            'total_amount' => ['required', 'numeric', 'min:0'],
+            'paid' => ['nullable', 'numeric', 'min:0'],
+            'total_discount' => ['nullable', 'numeric', 'min:0'],
+        ] + self::AMOUNT_RULES;
 
         if (! empty($requestProductIds)) {
             foreach ($requestProductIds as $key => $val) {
                 $rules["product_id.$key"] = 'required';
                 $rules["qty.$key"] = 'required|numeric|gt:0';
-                $rules["unit_price.$key"] = 'required';
+                $rules["unit_price.$key"] = 'required|numeric|min:0';
+                $rules["discount.$key"] = 'nullable|numeric|min:0|max:100';
+                $rules["discount_taka.$key"] = 'nullable|numeric|min:0';
                 $rules["product_id"] = 'array';
             }
         }
@@ -320,8 +299,10 @@ class SaleController extends Controller
         if (! empty($requestServiceTypeIds)) {
             foreach ($requestServiceTypeIds as $key => $val) {
                 $rules["service_type_id.$key"] = 'required';
-                $rules["service_qty.$key"] = 'required';
-                $rules["service_price.$key"] = 'required';
+                $rules["service_qty.$key"] = 'required|numeric|min:0';
+                $rules["service_price.$key"] = 'required|numeric|min:0';
+                $rules["service_discount.$key"] = 'nullable|numeric|min:0|max:100';
+                $rules["service_discount_taka.$key"] = 'nullable|numeric|min:0';
                 $rules["service_type_id"] = 'array';
             }
         }
@@ -370,6 +351,12 @@ class SaleController extends Controller
 
         }
 
+        // One save per opened form: a double click or a resent request must not create a second invoice
+        $submissionKey = $request->filled('submission_token') ? 'sale-submit:' . auth()->id() . ':' . $request->submission_token : null;
+        if ($submissionKey && !Cache::add($submissionKey, true, now()->addHours(12))) {
+            return redirect('admin/sale')->with('warning', 'This sale was already submitted. Check the sales list before entering it again.');
+        }
+
         DB::beginTransaction();
         $type = Helper::$sales;
         $saleInvoiceNo = strtoupper(uniqid());
@@ -386,7 +373,7 @@ class SaleController extends Controller
                     'serials'    => $serialNos[$key] ?? null,
                 ];
             }
-            app(StockGuard::class)->assertSaleLines($stockLines, auth()->user()->branchId() ?: null);
+            app(StockGuard::class)->assertSaleLines($stockLines, auth()->user()->branchId() ?: null, null, $request->customer_id ? (int) $request->customer_id : null);
 
             $saleMaster = new SaleMaster();
             $saleMaster->customer_id = $request->customer_id;
@@ -582,6 +569,7 @@ class SaleController extends Controller
                     }
 
                     DB::commit();
+                    SaleTotals::logMismatch($request, $saleMaster);
                     if ($saleMaster->serviceDetails()->exists()) {
                         return redirect()->route('sale.show', $saleMaster->sale_invoice_no)
                             ->with('success', 'Sale saved successfully. Please review the services below to fulfill or book appointments.');
@@ -597,9 +585,11 @@ class SaleController extends Controller
             return redirect()->back()->with('warning', 'Not Saved');
         } catch (StockGuardException $ex) {
             DB::rollback();
+            $submissionKey && Cache::forget($submissionKey);
             return redirect()->back()->withInput()->withErrors(['stock' => $ex->problems()]);
         } catch (\Exception $ex) {
             DB::rollback();
+            $submissionKey && Cache::forget($submissionKey);
             return redirect()->back()->with('warning', \App\Classes\Helper::userMessage($ex));
         }
     }
@@ -611,9 +601,9 @@ class SaleController extends Controller
      * @param array $with
      * @return \App\Models\SaleMaster|null
      */
-    protected function resolveSaleMaster(string|int $id, array $with = []): ?SaleMaster
+    protected function resolveSaleMaster(string|int $id, array $with = [], bool $withCancelled = false): ?SaleMaster
     {
-        $query = SaleMaster::with($with);
+        $query = SaleMaster::with($with)->when($withCancelled, fn ($q) => $q->withTrashed());
 
         if (is_numeric($id)) {
             $sale = (clone $query)->where('id', (int) $id)->first();
@@ -634,16 +624,18 @@ class SaleController extends Controller
     public function show(string $id): View
     {
         $data = Helper::readAllBranches(function () use ($id) {
-            $saleMaster = $this->resolveSaleMaster($id, ['customer.lead', 'vendor', 'doctor', 'doctorChamber', 'creator']);
+            $saleMaster = $this->resolveSaleMaster($id, ['customer.lead', 'vendor', 'doctor', 'doctorChamber', 'creator'], true);
 
             // Check if the user has access to this sale
             if (!$saleMaster || !$saleMaster->isAccessibleByAuthUser()) {
                 abort(403, 'You do not have permission to view this sale.');
             }
 
+            // A cancelled invoice keeps its lines, so show them as they were
+            $cancelled = $saleMaster->trashed();
             $data['saleMaster'] = $saleMaster;
-            $data['saleDetail'] = SaleDetail::with('product.category', 'batch')->where('sale_master_id', $saleMaster->id)->get();
-            $data['serviceDetails'] = ServiceDetail::with(['serviceType.appointmentService', 'appointment.user', 'doneByUser'])->where('sale_master_id', $saleMaster->id)->get();
+            $data['saleDetail'] = SaleDetail::with('product.category', 'batch')->when($cancelled, fn ($q) => $q->withTrashed()->withoutGlobalScope('vendor_relation_filter'))->where('sale_master_id', $saleMaster->id)->get();
+            $data['serviceDetails'] = ServiceDetail::with(['serviceType.appointmentService', 'appointment.user', 'doneByUser'])->when($cancelled, fn ($q) => $q->withTrashed())->where('sale_master_id', $saleMaster->id)->get();
             $data['professionals'] = User::where('status', 1)->orderBy('name')->get(['id', 'name']);
             $data['setting'] = \App\Classes\Helper::invoiceBranding($saleMaster->vendor_id);
 
@@ -662,16 +654,17 @@ class SaleController extends Controller
     public function posPrint(string $id): View
     {
         $data = Helper::readAllBranches(function () use ($id) {
-            $saleMaster = $this->resolveSaleMaster($id, ['customer.lead', 'vendor', 'doctor', 'doctorChamber', 'creator']);
+            $saleMaster = $this->resolveSaleMaster($id, ['customer.lead', 'vendor', 'doctor', 'doctorChamber', 'creator'], true);
 
             // Check if the user has access to this sale
             if (!$saleMaster || !$saleMaster->isAccessibleByAuthUser()) {
                 abort(403, 'You do not have permission to view this sale.');
             }
 
+            $cancelled = $saleMaster->trashed();
             $data['saleMaster'] = $saleMaster;
-            $data['saleDetail'] = SaleDetail::with('product.category', 'batch')->where('sale_master_id', $saleMaster->id)->get();
-            $data['serviceDetails'] = ServiceDetail::with('serviceType')->where('sale_master_id', $saleMaster->id)->get();
+            $data['saleDetail'] = SaleDetail::with('product.category', 'batch')->when($cancelled, fn ($q) => $q->withTrashed()->withoutGlobalScope('vendor_relation_filter'))->where('sale_master_id', $saleMaster->id)->get();
+            $data['serviceDetails'] = ServiceDetail::with('serviceType')->when($cancelled, fn ($q) => $q->withTrashed())->where('sale_master_id', $saleMaster->id)->get();
             $data['setting'] = \App\Classes\Helper::invoiceBranding($saleMaster->vendor_id);
 
             return $data;
@@ -808,13 +801,19 @@ class SaleController extends Controller
             'delivery_date_time' => ['nullable', 'date'],
             'lab_name' => ['nullable', 'string', 'max:255'],
             'delivery_status' => ['nullable', 'in:' . implode(',', array_column(DeliveryStatus::cases(), 'value'))],
-        ];
+            // Totals come from the form: at least make sure they are amounts
+            'total_amount' => ['required', 'numeric', 'min:0'],
+            'paid' => ['nullable', 'numeric', 'min:0'],
+            'total_discount' => ['nullable', 'numeric', 'min:0'],
+        ] + self::AMOUNT_RULES;
 
         if (! empty($requestProductIds)) {
             foreach ($requestProductIds as $key => $val) {
                 $rules["product_id.$key"] = 'required';
                 $rules["qty.$key"] = 'required|numeric|gt:0';
-                $rules["unit_price.$key"] = 'required';
+                $rules["unit_price.$key"] = 'required|numeric|min:0';
+                $rules["discount.$key"] = 'nullable|numeric|min:0|max:100';
+                $rules["discount_taka.$key"] = 'nullable|numeric|min:0';
                 $rules["product_id"] = 'array';
             }
         }
@@ -822,8 +821,10 @@ class SaleController extends Controller
         if (! empty($requestServiceTypeIds)) {
             foreach ($requestServiceTypeIds as $key => $val) {
                 $rules["service_type_id.$key"] = 'required';
-                $rules["service_qty.$key"] = 'required';
-                $rules["service_price.$key"] = 'required';
+                $rules["service_qty.$key"] = 'required|numeric|min:0';
+                $rules["service_price.$key"] = 'required|numeric|min:0';
+                $rules["service_discount.$key"] = 'nullable|numeric|min:0|max:100';
+                $rules["service_discount_taka.$key"] = 'nullable|numeric|min:0';
                 $rules["service_type_id"] = 'array';
             }
         }
@@ -935,7 +936,7 @@ class SaleController extends Controller
                     'serials'    => $serialNos[$key] ?? null,
                 ];
             }
-            app(StockGuard::class)->assertSaleLines($stockLines, $saleMaster->vendor_id ?: null, $saleMaster->id);
+            app(StockGuard::class)->assertSaleLines($stockLines, $saleMaster->vendor_id ?: null, $saleMaster->id, $request->customer_id ? (int) $request->customer_id : (int) $saleMaster->customer_id);
 
             // Advance applied at checkout was already credited when it was received; keep it out of cash paid
             $appliedAdvance = (float) ($saleMaster->applied_advance_amount ?? 0);
@@ -1119,12 +1120,13 @@ class SaleController extends Controller
                     }
                 }
 
-                // Delete removed products (all of them when no existing line was kept; their batch qty was released above)
-                SaleDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $saleDetailsId ?? [])->delete();
+                // Delete removed products (all of them when no existing line was kept; their batch qty was released above).
+                // forceDelete: a line removed by an edit is gone, as before; soft delete marks lines of a cancelled invoice only
+                SaleDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $saleDetailsId ?? [])->forceDelete();
 
                 // Delete removed services
                 if (isset($serviceDetailsId)) {
-                    ServiceDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $serviceDetailsId)->delete();
+                    ServiceDetail::where('sale_master_id', $saleMaster->id)->whereNotIn('id', $serviceDetailsId)->forceDelete();
                 }
 
                 // Handle new products
@@ -1176,7 +1178,7 @@ class SaleController extends Controller
                     Helper::syncSaleReferrals($saleMaster, $request, $type);
                 } else {
                     DoctorLedger::where('ref_invoice_no', $saleInvoiceNo)->where('type', '!=', 'Payment')->delete();
-                    SaleReferral::where('sale_master_id', $saleMaster->id)->delete();
+                    \App\Models\SaleReferral::where('sale_master_id', $saleMaster->id)->delete();
                 }
 
                 // Process redeem points (create, update, or give back when set to 0 on the edit form)
@@ -1463,7 +1465,7 @@ class SaleController extends Controller
     public function collectDue(Request $request)
     {
         $request->validate([
-            'sale_invoice_no' => ['required', 'string', 'exists:sale_masters,sale_invoice_no'],
+            'sale_invoice_no' => ['required', 'string', 'exists:sale_masters,sale_invoice_no,deleted_at,NULL'],
             'paid_amount'     => ['required', 'numeric', 'min:0.01', 'max:99999999'],
             'date'            => ['required', 'date'],
             'new_due_date'    => ['nullable', 'date'],
@@ -1561,59 +1563,6 @@ class SaleController extends Controller
     }
 
     /**
-     * Display the discount list creation form.
-     *
-     * @return \Illuminate\Contracts\View\View
-     */
-    public function discountListCreate(): View
-    {
-        return view('admin.sales.discount_list');
-    }
-
-    /**
-     * Get the list of discounted sales for DataTables.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function discountList(): JsonResponse
-    {
-        $data = SaleMaster::join('customers', 'customers.id', '=', 'sale_masters.customer_id')
-            ->whereNull('sale_masters.deleted_at')
-            ->select('sale_masters.*', 'customers.name', DB::raw("SUM(total_amount-paid) as due"))
-            ->groupBy('sale_masters.sale_invoice_no')
-            ->orderBy('id', 'desc')
-            ->havingRaw('total_discount > 0')
-            ->get();
-
-            return DataTables::of($data)
-            ->addIndexColumn()
-                ->addColumn('action', function ($row) {
-                    $action = '<div class="text-center">';
-                    if (Helper::hasPermission('sale_list.edit')) {
-                        $action .= '<a href="' . route('sale.edit', $row->sale_invoice_no) . '" class="btn btn-success btn-sm mr-1" title="Edit"><i class="fas fa-edit"></i></a>';
-                    }
-                    if (Helper::hasPermission('sale_list.view')) {
-                        $action .= '<a href="' . route('sale.show', $row->sale_invoice_no) . '" class="btn btn-info btn-sm mr-1" title="Details"><i class="fas fa-eye"></i></a>';
-                    }
-
-                    $action .= '<a href="' . route('sale.pos-print', $row->sale_invoice_no) . '" class="btn btn-secondary btn-sm mr-1" target="_blank" title="POS Print"><i class="fas fa-print"></i></a>';
-                    
-                    if (Helper::hasPermission('sale_return.create')) {
-                        $action .= '<a href="' . route('sale-returns.create', ['sale_invoice_no' => $row->sale_invoice_no]) . '" class="btn btn-warning btn-sm mr-1" title="Return / Credit Note"><i class="fas fa-undo-alt"></i></a>';
-                    }
-                    
-                    if (auth()->user()->isSuperAdmin()) {
-                        $action .= '<form action="' . route('sale.destroy', $row->sale_invoice_no) . '" method="POST" style="display:inline-block;" onsubmit="return confirmCancelWithReason(event, \'this sale invoice\')">' . csrf_field() . method_field('DELETE') . '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="far fa-trash-alt"></i></button></form>';
-                    }
-                    $action .= '</div>';
-                    return $action;
-                })
-            ->rawColumns(['action'])
-            ->toJson();
-        
-    }
-
-    /**
      * Remove the specified sale from storage.
      *
      * @param string $id
@@ -1687,17 +1636,23 @@ class SaleController extends Controller
                 }
             }
 
-            SaleMaster::where('sale_invoice_no', $saleInvoiceNo)->delete();
+            // The invoice and its lines are kept as cancelled (soft delete), so it can still be viewed and reprinted.
+            // Lines first: the SaleDetail branch scope looks up its invoice, which a cancelled invoice no longer matches
             SaleDetail::where('sale_master_id', $realId)->delete();
             ServiceDetail::where('sale_master_id', $realId)->delete();
+            $saleMaster->cancel_reason = $reason;
+            $saleMaster->save();
+            $saleMaster->delete();
             Stock::where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales)->delete();
 
             // Money history is kept: patient, company and doctor ledger rows get reversal entries
             $reversal = app(LedgerReversal::class);
             $what = "Sale {$saleInvoiceNo}";
             $sameInvoice = fn ($q) => $q->where('ref_invoice_no', $saleInvoiceNo)->where('type', Helper::$sales);
-            $reversal->reverse('customer_ledgers', $sameInvoice, $reason, $what);
-            $reversal->reverse('ledgers', $sameInvoice, $reason, $what);
+            // Payments collected later against this invoice (due collection, delivery) are reversed with it
+            $sameInvoiceMoney = fn ($q) => $q->where('ref_invoice_no', $saleInvoiceNo)->whereIn('type', [Helper::$sales, Helper::$receive]);
+            $reversal->reverse('customer_ledgers', $sameInvoiceMoney, $reason, $what);
+            $reversal->reverse('ledgers', $sameInvoiceMoney, $reason, $what);
             $reversal->reverse('doctor_ledgers', $sameInvoice, $reason, $what);
             $reversal->log('sale_cancelled', $saleMaster, [
                 'sale_invoice_no' => $saleInvoiceNo,
@@ -1716,7 +1671,7 @@ class SaleController extends Controller
             return redirect()->back()->with('warning', 'The sale could not be cancelled. Nothing was changed. Please try again or contact the administrator.');
         }
 
-        return redirect()->back()->with('success', "Sale {$saleInvoiceNo} cancelled. Its ledger entries were reversed, not deleted.");
+        return redirect()->back()->with('success', "Sale {$saleInvoiceNo} cancelled. Its ledger entries were reversed, and the invoice is kept under Cancelled invoices.");
     }
 
     /**
@@ -2139,6 +2094,7 @@ class SaleController extends Controller
         DB::beginTransaction();
         try {
             $newStatus = DeliveryStatus::from($request->delivery_status);
+            $previousStatus = $sale->delivery_status;
             $sale->delivery_status = $newStatus->value;
 
             if ($request->has('delivery_date_time')) {
@@ -2209,12 +2165,31 @@ class SaleController extends Controller
                         $smsPhone,
                         $messageBody,
                         'customer',
-                        (int) $sale->customer_id
+                        (int) $sale->customer_id,
+                        null,
+                        \App\Enums\SmsType::MANUAL
                     );
                     $smsSent = true;
                 } catch (\Exception $smsEx) {
                     Log::warning('Fulfillment SMS delivery failed: ' . $smsEx->getMessage());
                 }
+            } elseif ($newStatus === DeliveryStatus::READY_FOR_DELIVERY && $previousStatus !== $newStatus->value && !empty($smsPhone)) {
+                // Automatic "ready for pickup" message (SMS Center automation; honours its on/off switch, the SMS mode and the cap).
+                // The intermediate steps (sent to lab, etc.) deliberately send nothing.
+                $smsSent = app(\App\Services\SmsAutomationService::class)->fire(
+                    \App\Enums\SmsAutomationTrigger::ORDER_READY,
+                    $smsPhone,
+                    'customer',
+                    (int) $sale->customer_id,
+                    [
+                        'name'          => $customerName,
+                        'invoice'       => $sale->sale_invoice_no,
+                        'item'          => $sale->isServiceSale() ? 'hearing report' : 'hearing device',
+                        'branch'        => Setting::first()?->company_name ?? 'our center',
+                        'due'           => number_format(max(0, (float) $sale->total_amount - (float) $sale->paid), 2),
+                    ],
+                    'order-ready:' . $sale->id
+                );
             }
 
             $statusLabel = $sale->deliveryStatusLabel();

@@ -55,6 +55,8 @@ class SettingController extends Controller
                 'mobile'         => ['required'],
                 'website_url'    => ['nullable', 'string', 'max:255'],
                 'partner_slogan' => ['nullable', 'string', 'max:255'],
+                'logo'           => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+                'favicon'        => ['nullable', 'file', 'mimes:ico,png', 'max:512'],
             ]
         );
 
@@ -72,6 +74,7 @@ class SettingController extends Controller
         $setting->fill($requestAll);
 
         if ($setting->save()) {
+            \App\Support\Region::forget();
             return redirect()->back()->with('success', 'Updated Successfully');
         }
 

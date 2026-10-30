@@ -34,7 +34,7 @@ class ProposalController extends Controller
         $this->middleware('permission:proposals.edit')->only(['edit', 'update', 'updateStatus']);
         $this->middleware('permission:proposals.delete')->only(['destroy']);
         $this->middleware('permission:proposals.view')->only(['show', 'downloadPdf', 'convertToSale']);
-        $this->middleware('permission:proposals.edit')->only(['sendEmail']);
+        $this->middleware('permission:proposals.edit')->only(['sendEmail', 'share']);
     }
 
     /**
@@ -218,12 +218,12 @@ class ProposalController extends Controller
             $proposal->proposal_date = $request->proposal_date;
             $proposal->valid_until = $request->valid_until;
             $proposal->doctor_id = $request->doctor_id ?: null;
-            $proposal->vendor_id = $request->vendor_id ?: (auth()->check() ? auth()->user()->branchId() : null);
+            $proposal->vendor_id = auth()->user()?->branchId() ?: ($request->vendor_id ?: null);
             $proposal->template_id = $request->template_id ?: null;
             $proposal->status = $request->status ?: ProposalStatus::DRAFT->value;
             $proposal->terms_and_conditions = $request->terms_and_conditions;
             $proposal->notes = $request->notes;
-            $proposal->content = $request->content;
+            $proposal->content = \App\Support\SafeHtml::clean($request->content) ?: null;
 
             // Recipient binding
             $rtype = $request->recipient_type;
@@ -434,7 +434,7 @@ class ProposalController extends Controller
             $proposal->proposal_date = $request->proposal_date;
             $proposal->valid_until = $request->valid_until;
             $proposal->doctor_id = $request->doctor_id ?: null;
-            if ($request->filled('vendor_id')) {
+            if ($request->filled('vendor_id') && !auth()->user()?->branchId()) {
                 $proposal->vendor_id = $request->vendor_id;
             }
             $proposal->template_id = $request->template_id ?: null;
@@ -443,7 +443,7 @@ class ProposalController extends Controller
             }
             $proposal->terms_and_conditions = $request->terms_and_conditions;
             $proposal->notes = $request->notes;
-            $proposal->content = $request->content;
+            $proposal->content = \App\Support\SafeHtml::clean($request->content) ?: null;
 
             // Recipient binding
             $rtype = $request->recipient_type;
@@ -630,6 +630,42 @@ class ProposalController extends Controller
     /**
      * Send quotation summary via email.
      */
+    /**
+     * Private online link for the patient (open, accept, decline), an optional payment link (bKash, SSLCommerz …),
+     * and optionally an SMS with the link.
+     */
+    public function share(Request $request, int $id): RedirectResponse
+    {
+        $proposal = Proposal::findOrFail($id);
+        $data = $request->validate([
+            'payment_url' => ['nullable', 'url', 'starts_with:https://', 'max:500'],
+            'send_sms'    => ['nullable', 'boolean'],
+        ], ['payment_url.starts_with' => 'The payment link must start with https://']);
+
+        $proposal->public_token = $proposal->public_token ?: \Illuminate\Support\Str::random(48);
+        $proposal->payment_url = $data['payment_url'] ?? null;
+        if (in_array($proposal->status, [ProposalStatus::DRAFT->value, ProposalStatus::NEW->value], true)) {
+            $proposal->status = ProposalStatus::SENT->value;
+        }
+        $proposal->save();
+
+        $link = url('q/' . $proposal->public_token);
+        $message = 'Online link ready: ' . $link;
+        if ($request->boolean('send_sms')) {
+            $phone = preg_replace('/[^0-9+]/', '', (string) $proposal->recipient_phone_display);
+            if (strlen($phone) < 10) {
+                return back()->with('warning', 'Link ready, but there is no mobile number to send it to.');
+            }
+            $text = 'Dear ' . $proposal->recipient_display_name . ', your quotation ' . $proposal->proposal_no . ' from '
+                . (Setting::first()->company_name ?? 'us') . ': ' . $link;
+            app(\App\Services\SmsService::class)->sendAndLogSms($phone, $text, $proposal->customer_id ? 'customer' : 'lead',
+                (int) ($proposal->customer_id ?: $proposal->lead_id), null, \App\Enums\SmsType::MANUAL);
+            $message .= ' – sent by SMS to ' . $phone . '.';
+        }
+
+        return back()->with('success', $message);
+    }
+
     public function sendEmail(Request $request, int $id): JsonResponse
     {
         $request->validate([

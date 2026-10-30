@@ -63,7 +63,7 @@ class AppointmentAvailabilityEngine
         ?int $specificUserId = null,
         ?string $excludeHoldToken = null
     ): array {
-        $tz = 'Asia/Dhaka';
+        $tz = config('app.timezone');
         $carbonDate = Carbon::parse($date, $tz)->startOfDay();
         $isoDay = $carbonDate->dayOfWeekIso; // 1=Mon ... 7=Sun, 5=Fri
 

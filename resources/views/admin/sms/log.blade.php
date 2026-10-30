@@ -117,6 +117,25 @@
     @include('admin.alert_message')
 
     <div class="crm-table-card crm-animate-in delay-1" style="border-radius:12px;overflow:hidden;">
+        @if (request('status') === 'failed')
+            @can('permission', 'compose_&_send.create')
+            <form action="{{ route('sms.log.retry-failed') }}" method="POST" style="padding:10px 16px; background:var(--warning-50); border-bottom:1px solid var(--gray-100); display:flex; justify-content:space-between; align-items:center;">
+                @csrf
+                @foreach (['recipient', 'type', 'date_from', 'date_to'] as $keep)
+                    @if (request($keep))<input type="hidden" name="{{ $keep }}" value="{{ request($keep) }}">@endif
+                @endforeach
+                <span style="font-size:13px;">Failed messages can be sent again. Up to 100 per click; opted-out numbers and duplicates are skipped.</span>
+                <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Send the failed messages in this list again? Each one costs an SMS.');"><i class="fas fa-redo mr-1"></i>Retry all failed</button>
+            </form>
+            @endcan
+        @endif
+        @can('permission', 'compose_&_send.index')
+        <form action="{{ route('sms.log.refresh-delivery') }}" method="POST" style="padding:8px 16px; border-bottom:1px solid var(--gray-100); display:flex; justify-content:space-between; align-items:center;">
+            @csrf
+            <span style="font-size:12px; color:var(--page-text-muted);">Delivery reports are fetched from the gateway every hour for the last 3 days.</span>
+            <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fas fa-sync-alt mr-1"></i>Check delivery now</button>
+        </form>
+        @endcan
         {{-- Filter Bar --}}
         <form method="GET">
             <div class="log-filter-bar">
@@ -143,6 +162,24 @@
                         <option value="{{ $type->value }}" {{ request('type') == $type->value ? 'selected' : '' }}>
                             {{ $type->label() }}
                         </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="log-filter-group">
+                    <label>Delivery</label>
+                    <select name="delivery">
+                        <option value="">Any</option>
+                        @foreach(['delivered' => 'Delivered', 'failed' => 'Not delivered', 'pending' => 'Awaiting report', 'none' => 'Not checked'] as $dv => $dl)
+                        <option value="{{ $dv }}" {{ request('delivery') == $dv ? 'selected' : '' }}>{{ $dl }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="log-filter-group">
+                    <label>Sent to</label>
+                    <select name="recipient">
+                        <option value="">Everyone</option>
+                        @foreach(['lead' => 'Leads', 'customer' => 'Customers', 'doctor' => 'Doctors', 'referrer' => 'Field referrers / agents', 'employee' => 'Employees', 'branch' => 'Branch managers'] as $rv => $rl)
+                        <option value="{{ $rv }}" {{ request('recipient') == $rv ? 'selected' : '' }}>{{ $rl }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -197,10 +234,10 @@
                         </td>
                         <td>
                             <span class="log-entity">
-                                <i class="fas {{ $log->recipient_type === 'lead' ? 'fa-user-tag' : 'fa-user' }} mr-1" style="color:var(--accent-400);"></i>
+                                <i class="fas {{ $log->recipient_type === 'lead' ? 'fa-user-tag' : (in_array($log->recipient_type, ['doctor', 'referrer']) ? 'fa-user-md' : (in_array($log->recipient_type, ['employee', 'branch']) ? 'fa-id-badge' : 'fa-user')) }} mr-1" style="color:var(--accent-400);"></i>
                                 {{ ucfirst($log->recipient_type) }}
                                 @if($log->recipient_id)
-                                    <a href="{{ url('admin/' . ($log->recipient_type === 'lead' ? 'leads' : 'customers') . '/' . $log->recipient_id) }}"
+                                    <a href="{{ \App\Support\SmsPerson::profileUrl($log->recipient_type, (int) $log->recipient_id) ?? url('admin/' . ($log->recipient_type === 'lead' ? 'leads' : 'customers') . '/' . $log->recipient_id) }}"
                                        style="font-size:10px;color:var(--accent-600);" title="View profile">
                                         #{{ $log->recipient_id }}
                                     </a>
@@ -208,6 +245,20 @@
                             </span>
                             @if($log->follow_up_created)
                                 <span class="log-followup-badge ml-1">+FU</span>
+                            @endif
+                            @if($log->delivery_status)
+                                @php $dl = ['delivered' => ['success', 'Delivered'], 'failed' => ['danger', 'Not delivered'], 'pending' => ['secondary', 'Awaiting report'], 'unknown' => ['light', 'Unclear']][$log->delivery_status] ?? ['light', ucfirst($log->delivery_status)]; @endphp
+                                <span class="badge badge-{{ $dl[0] }} ml-1" style="font-size:10px;" title="{{ $log->delivery_detail }}">{{ $dl[1] }}</span>
+                            @endif
+                            @if(($log->status instanceof \App\Enums\SmsStatus ? $log->status->value : $log->status) === 'failed' && ! $log->retried_at)
+                                @can('permission', 'compose_&_send.create')
+                                <form action="{{ route('sms.log.resend', $log->id) }}" method="POST" style="display:inline;">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-primary btn-sm py-0 px-1 ml-1" style="font-size:10px;" title="Send this message again"><i class="fas fa-redo"></i> Resend</button>
+                                </form>
+                                @endcan
+                            @elseif($log->retried_at)
+                                <span class="text-muted ml-1" style="font-size:10px;" title="Sent again {{ $log->retried_at->format('d M, g:i A') }}">resent</span>
                             @endif
                         </td>
                         <td>

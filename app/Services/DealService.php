@@ -23,10 +23,13 @@ use Illuminate\Support\Facades\DB;
  */
 class DealService
 {
-    /** Open the first deal for a newly created lead (lead form, import, later website). */
+    /**
+     * Open the first deal for a newly created lead (lead form, import, website).
+     * Default pipeline, unless $attributes['pipeline_id'] names another usable one.
+     */
     public function openInitialDeal(Lead $lead, array $attributes = []): Deal
     {
-        $pipeline = Pipeline::default();
+        [$pipeline, $attributes] = $this->pipelineFrom($attributes);
         [$stage, $status] = $this->stageForStatus($pipeline, $lead->lead_status);
 
         $deal = Deal::create(array_merge([
@@ -40,6 +43,7 @@ class DealService
             'value'            => $lead->approx_budget,
             'temperature'      => $lead->lead_temperature,
             'source'           => $lead->source_of_entry,
+            'campaign_id'      => $lead->campaign_id,
             'position'         => 0,
             'stage_entered_at' => now(),
             'won_at'           => $status === Deal::WON ? now() : null,
@@ -50,15 +54,18 @@ class DealService
         if ($status === Deal::WON) {
             $this->ensureCustomer($lead);
         }
+        $this->route($deal, $lead, $attributes);
         $this->syncLead($lead);
+        $this->rescore($deal);
+        $this->sequences(fn (SequenceService $s) => $s->onDealCreated($deal));
 
         return $deal;
     }
 
-    /** New opportunity for an existing person (returning customer, second ear, repair...). */
+    /** New opportunity for an existing person (returning customer, second ear, repair...); pipeline as above. */
     public function openNewDeal(Lead $lead, array $attributes = []): Deal
     {
-        $pipeline = Pipeline::default();
+        [$pipeline, $attributes] = $this->pipelineFrom($attributes);
         $stage = $pipeline->activeStages()->first();
 
         return DB::transaction(function () use ($lead, $pipeline, $stage, $attributes) {
@@ -75,7 +82,10 @@ class DealService
             ], $attributes));
 
             $this->history($deal, null, $stage, null, $stage->status_key, 'New deal opened');
+            $this->route($deal, $lead, $attributes);
             $this->syncLead($lead);
+            $this->rescore($deal);
+            $this->sequences(fn (SequenceService $s) => $s->onDealCreated($deal));
 
             return $deal;
         });
@@ -103,8 +113,10 @@ class DealService
                 $notes[] = 'Appointment: ' . date('d M Y h:i A', strtotime($gate['appointment_at']));
                 $this->addActivity($deal, ActivityType::VISIT, $gate['appointment_at'], 'Assessment appointment');
             }
-            if (!empty($gate['trial_product'])) {
-                $notes[] = 'Trial product: ' . $gate['trial_product'];
+            if (!empty($gate['trial_product']) || !empty($gate['trial_product_id'])) {
+                $trial = app(TrialService::class)->recordInSession($deal, isset($gate['trial_product_id']) ? (int) $gate['trial_product_id'] : null,
+                    $gate['trial_product'] ?? null, $gate['trial_result'] ?? null, $gate['note'] ?? null);
+                $notes[] = 'Trial product: ' . $trial->product_label . ($trial->result ? ' – ' . \App\Models\DealTrial::RESULTS[$trial->result] : '');
             }
             if (!empty($gate['trial_return_date'])) {
                 $notes[] = 'Trial return: ' . $gate['trial_return_date'];
@@ -134,6 +146,32 @@ class DealService
             }
             $this->syncLead($deal->lead);
         });
+        $this->rescore($deal->fresh() ?? $deal);
+        $this->sequences(fn (SequenceService $s) => $s->onStageEntered($deal->fresh() ?? $deal));
+    }
+
+    /**
+     * Move an open deal to another pipeline: it lands in that pipeline's first stage, with a history entry.
+     * Sequences started by the new stage begin; running ones set to stop on a stage change stop on their next step.
+     */
+    public function moveToPipeline(Deal $deal, Pipeline $to, ?string $note = null): void
+    {
+        if ((int) $deal->pipeline_id === (int) $to->id) {
+            return;
+        }
+        $from = $deal->stage;
+        $fromName = $deal->pipeline?->name ?? 'another pipeline';
+        $first = $to->activeStages()->firstOrFail();
+
+        DB::transaction(function () use ($deal, $to, $from, $first, $fromName, $note) {
+            $deal->fill(['pipeline_id' => $to->id, 'stage_id' => $first->id, 'stage_entered_at' => now(), 'position' => 0])->save();
+            $this->history($deal, $from, $first, $from?->status_key, $first->status_key,
+                'Moved from ' . $fromName . ' to ' . $to->name . ($note ? ': ' . $note : ''));
+            $this->syncLead($deal->lead);
+        });
+        $deal->setRelation('stage', $first)->setRelation('pipeline', $to);
+        $this->rescore($deal);
+        $this->sequences(fn (SequenceService $s) => $s->onStageEntered($deal));
     }
 
     public function markWon(Deal $deal, ?int $saleMasterId = null, ?string $note = null): Customer
@@ -147,6 +185,7 @@ class DealService
             $this->history($deal, $deal->stage, $deal->stage, $deal->stage?->status_key, LeadStatus::WON->value, $note ?: 'Deal won');
             $customer = $this->ensureCustomer($deal->lead);
             $this->syncLead($deal->lead);
+            $this->sequences(fn (SequenceService $s) => $s->stopForDeal($deal, 'Deal won'));
 
             return $customer;
         });
@@ -170,6 +209,7 @@ class DealService
                 'loss_to_whom' => $lostTo,
             ])->saveQuietly();
             $this->syncLead($deal->lead);
+            $this->sequences(fn (SequenceService $s) => $s->onDealLost($deal));
         });
     }
 
@@ -236,7 +276,8 @@ class DealService
      */
     public function syncFromLeadForm(Lead $lead, ?string $oldStatus, ?int $oldVendorId): void
     {
-        $deal = $lead->deals()->open()->first();
+        // The lead form's status belongs to the default pipeline; repair / institutional deals are left alone
+        $deal = $lead->deals()->open()->where('pipeline_id', Pipeline::default()->id)->first();
         $statusChanged = $oldStatus !== $lead->lead_status;
 
         if (!$deal) {
@@ -262,10 +303,14 @@ class DealService
         };
     }
 
-    /** Mirror the person's current deal to leads.lead_status / leads.vendor_id (dashboards, SMS filters). */
+    /**
+     * Mirror the person's current deal to leads.lead_status / leads.vendor_id (dashboards, SMS filters).
+     * Only default-pipeline deals count: a repair or institutional deal never changes the person's lead status.
+     */
     public function syncLead(Lead $lead): void
     {
-        $deals = Deal::withoutGlobalScopes()->with('stage')->where('lead_id', $lead->id)->whereNull('deleted_at')->latest('updated_at')->get();
+        $deals = Deal::withoutGlobalScopes()->with('stage')->where('lead_id', $lead->id)->whereNull('deleted_at')
+            ->where('pipeline_id', Pipeline::default()->id)->latest('updated_at')->get();
         $open = $deals->firstWhere('status', Deal::OPEN);
         $current = $open ?? $deals->first();
         if (!$current) {
@@ -298,6 +343,18 @@ class DealService
             LeadStatus::STORE_APPOINTMENT->value => [$byKey(LeadStatus::TELE_COUNSEL->value) ?? $stages->first(), Deal::OPEN],
             default => [($leadStatus ? $byKey($leadStatus) : null) ?? $stages->first(), Deal::OPEN],
         };
+    }
+
+    /** @return array{0: Pipeline, 1: array} the pipeline named by $attributes['pipeline_id'] (or the default) + the other attributes */
+    private function pipelineFrom(array $attributes): array
+    {
+        $pipeline = Pipeline::usableOrDefault(isset($attributes['pipeline_id']) ? (int) $attributes['pipeline_id'] : null);
+        unset($attributes['pipeline_id']);
+        if (isset($attributes['stage_id']) && !$pipeline->activeStages()->whereKey($attributes['stage_id'])->exists()) {
+            unset($attributes['stage_id']);   // a stage of another pipeline never sneaks in
+        }
+
+        return [$pipeline, $attributes];
     }
 
     /** Default owner: branch users own what they create; otherwise the pipeline's default owner (HQ). */
@@ -395,8 +452,11 @@ class DealService
     public function addActivity(Deal $deal, ActivityType $type, ?string $when, ?string $note, ?int $assignee = null, bool $done = false): LeadFollowUp
     {
         $done = $done || $type === ActivityType::NOTE;
+        if ($done) {
+            $this->contacted($deal, $type->value);
+        }
 
-        return LeadFollowUp::create([
+        $activity = LeadFollowUp::create([
             'lead_id'         => $deal->lead_id,
             'deal_id'         => $deal->id,
             'activity_type'   => $type->value,
@@ -406,11 +466,59 @@ class DealService
             'status'          => $done ? 'completed' : 'pending',
             'completed_at'    => $done ? now() : null,
         ]);
+        $this->rescore($deal);
+
+        return $activity;
     }
 
     public function completeActivity(LeadFollowUp $activity, ?string $outcome = null): void
     {
         $activity->update(['status' => 'completed', 'completed_at' => now(), 'outcome_notes' => $outcome]);
+        if ($deal = Deal::withoutGlobalScopes()->find($activity->deal_id)) {
+            $this->contacted($deal, (string) ($activity->activity_type instanceof ActivityType ? $activity->activity_type->value : $activity->activity_type));
+            $this->rescore($deal);
+        }
+    }
+
+    /** A call, message or visit was done: the first-contact clock of an inbound lead stops. */
+    private function contacted(Deal $deal, string $type): void
+    {
+        if (in_array($type, ['call', 'visit', 'sms', 'whatsapp', 'email'], true) && !$deal->first_contact_at) {
+            DB::table('deals')->where('id', $deal->id)->whereNull('first_contact_at')->update(['first_contact_at' => now()]);
+            $deal->first_contact_at = now();
+        }
+    }
+
+    /** Assignment rules decide the owner of a new deal, unless the caller chose one. */
+    private function route(Deal $deal, Lead $lead, array $attributes): void
+    {
+        if (array_key_exists('owner_id', $attributes)) {
+            return;
+        }
+        $router = app(LeadRouter::class);
+        if ($router->shouldRoute()) {
+            $router->assign($deal, $lead);
+        }
+    }
+
+    /** Follow-up sequences react to deal events; a sequence problem never blocks the work. */
+    private function sequences(callable $fn): void
+    {
+        try {
+            $fn(app(SequenceService::class));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /** Keep the lead score current; a scoring problem never blocks the work. */
+    public function rescore(Deal $deal): void
+    {
+        try {
+            app(LeadScorer::class)->refresh($deal);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
@@ -427,6 +535,7 @@ class DealService
         ]);
 
         $deal = Deal::withoutGlobalScopes()->findOrFail($activity->deal_id);
+        $this->contacted($deal, 'call');
         $message = $result->label() . ' logged.';
         $next = null;
 

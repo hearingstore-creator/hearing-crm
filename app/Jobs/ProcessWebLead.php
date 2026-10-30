@@ -46,27 +46,50 @@ class ProcessWebLead implements ShouldQueue
             $sla = $form->sla_minutes ?? 15;
             $inquiry = $s->inquiry_for ?: ($form->default_inquiry ?? null);
             $vendorId = $form->vendor_id ?? null;
-            $dealAttributes = array_filter([
-                'source'       => SourceOfEntry::WEBSITE->value,
+            // The campaign whose code is in the link (utm_campaign / QR), if it is set up in Marketing → Campaigns
+            $campaign = \App\Models\MarketingCampaign::findByCode($s->utm_campaign);
+            $touch = array_filter([
+                'campaign_id'  => $campaign?->id,
                 'utm_source'   => $s->utm_source,
                 'utm_medium'   => $s->utm_medium,
                 'utm_campaign' => $s->utm_campaign,
+                'utm_content'  => $s->utm_content,
+                'utm_term'     => $s->utm_term,
+                'gclid'        => $s->gclid,
+                'fbclid'       => $s->fbclid,
+                'landing_page' => $s->landing_page ?: $s->page_url,
+            ], fn ($v) => $v !== null && $v !== '');
+            // website form, or a connector (facebook, instagram, google, whatsapp, phone_call …; anything else = other)
+            $source = $s->source ? (SourceOfEntry::tryFrom($s->source) ?? SourceOfEntry::OTHER) : SourceOfEntry::WEBSITE;
+            $label = $s->source ? $source->label() . ($s->external_id && $s->source !== 'whatsapp' ? ' lead form' : '') : 'Website';
+            $dealAttributes = array_filter([
+                'source'       => $source->value,
                 'inquiry_for'  => $inquiry,
-            ], fn ($v) => $v !== null && $v !== []);
+            ], fn ($v) => $v !== null && $v !== []) + $touch;
+            // first touch of the person (kept as it was when the lead already has one)
+            $firstTouch = $touch + array_filter(['referrer_url' => $s->referrer_url], fn ($v) => $v !== null && $v !== '');
+            $consent = $s->consent ? ['marketing_consent' => true, 'consent_at' => $s->created_at, 'consent_source' => 'Website form'] : [];
 
             $lead = Lead::withoutGlobalScopes()->whereNull('deleted_at')
                 ->where('normalized_phone', $s->normalized_phone)->oldest('id')->first();
             $status = LeadSubmission::PROCESSED;
 
             if ($lead) {
+                if (!$lead->campaign_id && !$lead->utm_source && !$lead->utm_campaign && $firstTouch) {
+                    $lead->forceFill($firstTouch)->saveQuietly();
+                }
+                if ($consent && !$lead->marketing_consent) {
+                    $lead->forceFill($consent)->saveQuietly();
+                }
+                // Web enquiries belong to the default pipeline: an open repair / institutional deal does not absorb them
                 $deal = Deal::withoutGlobalScopes()->whereNull('deleted_at')->open()
-                    ->where('lead_id', $lead->id)->latest('id')->first();
+                    ->where('lead_id', $lead->id)->where('pipeline_id', \App\Models\Pipeline::default()->id)->latest('id')->first();
                 if ($deal) {
                     $status = LeadSubmission::DUPLICATE;
-                    $deals->addActivity($deal, ActivityType::NOTE, null, $this->noteText($s, 'Website enquiry again'));
+                    $deals->addActivity($deal, ActivityType::NOTE, null, $this->noteText($s, $label . ' enquiry again'));
                 } else {
                     $deal = $deals->openNewDeal($lead, $dealAttributes + ['vendor_id' => $vendorId ?? $lead->vendor_id]);
-                    $deals->addActivity($deal, ActivityType::NOTE, null, $this->noteText($s, 'Website enquiry'));
+                    $deals->addActivity($deal, ActivityType::NOTE, null, $this->noteText($s, $label . ' enquiry'));
                 }
             } else {
                 $lead = Lead::create([
@@ -77,17 +100,22 @@ class ProcessWebLead implements ShouldQueue
                     'vendor_id'       => $vendorId,
                     'inquiry_for'     => $inquiry,
                     'notes'           => $s->message,
-                    'source_of_entry' => SourceOfEntry::WEBSITE->value,
+                    'source_of_entry' => $source->value,
                     'lead_status'     => LeadStatus::NEW->value,
                     'lead_type'       => LeadType::NEW_CUSTOMER->value,
-                ]);
+                ] + $firstTouch + $consent);
                 $deal = $deals->openInitialDeal($lead, $dealAttributes);
                 app(\App\Services\SmsAutomationService::class)->fireAfterCommit(\App\Enums\SmsAutomationTrigger::LEAD_CREATED,
                     $lead->phone_number, 'lead', $lead->id, ['name' => $lead->full_name, 'customer_name' => $lead->full_name], 'lead-welcome:' . $lead->id);
             }
 
-            $deals->addActivity($deal, ActivityType::CALL, DealService::dueInOfficeHours($sla)->toDateTimeString(),
-                "Website lead – call within {$sla} min" . ($s->page_url ? ' (' . $s->page_url . ')' : ''));
+            // First-contact deadline (SLA) of an inbound lead: alerts and, by rule, reassignment run from it
+            $due = DealService::dueInOfficeHours($sla);
+            if (!$deal->first_contact_due_at && !$deal->first_contact_at) {
+                $deal->forceFill(['first_contact_due_at' => $due])->saveQuietly();
+            }
+            $deals->addActivity($deal, ActivityType::CALL, $due->toDateTimeString(),
+                "{$label} lead – call within {$sla} min" . ($s->page_url ? ' (' . $s->page_url . ')' : ''));
 
             $s->update(['status' => $status, 'lead_id' => $lead->id, 'deal_id' => $deal->id, 'error' => null, 'processed_at' => now()]);
         });

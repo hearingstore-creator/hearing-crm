@@ -27,6 +27,17 @@
             <p>{{ $pipeline->name }} · drag a deal to move it, or drop it on Won / Lost</p>
         </div>
         <div class="header-actions">
+            @if ($pipelines->count() > 1)
+                <form method="GET" action="{{ url('admin/deals') }}" id="pipeline-switch-form">
+                    @if ($status !== 'open')<input type="hidden" name="status" value="{{ $status }}">@endif
+                    <label for="pipeline-switch" class="sr-only">Pipeline</label>
+                    <select name="pipeline" id="pipeline-switch" class="form-control deal-pipeline-switch" onchange="this.form.submit()">
+                        @foreach ($pipelines as $pl)
+                            <option value="{{ $pl->id }}" @selected($pl->id === $pipeline->id)>{{ $pl->name }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            @endif
             <div class="deal-views" role="tablist" aria-label="Deal views">
                 <a href="{{ $viewUrl('open') }}" id="view-open" class="{{ $status === 'open' ? 'active' : '' }}"><i class="fas fa-columns"></i> Board</a>
                 <a href="{{ $viewUrl('list') }}" id="view-list" class="{{ $status === 'list' ? 'active' : '' }}"><i class="fas fa-list"></i> List</a>
@@ -38,7 +49,7 @@
                 <i class="fas fa-sun mr-1"></i>My Day @if ($myDue)<span class="my-day-badge">{{ $myDue }}</span>@endif
             </a>
             @if ($can['settings'])
-                <a href="{{ url('admin/pipeline-settings') }}" class="btn btn-secondary btn-sm" id="btn-pipeline-settings"><i class="fas fa-sliders-h mr-1"></i>Pipeline Settings</a>
+                <a href="{{ url('admin/pipeline-settings?pipeline=' . $pipeline->id) }}" class="btn btn-secondary btn-sm" id="btn-pipeline-settings"><i class="fas fa-sliders-h mr-1"></i>Pipeline Settings</a>
             @endif
             @if ($can['create'])
                 <a href="{{ route('leads.create') }}" class="btn btn-secondary btn-sm" id="btn-add-lead" title="Full lead form"><i class="fas fa-file-alt mr-1"></i>Full form</a>
@@ -164,7 +175,7 @@
                             @if ($bulkAny)
                                 <th class="dl-check"><input type="checkbox" id="dl-check-all" aria-label="Select all on this page"></th>
                             @endif
-                            <th><a href="{{ $sortUrl('name') }}" id="sort-name">Person <i class="fas {{ $sortIcon('name') }}"></i></a></th>
+                            <th><a href="{{ $sortUrl('name') }}" id="sort-name">Person <i class="fas {{ $sortIcon('name') }}"></i></a> · <a href="{{ $sortUrl('score') }}" id="sort-score" title="Lead score">Score <i class="fas {{ $sortIcon('score') }}"></i></a></th>
                             <th><a href="{{ $sortUrl('stage') }}" id="sort-stage">Stage <i class="fas {{ $sortIcon('stage') }}"></i></a></th>
                             <th>Interest</th>
                             <th class="text-right"><a href="{{ $sortUrl('value') }}" id="sort-value">Value <i class="fas {{ $sortIcon('value') }}"></i></a></th>
@@ -199,6 +210,7 @@
                                                 {{ $lead->full_name ?? '—' }}
                                                 @if ($temp)<span class="dc-temp t-{{ $temp->value }}" title="{{ $temp->label() }}"><i class="{{ $temp->icon() }}"></i></span>@endif
                                                 @if ($tier)<i class="fas fa-crown dl-crown" title="{{ $tier->name }} member"></i>@endif
+                                                @include('admin.deal._score', ['deal' => $deal])
                                             </span>
                                             <span class="dl-sub">{{ $lead->phone_number ?? '' }}</span>
                                         </div>
@@ -411,7 +423,12 @@
                 </div>
                 <div class="form-group" data-gate="trial_product">
                     <label for="gate-trial-product">Trial product <i class="req text-danger">*</i></label>
-                    <input type="text" name="trial_product" id="gate-trial-product" class="form-control" maxlength="150" placeholder="Brand, model">
+                    <input type="text" name="trial_product" id="gate-trial-product" class="form-control" maxlength="150" placeholder="Brand, model" list="gate-trial-models" autocomplete="off">
+                    <datalist id="gate-trial-models">@foreach ($trialModels ?? [] as $tm)<option value="{{ $tm }}"></option>@endforeach</datalist>
+                    <select name="trial_result" id="gate-trial-result" class="form-control mt-2" aria-label="How the trial went">
+                        <option value="">How did the trial go? (optional)</option>
+                        @foreach (\App\Models\DealTrial::RESULTS as $rk => $rv)<option value="{{ $rk }}">{{ $rv }}</option>@endforeach
+                    </select>
                 </div>
                 <div class="form-group" data-gate="trial_return_date">
                     <label for="gate-trial-return">Trial return date <i class="req text-danger">*</i></label>
@@ -573,6 +590,16 @@
                         <input type="text" name="full_name" id="qa-name" class="form-control" maxlength="255">
                     </div>
                 </div>
+                @if ($pipelines->count() > 1)
+                    <div class="form-group">
+                        <label for="qa-pipeline">Pipeline</label>
+                        <select name="pipeline_id" id="qa-pipeline" class="form-control">
+                            @foreach ($pipelines as $pl)
+                                <option value="{{ $pl->id }}" @selected($pl->id === $pipeline->id)>{{ $pl->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
                 <div class="form-group">
                     <label>Interest <i class="req text-danger">*</i></label>
                     <div class="deal-pills">

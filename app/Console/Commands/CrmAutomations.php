@@ -20,7 +20,12 @@ use Illuminate\Support\Facades\DB;
  * Lead automations, run by the scheduler (routes/console.php). Every action is logged in automation_logs,
  * so running a task twice never repeats an alert, SMS or deal.
  *
- *   php artisan crm:automations sla          – website lead not called within its SLA → alert owner + Super Admin
+ *   php artisan crm:automations sla          – inbound lead not contacted by its deadline → alert owner + Super Admin, or next person by rule
+ *   php artisan crm:automations scores       – recalculate lead scores of open deals
+ *   php artisan crm:automations sequences    – run due follow-up sequence steps (SMS, email, WhatsApp, call tasks)
+ *   php artisan crm:automations trials       – take-home trials: close the bought ones, alert overdue returns
+ *   php artisan crm:automations retention    – upgrade reminders (and deals), yearly service SMS, satisfaction surveys
+ *   php artisan crm:automations conversions  – send recent sales to Meta (Conversions API)
  *   php artisan crm:automations appointments – SMS reminder for tomorrow's appointments
  *   php artisan crm:automations reengage     – "Not ready" lost 90+ days ago → new deal + call
  *   php artisan crm:automations points       – SMS 7 days before membership points expire
@@ -28,12 +33,14 @@ use Illuminate\Support\Facades\DB;
  *   php artisan crm:automations digest       – 8 AM summary in the bell (per owner + Super Admin), plus each person's tickets and tasks
  *   php artisan crm:automations tickets      – overdue tickets, tickets with no update, Solved tickets that close by themselves
  *   php artisan crm:automations tasks        – tasks due tomorrow or overdue
+ *   php artisan crm:automations dues         – SMS for invoices due tomorrow, and overdue ones once a week
+ *   php artisan crm:automations birthdays    – birthday greeting to patients
  */
 class CrmAutomations extends Command
 {
-    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks'];
+    private const TASKS = ['sla', 'appointments', 'reengage', 'points', 'warranty', 'digest', 'tickets', 'tasks', 'dues', 'birthdays', 'scores', 'sequences', 'trials', 'retention', 'conversions'];
 
-    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks} {--dry : show what would happen, change nothing}';
+    protected $signature = 'crm:automations {task : sla|appointments|reengage|points|warranty|digest|tickets|tasks|dues|birthdays|scores|sequences|trials|retention|conversions} {--dry : show what would happen, change nothing}';
     protected $description = 'Run one lead automation';
 
     public function __construct(private CrmNotifier $notifier, private DealService $deals, private SmsAutomationService $sms)
@@ -55,30 +62,114 @@ class CrmAutomations extends Command
         return self::SUCCESS;
     }
 
-    /** Website leads whose first call is overdue. */
+    /**
+     * Inbound leads (website, Facebook / Instagram, WhatsApp, Google, webhook, missed call) not contacted by their deadline:
+     * the owner and Super Admin are alerted once; when the assignment rule says so, the deal moves on to the next person (once).
+     */
     private function sla(): int
     {
-        $overdue = LeadFollowUp::with(['deal.lead:id,full_name,phone_number', 'assignedUser'])
-            ->where('status', 'pending')->where('activity_type', ActivityType::CALL->value)
-            ->where('follow_up_notes', 'like', 'Website lead – call within%')
-            ->where('follow_up_date', '<', now())
-            ->where('follow_up_date', '>', now()->subDays(2))   // older ones are covered by the digest
+        $late = Deal::withoutGlobalScopes()->with(['lead:id,full_name,phone_number', 'owner'])
+            ->whereNull('deleted_at')->where('status', Deal::OPEN)
+            ->whereNotNull('first_contact_due_at')->whereNull('first_contact_at')
+            ->where('first_contact_due_at', '<', now())
+            ->where('first_contact_due_at', '>', now()->subDays(2))   // older ones are covered by the digest
             ->get();
 
+        $router = app(\App\Services\LeadRouter::class);
         $n = 0;
-        foreach ($overdue as $a) {
-            if (!$a->deal || $a->deal->status !== Deal::OPEN || !$this->claim("sla:activity:{$a->id}", 'sla')) {
+        foreach ($late as $deal) {
+            $minutes = (int) $deal->first_contact_due_at->diffInMinutes(now());
+
+            $rule = $deal->assigned_rule_id ? \App\Models\LeadAssignmentRule::find($deal->assigned_rule_id) : null;
+            if ($rule && $rule->reassign_after_minutes && $minutes >= $rule->reassign_after_minutes && !$deal->sla_reassigned) {
+                if ($this->option('dry')) {
+                    $this->line("Reassign deal {$deal->id}");
+                    $n++;
+                    continue;
+                }
+                if ($router->reassign($deal)) {
+                    $deal->forceFill(['sla_reassigned' => 1])->saveQuietly();
+                    $n++;
+                    continue;
+                }
+            }
+
+            if ($deal->sla_alerted_at || !$this->claim("sla:deal:{$deal->id}", 'sla')) {
                 continue;
             }
-            $late = (int) \Illuminate\Support\Carbon::parse($a->follow_up_date)->diffInMinutes(now());
-            $this->notifier->send($this->notifier->superAdmins()->push($a->assignedUser), new CrmAlert(
-                'Website lead waiting ' . $late . ' min',
-                ($a->deal->lead->full_name ?? 'Lead') . ' · ' . ($a->deal->lead->phone_number ?? '') . ' has not been called yet.',
-                url('admin/deals?deal=' . $a->deal_id),
+            $source = \App\Enums\SourceOfEntry::tryFrom((string) $deal->source)?->label() ?? 'New';
+            $this->notifier->send($this->notifier->superAdmins()->push($deal->owner), new CrmAlert(
+                $source . ' lead waiting ' . $minutes . ' min',
+                ($deal->lead->full_name ?? 'Lead') . ' · ' . ($deal->lead->phone_number ?? '') . ' has not been contacted yet' . ($deal->owner ? ' (' . $deal->owner->name . ')' : '') . '.',
+                url('admin/deals?deal=' . $deal->id),
                 'fa-stopwatch', 'danger', 'web_lead_sla',
             ));
+            $deal->forceFill(['sla_alerted_at' => now()])->saveQuietly();
             $n++;
         }
+
+        return $n;
+    }
+
+    /** Upgrade reminders, yearly service SMS, satisfaction surveys. */
+    private function retention(): int
+    {
+        if ($this->option('dry')) {
+            return 0;
+        }
+        $r = app(\App\Services\RetentionService::class)->run();
+        $this->line("Upgrade SMS {$r['upgrades']}, upgrade deals {$r['deals']}, service SMS {$r['service']}, surveys {$r['surveys']}");
+
+        return array_sum($r);
+    }
+
+    /** Sales back to Meta (Conversions API). */
+    private function conversions(): int
+    {
+        if ($this->option('dry')) {
+            return 0;
+        }
+        $r = app(\App\Services\ConversionFeedback::class)->sendMeta();
+        if (!empty($r['skipped'])) {
+            $this->line('Meta: ' . $r['skipped']);
+        }
+
+        return $r['sent'];
+    }
+
+    /** Take-home trials: bought ones close, overdue returns alert the owner (once). */
+    private function trials(): int
+    {
+        if ($this->option('dry')) {
+            return \App\Models\DealTrial::where('kind', 'take_home')->where('status', 'out')->count();
+        }
+        $r = app(\App\Services\TrialService::class)->sweep();
+
+        return $r['bought'] + $r['overdue'];
+    }
+
+    /** Due steps of follow-up sequences. */
+    private function sequences(): int
+    {
+        return $this->option('dry')
+            ? \App\Models\SequenceEnrollment::where('status', 'active')->where('next_run_at', '<=', now())->count()
+            : app(\App\Services\SequenceService::class)->runDue();
+    }
+
+    /** Recalculate the lead score of open deals (time-based reasons: quiet for 14 days, overdue step, stuck in a stage). */
+    private function scores(): int
+    {
+        $scorer = app(\App\Services\LeadScorer::class);
+        $n = 0;
+        Deal::withoutGlobalScopes()->whereNull('deleted_at')->where('status', Deal::OPEN)->orderBy('id')
+            ->chunkById(200, function ($deals) use ($scorer, &$n) {
+                foreach ($deals as $deal) {
+                    if (!$this->option('dry')) {
+                        $scorer->refresh($deal);
+                    }
+                    $n++;
+                }
+            });
 
         return $n;
     }
@@ -91,7 +182,7 @@ class CrmAutomations extends Command
             return 0;
         }
 
-        $tomorrow = Carbon::today('Asia/Dhaka')->addDay()->format('Y-m-d');
+        $tomorrow = Carbon::today(config('app.timezone'))->addDay()->format('Y-m-d');
 
         $rows = DB::table('appointments as a')
             ->leftJoin('customers as c', 'c.id', '=', 'a.customer_id')
@@ -312,6 +403,70 @@ class CrmAutomations extends Command
     }
 
     /** SMS through the central service (active text, opt-out, daily cap, once per key). Dry run only prints. */
+    /** Unpaid invoices due tomorrow (or already overdue, once a week) → SMS, using the "Payment Due Reminder" automation. */
+    private function dues(): int
+    {
+        if (!$this->sms->active(SmsAutomationTrigger::DUE_REMINDER)) {
+            $this->line('No active "Payment Due Reminder" SMS automation – skipped.');
+            return 0;
+        }
+
+        $today = Carbon::today(config('app.timezone'));
+        $rows = DB::table('sale_masters as s')
+            ->join('customers as c', 'c.id', '=', 's.customer_id')
+            ->join('leads as l', 'l.id', '=', 'c.lead_id')
+            ->whereNull('s.deleted_at')
+            ->whereNotNull('s.due_date')
+            ->whereDate('s.due_date', '<=', $today->copy()->addDay()->toDateString())
+            ->whereRaw('s.total_amount - s.paid > 0.009')
+            ->whereNotNull('l.phone_number')
+            ->get(['s.id', 's.sale_invoice_no', 's.due_date', 's.total_amount', 's.paid', 'c.id as customer_id', 'l.full_name', 'l.phone_number']);
+
+        $n = 0;
+        foreach ($rows as $r) {
+            $due = Carbon::parse($r->due_date);
+            // due tomorrow or today: once for that due date; already overdue: once a week
+            $key = $due->gte($today) ? "due-sms:{$r->id}:{$due->toDateString()}" : "due-sms:{$r->id}:w" . $today->format('oW');
+            $n += (int) $this->sendSms(SmsAutomationTrigger::DUE_REMINDER, $key, $r->phone_number, 'customer', (int) $r->customer_id, [
+                'name'     => $r->full_name,
+                'due'      => number_format((float) $r->total_amount - (float) $r->paid, 2),
+                'invoice'  => $r->sale_invoice_no,
+                'due_text' => $due->gte($today) ? ' (due ' . $due->format('d M') . ')' : ' (overdue since ' . $due->format('d M') . ')',
+                'company_phone' => \App\Models\Setting::find(1)?->phone ?? '',
+            ]);
+        }
+
+        return $n;
+    }
+
+    /** Patients whose birthday is today → greeting, using the "Birthday Greeting" automation (once a year each). */
+    private function birthdays(): int
+    {
+        if (!$this->sms->active(SmsAutomationTrigger::BIRTHDAY)) {
+            $this->line('No active "Birthday Greeting" SMS automation – skipped.');
+            return 0;
+        }
+
+        $today = Carbon::today(config('app.timezone'));
+        $rows = DB::table('customers as c')
+            ->join('leads as l', 'l.id', '=', 'c.lead_id')
+            ->whereNull('c.deleted_at')
+            ->whereNotNull('l.date_of_birth')
+            ->whereRaw('MONTH(l.date_of_birth) = ? AND DAY(l.date_of_birth) = ?', [$today->month, $today->day])
+            ->whereNotNull('l.phone_number')
+            ->get(['c.id as customer_id', 'l.full_name', 'l.phone_number']);
+
+        $n = 0;
+        foreach ($rows as $r) {
+            $n += (int) $this->sendSms(SmsAutomationTrigger::BIRTHDAY, "bday-sms:{$r->customer_id}:{$today->year}", $r->phone_number, 'customer', (int) $r->customer_id, [
+                'name' => $r->full_name,
+                'company_phone' => \App\Models\Setting::find(1)?->phone ?? '',
+            ]);
+        }
+
+        return $n;
+    }
+
     private function sendSms(SmsAutomationTrigger $trigger, string $key, string $phone, string $type, int $id, array $vars): bool
     {
         if ($this->option('dry')) {
