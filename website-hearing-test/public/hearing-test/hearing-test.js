@@ -23,7 +23,11 @@
         bookingUrl: ds.bookingUrl || '',       // e.g. /book-appointment or "#crm-lead-form"
         leadUrl: ds.leadUrl || '',             // website route that forwards to the CRM (see README); empty = no form
         // Test order follows clinical practice: 1 kHz first, up through the highs, then 500 Hz.
-        freqs: (ds.freqs || '1000,2000,4000,8000,500').split(',').map(Number).filter(Boolean),
+        // Same four pitches per ear as ReSound's test; add 8000 with data-freqs if wanted.
+        freqs: (ds.freqs || '1000,2000,4000,500').split(',').map(Number).filter(Boolean),
+        retest: ds.retest === 'on',             // repeat 1 kHz on the first ear as a reliability check
+        // 'warble' = ±5% frequency wobble at 5 Hz (clinical warble tone, easier to notice); 'pure' = sine
+        toneType: ds.toneType === 'pure' ? 'pure' : 'warble',
         startLevel: 40,
         minLevel: -10,
         maxLevel: 85,
@@ -58,7 +62,7 @@
     var CAL_AMP = 0.05;
     var CORR = { 250: 18.5, 500: 4.5, 1000: 0, 2000: 2, 3000: 2.5, 4000: 2.5, 6000: 8.5, 8000: 6 };
     var PTA_FREQS = [500, 1000, 2000, 4000];
-    var CHART_FREQS = [250, 500, 1000, 2000, 4000, 8000];
+    var CHART_FREQS = CONFIG.freqs.slice().sort(function (a, b) { return a - b; });
 
     var TEXT = {
         en: {
@@ -387,6 +391,19 @@
 
     /* ---------------- Audio engine ---------------- */
 
+    // Warble tone: a 5 Hz sine LFO swings the carrier ±5%. Started before the carrier, returns the LFO (or null).
+    function warble(ctx, osc, freq) {
+        if (CONFIG.toneType !== 'warble') { return null; }
+        var lfo = ctx.createOscillator(), depth = ctx.createGain();
+        lfo.frequency.value = 5;
+        depth.gain.value = freq * 0.05;
+        lfo.connect(depth);
+        depth.connect(osc.frequency);
+        lfo.start();
+        lfo.onended = function () { lfo.disconnect(); depth.disconnect(); };
+        return lfo;
+    }
+
     var Audio = {
         ctx: null,
         init: function () {
@@ -413,6 +430,7 @@
             var cur = level, muted = false;
             osc.type = 'sine';
             osc.frequency.value = freq;
+            var lfo = warble(ctx, osc, freq);
             gain.gain.setValueAtTime(0, ctx.currentTime);
             osc.connect(gain);
             if (ear !== 'R') { gain.connect(merger, 0, 0); }
@@ -426,6 +444,7 @@
                 mute: function (m) { muted = m; apply(); },
                 stop: function () {
                     gain.gain.setTargetAtTime(0, ctx.currentTime, 0.01);
+                    if (lfo) { lfo.stop(ctx.currentTime + 0.08); }
                     osc.stop(ctx.currentTime + 0.08);
                     osc.onended = function () { osc.disconnect(); gain.disconnect(); merger.disconnect(); };
                 }
@@ -439,6 +458,7 @@
             var osc = ctx.createOscillator(), gain = ctx.createGain(), merger = ctx.createChannelMerger(2);
             osc.type = 'sine';
             osc.frequency.value = freq;
+            var lfo = warble(ctx, osc, freq);
             gain.gain.setValueAtTime(0, t0);
             for (var i = 0; i < count; i++) {
                 var s = t0 + i * period;
@@ -454,6 +474,7 @@
             var end = t0 + (count - 1) * period + on + 0.02;
             osc.start(t0);
             osc.stop(end);
+            if (lfo) { lfo.stop(end); }
             osc.onended = function () { osc.disconnect(); gain.disconnect(); merger.disconnect(); };
             return Math.round((end - ctx.currentTime) * 1000);
         }
@@ -638,9 +659,9 @@
     function runEar(ear) {
         state.running = true;
         var freqs = CONFIG.freqs.slice();
-        if (ear === 'R') { freqs.push('retest'); }
-        var total = CONFIG.freqs.length * 2 + 1;
-        var done = ear === 'R' ? 0 : CONFIG.freqs.length + 1;
+        if (ear === 'R' && CONFIG.retest) { freqs.push('retest'); }
+        var total = CONFIG.freqs.length * 2 + (CONFIG.retest ? 1 : 0);
+        var done = ear === 'R' ? 0 : total - CONFIG.freqs.length;
 
         state.redraw = function () {}; // language buttons disabled while running
         render(steps(ear) +
@@ -709,9 +730,9 @@
     // raises it in 5 dB steps until it is barely audible. Faster and easier than tap-to-respond.
     function runEarAdjust(ear) {
         var freqs = CONFIG.freqs.slice();
-        if (ear === 'R') { freqs.push('retest'); }
-        var total = CONFIG.freqs.length * 2 + 1;
-        var done = ear === 'R' ? 0 : CONFIG.freqs.length + 1;
+        if (ear === 'R' && CONFIG.retest) { freqs.push('retest'); }
+        var total = CONFIG.freqs.length * 2 + (CONFIG.retest ? 1 : 0);
+        var done = ear === 'R' ? 0 : total - CONFIG.freqs.length;
         var i = 0;
         state.running = true;
         state.redraw = function () {};
@@ -1333,7 +1354,8 @@
     function audiogram() {
         var W = 360, H = 260, L = 44, R = 14, T = 14, B = 34;
         var minDb = -10, maxDb = 100;
-        function x(f) { return L + CHART_FREQS.indexOf(f) * (W - L - R) / (CHART_FREQS.length - 1); }
+        var PAD = 16; // keep edge markers clear of the axis labels
+        function x(f) { return L + PAD + CHART_FREQS.indexOf(f) * (W - L - R - 2 * PAD) / Math.max(CHART_FREQS.length - 1, 1); }
         function y(db) { return T + (db - minDb) * (H - T - B) / (maxDb - minDb); }
         var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="ht-svg" role="img" aria-label="' + t('chartTitle') + '">';
         g += '<rect x="' + L + '" y="' + y(-10) + '" width="' + (W - L - R) + '" height="' + (y(20) - y(-10)) + '" class="ht-zone"/>';

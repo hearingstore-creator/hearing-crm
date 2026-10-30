@@ -19,7 +19,9 @@ laravel/
 1. **Intro and consent:** screening disclaimer and what the visitor needs (headphones, quiet room, silent mode off).
 2. **Headphone check:** one beep in each ear in random order, and the visitor must name both sides. This catches swapped or mono headphones.
 3. **Volume setup:** the visitor turns the device volume to **maximum** and checks they can hear a beep. Every device then has the same reference point. A comfortable volume would let someone with hearing loss turn it up and hide the loss. The tones start below audibility, so maximum volume is safe.
-4. **Tone test, right ear then left ear** (5 pitches per ear plus a 1 kHz repeat, with a "Sound n of 11" counter):
+4. **Tone test, right ear then left ear** (4 pitches per ear: 1k, 2k, 4k and 500 Hz, the same set as ReSound, with a "Sound n of 8" counter):
+   - Tones are **warble tones** by default: a ±5% pitch wobble at 5 Hz, the clinical standard for free-field testing and easier to notice than a flat beep. Use `data-tone-type="pure"` for plain sine tones.
+   - Add 8 kHz with `data-freqs="1000,2000,4000,8000,500"`. Add a repeat of 1 kHz on the first ear as a reliability check with `data-retest="on"`.
    - **Slider (default, `data-tone-method="adjust"`):** the same approach as ReSound. A **continuous** tone starts very quiet. Its level follows + / − and the slider immediately, with 15 ms smoothing so there are no clicks. The visitor raises it in 5 dB steps until it is barely audible, then taps Continue. Continue also works at step 1, for people who already hear the quietest level. "I can't hear it at all" appears at the top step. The tone is muted while the page is in the background.
    - **Classic (`data-tone-method="classic"`):** tap when you hear it. Uses a simplified Hughson-Westlake procedure (down 10 / up 5, threshold = 2 ascending responses) with silent catch trials. It is more rigorous but slower and harder for visitors.
 5. **Digits in Noise (DIN):** a speech-in-noise test, the method behind WHO's hearWHO app.
@@ -90,6 +92,9 @@ The widget uses a frosted-glass card with line icons, and is designed for **Manr
 | `data-whatsapp` | Digits only. Shows a WhatsApp button with a pre-filled message. |
 | `data-booking-url` | Shows a "Book appointment" button. |
 | `data-lead-url` | Shows the call-back form and POSTs JSON here. Leave empty to show no form. |
+| `data-tone-type` | `warble` (default) or `pure`. |
+| `data-freqs` | Pitches tested per ear, in order. Default `1000,2000,4000,500`. |
+| `data-retest` | `on` repeats 1 kHz on the first ear as a reliability check. Off by default. |
 | `data-tone-method` | `adjust` (default: slider) or `classic` (tap when heard). |
 | `data-mode` | `quick` (default: tones, then the noise test offered on the results page), `full` (tones then noise test in one go), `tones` (tones only) or `din` (noise test only, about 1 min). |
 | `data-audio-base` | Folder holding `en/` and `bn/` digit files. Defaults to `digits/` next to the script. |
