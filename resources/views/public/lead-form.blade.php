@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <meta name="theme-color" content="#2b0306">
+    <meta name="theme-color" content="#f8f6f9">
     <title>Free Hearing Check – {{ $company }}</title>
     <meta name="description" content="Missing parts of words? Leave your number and a hearing specialist will call you back.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,33 +12,39 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600&display=swap" rel="stylesheet">
     @if ($turnstile)<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>@endif
     <style>
-        /* Red glass design: CSS-drawn red/black circles behind a smoked glass card (Hearing Store red). */
+        /* Soft light design: CSS-drawn pink / light blue / coral glow behind a frosted white card (Hearing Store red accents). */
         :root {
-            --ink: #fff; --muted: rgba(255, 255, 255, .74); --soft: rgba(255, 255, 255, .5);
-            --field: rgba(0, 0, 0, .26); --edge: rgba(255, 255, 255, .2); --red: #ff3b47; --deep: #1a0204; --err: #ffb4b9;
+            --ink: #1d1416; --muted: #3f3236; --soft: #75656a; --line: #a08d92;
+            --field: rgba(255, 255, 255, .86); --edge: rgba(60, 20, 26, .14); --red: #d3141f; --red-dark: #a80f18; --err: #9a0b15;
         }
         * { box-sizing: border-box; }
         html, body { margin: 0; }
         body {
             font-family: 'Poppins', 'Hind Siliguri', system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased;
-            background: #2b0306; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #f8f6f9; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
             padding: 28px 16px 40px; overflow-x: hidden;
         }
         html[lang=bn] body { font-family: 'Hind Siliguri', 'Poppins', system-ui, sans-serif; }
         body.is-embed { padding: 12px 12px 26px; justify-content: flex-start; }
 
-        .lf-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: linear-gradient(160deg, #120102 0%, #3d0509 45%, #7a0911 100%); }
-        .lf-bg::before { content: ''; position: absolute; width: 120vmax; height: 120vmax; left: 50%; top: -78vmax; margin-left: -60vmax; border-radius: 50%;
-            background: radial-gradient(circle at 50% 80%, #8d0a13 0%, #3a0408 35%, #070001 70%); box-shadow: 0 40px 120px rgba(0, 0, 0, .5); }
-        .lf-bg::after { content: ''; position: absolute; width: 130vmax; height: 130vmax; left: 50%; bottom: -92vmax; margin-left: -60vmax; border-radius: 50%;
-            background: radial-gradient(circle at 55% 20%, #ff3a45 0%, #e0161f 22%, #a50b14 48%, #5c050a 75%); box-shadow: 0 -30px 120px rgba(0, 0, 0, .45); }
+        .lf-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden;
+            background: radial-gradient(ellipse 70% 60% at 50% 45%, #f3e9ef 0%, #f8f6f9 70%), #f8f6f9; }
+        /* portrait composition (like the brand artwork), centred so wide screens keep its shape; edges feathered */
+        .lf-bg::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: min(100vw, 90vh); transform: translateX(-50%);
+            -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+            background:
+                radial-gradient(ellipse 44% 24% at 46% 78%, rgba(242, 78, 86, 1) 0%, rgba(243, 96, 102, .6) 45%, rgba(243, 96, 102, 0) 100%),
+                radial-gradient(ellipse 50% 30% at 38% 60%, rgba(214, 118, 136, .55) 0%, rgba(214, 118, 136, 0) 100%),
+                radial-gradient(ellipse 36% 42% at 68% 30%, rgba(160, 186, 216, 1) 0%, rgba(188, 212, 232, .75) 45%, rgba(188, 212, 232, 0) 100%),
+                radial-gradient(ellipse 62% 52% at 28% 28%, rgba(247, 178, 192, 1) 0%, rgba(249, 192, 202, .7) 50%, rgba(249, 192, 202, 0) 100%),
+                radial-gradient(ellipse 70% 60% at 50% 55%, rgba(222, 214, 234, .8) 0%, rgba(222, 214, 234, 0) 100%); }
 
         .lf-card {
             width: 100%; max-width: 400px; border-radius: 36px; padding: 14px 14px 24px; position: relative;
-            background: linear-gradient(180deg, rgba(18, 6, 8, .62) 0%, rgba(30, 8, 11, .42) 45%, rgba(60, 10, 14, .3) 100%);
-            -webkit-backdrop-filter: blur(30px) saturate(140%); backdrop-filter: blur(30px) saturate(140%);
-            border: 1px solid rgba(255, 255, 255, .16);
-            box-shadow: 0 40px 90px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .22), inset 0 -1px 0 rgba(255, 255, 255, .06);
+            background: linear-gradient(180deg, rgba(255, 255, 255, .5) 0%, rgba(255, 255, 255, .34) 55%, rgba(255, 255, 255, .42) 100%);
+            -webkit-backdrop-filter: blur(30px) saturate(130%); backdrop-filter: blur(30px) saturate(130%);
+            border: 1px solid rgba(255, 255, 255, .75);
+            box-shadow: 0 30px 70px rgba(120, 40, 55, .14), inset 0 1px 0 rgba(255, 255, 255, .9);
             animation: lf-in .5s cubic-bezier(.2, .8, .2, 1);
         }
         body.is-embed .lf-card { max-width: none; animation: none; }
@@ -46,28 +52,30 @@
 
         .lf-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 8px 12px; }
         body.is-embed .lf-top { padding-right: 54px; }
-        .lf-brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; letter-spacing: .2px; color: #fff; text-decoration: none; }
+        .lf-brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; letter-spacing: .2px; color: var(--ink); text-decoration: none; }
         .lf-brand .bars { display: flex; gap: 2px; align-items: center; height: 18px; }
         .lf-brand .bars i { width: 3px; border-radius: 2px; background: var(--red); }
-        .lf-lang { display: flex; background: rgba(0, 0, 0, .3); border-radius: 999px; padding: 3px; border: 1px solid var(--edge); }
+        .lf-lang { display: flex; background: rgba(255, 255, 255, .8); border-radius: 999px; padding: 3px; border: 1px solid var(--line); }
         .lf-lang button { border: 0; background: none; color: var(--muted); font: 600 12px 'Poppins', 'Hind Siliguri', sans-serif; padding: 6px 11px; border-radius: 999px; cursor: pointer; }
-        .lf-lang button[aria-pressed=true] { background: #fff; color: var(--deep); }
+        .lf-lang button[aria-pressed=true] { background: var(--red); color: #fff; }
+        .lf-lang button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
         .lf-icon-btn {
             position: absolute; top: 18px; right: 18px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
-            border: 1px solid rgba(255, 255, 255, .25); background: rgba(0, 0, 0, .35); color: #fff; cursor: pointer; text-decoration: none;
+            border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; text-decoration: none; box-shadow: 0 4px 12px rgba(80, 20, 30, .1);
         }
+        .lf-icon-btn:hover { border-color: var(--ink); }
         body:not(.is-embed) .lf-icon-btn { position: static; width: 36px; height: 36px; }
         .lf-icon-btn svg { width: 18px; height: 18px; }
 
         /* hearing animation: clear sentence, then the high-pitched sounds fade out */
-        .lf-scene { border-radius: 26px; padding: 20px 18px 16px; background: linear-gradient(150deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03)); border: 1px solid var(--edge); }
-        .lf-bubble { display: inline-block; background: #fff; color: var(--deep); border-radius: 22px 22px 22px 6px; padding: 11px 17px; font-size: 21px; font-weight: 600; box-shadow: 0 12px 28px rgba(0, 0, 0, .3); }
-        .lf-bubble .who { display: block; font-size: 11px; font-weight: 600; color: #d3141f; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 2px; }
+        .lf-scene { border-radius: 26px; padding: 20px 18px 16px; background: linear-gradient(150deg, rgba(255, 255, 255, .75), rgba(255, 255, 255, .45)); border: 1px solid var(--edge); }
+        .lf-bubble { display: inline-block; background: #fff; color: var(--ink); border-radius: 22px 22px 22px 6px; padding: 11px 17px; font-size: 21px; font-weight: 600; box-shadow: 0 10px 24px rgba(120, 40, 55, .14); }
+        .lf-bubble .who { display: block; font-size: 11px; font-weight: 600; color: var(--red); letter-spacing: .6px; text-transform: uppercase; margin-bottom: 2px; }
         .lf-bubble .g { display: inline-block; white-space: pre; transition: opacity .9s ease, filter .9s ease, transform .9s ease; }
         .muffled .lf-bubble .g { opacity: .85; }
         .muffled .lf-bubble .g.lost { opacity: .06; filter: blur(4px); transform: translateY(2px); }
         .lf-eq { display: flex; align-items: flex-end; gap: 5px; height: 36px; margin: 16px 2px 4px; }
-        .lf-eq i { flex: 1; border-radius: 4px; background: linear-gradient(180deg, #fff, #ff7a82); transition: opacity .9s ease; }
+        .lf-eq i { flex: 1; border-radius: 4px; background: linear-gradient(180deg, #ee4651, var(--red-dark)); transition: opacity .9s ease; }
         .muffled .lf-eq i.hi { opacity: .18; }
         .lf-eq-labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); letter-spacing: .4px; }
         .lf-caption { margin: 10px 0 0; font-size: 14px; font-weight: 500; opacity: 0; transform: translateY(6px); transition: opacity .7s ease .3s, transform .7s ease .3s; }
@@ -75,57 +83,59 @@
 
         h1 { font-size: 30px; font-weight: 700; letter-spacing: -.6px; line-height: 1.1; margin: 22px 8px 6px; }
         .lf-sub { font-size: 14px; color: var(--muted); margin: 0 8px 16px; line-height: 1.45; }
-        .lf-rule { height: 1px; background: rgba(255, 255, 255, .14); margin: 0 8px 16px; }
+        .lf-rule { height: 1px; background: var(--edge); margin: 0 8px 16px; }
         form { padding: 0 8px; }
         .lf-field { margin-bottom: 14px; }
-        .lf-label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 7px 4px; }
+        .lf-label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin: 0 0 7px 4px; }
         .lf-in {
-            width: 100%; height: 52px; border-radius: 16px; border: 1px solid var(--edge); background: var(--field); color: #fff;
-            font: 500 16px 'Poppins', 'Hind Siliguri', sans-serif; padding: 0 18px; outline: none; transition: border-color .15s, background .15s;
+            width: 100%; height: 52px; border-radius: 16px; border: 1px solid var(--line); background: var(--field); color: var(--ink);
+            font: 500 16px 'Poppins', 'Hind Siliguri', sans-serif; padding: 0 18px; outline: none; transition: border-color .15s, background .15s, box-shadow .15s;
         }
         textarea.lf-in { height: 84px; padding: 14px 18px; resize: none; }
         .lf-in::placeholder { color: var(--soft); }
-        .lf-in:focus { border-color: rgba(255, 255, 255, .7); background: rgba(0, 0, 0, .38); }
+        .lf-in:focus { border-color: var(--red); background: #fff; box-shadow: 0 0 0 3px rgba(211, 20, 31, .14); }
         .lf-field.has-error .lf-in { border-color: var(--err); }
-        .lf-err { display: none; color: var(--err); font-size: 12.5px; margin: 6px 0 0 4px; }
+        .lf-err { display: none; color: var(--err); font-size: 12.5px; font-weight: 500; margin: 6px 0 0 4px; }
         .lf-field.has-error .lf-err { display: block; }
         .lf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
         .lf-chip input { position: absolute; opacity: 0; pointer-events: none; }
-        .lf-chip span { display: inline-block; border: 1px solid var(--edge); background: var(--field); color: #fff; border-radius: 999px; padding: 10px 15px;
-            font-size: 14px; font-weight: 500; cursor: pointer; user-select: none; transition: background .2s, color .2s; }
-        .lf-chip input:checked + span { background: #fff; color: var(--deep); border-color: transparent; }
-        .lf-chip input:focus-visible + span { outline: 2px solid #fff; outline-offset: 2px; }
-        .lf-note-link { background: none; border: 0; color: var(--muted); font: 500 14px 'Poppins', 'Hind Siliguri', sans-serif; cursor: pointer; padding: 4px; }
+        .lf-chip span { display: inline-block; border: 1px solid var(--line); background: var(--field); color: var(--ink); border-radius: 999px; padding: 10px 15px;
+            font-size: 14px; font-weight: 500; cursor: pointer; user-select: none; transition: background .2s, color .2s, border-color .2s; }
+        .lf-chip span:hover { border-color: var(--ink); }
+        .lf-chip input:checked + span { background: var(--red); color: #fff; border-color: var(--red); }
+        .lf-chip input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
+        .lf-note-link { background: none; border: 0; color: #8f0c14; font: 500 14px 'Poppins', 'Hind Siliguri', sans-serif; cursor: pointer; padding: 4px; }
         .lf-note { display: none; }
         .show-note .lf-note { display: block; }
         .show-note .lf-note-link { display: none; }
         .lf-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--muted); cursor: pointer; margin: 2px 4px 0; }
-        .lf-consent input { width: 18px; height: 18px; margin: 1px 0 0; flex: none; accent-color: #fff; }
-        .lf-consent em { font-style: normal; opacity: .75; }
+        .lf-consent input { width: 18px; height: 18px; margin: 1px 0 0; flex: none; accent-color: var(--red); }
+        .lf-consent em { font-style: normal; color: var(--muted); }
         .lf-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
-        .lf-alert { display: none; margin: 0 0 14px; padding: 11px 14px; border-radius: 14px; font-size: 13.5px; background: rgba(0, 0, 0, .35); border: 1px solid rgba(255, 180, 185, .45); color: var(--err); }
+        .lf-alert { display: none; margin: 0 0 14px; padding: 11px 14px; border-radius: 14px; font-size: 13.5px; background: #fff1f2; border: 1px solid rgba(154, 11, 21, .35); color: var(--err); }
         .lf-alert.show { display: block; }
         .cf-turnstile { margin: 4px 0 10px; }
 
         .lf-foot { display: flex; flex-direction: column; align-items: center; }
         .lf-submit {
-            margin-top: 22px; border: 0; border-radius: 999px; background: #fff; color: var(--deep); font: 600 17px 'Poppins', 'Hind Siliguri', sans-serif;
-            padding: 16px 40px; cursor: pointer; box-shadow: 0 16px 34px rgba(0, 0, 0, .4); display: inline-flex; align-items: center; gap: 10px;
-            transition: transform .15s;
+            margin-top: 22px; border: 0; border-radius: 999px; background: linear-gradient(135deg, #e01b27, var(--red-dark)); color: #fff; font: 600 17px 'Poppins', 'Hind Siliguri', sans-serif;
+            padding: 16px 40px; cursor: pointer; box-shadow: 0 14px 30px rgba(211, 20, 31, .3), inset 0 1px 0 rgba(255, 255, 255, .25); display: inline-flex; align-items: center; gap: 10px;
+            transition: transform .15s, box-shadow .15s;
         }
-        .lf-submit:hover { transform: translateY(-1px); }
+        .lf-submit:hover { transform: translateY(-1px); box-shadow: 0 18px 34px rgba(211, 20, 31, .36), inset 0 1px 0 rgba(255, 255, 255, .25); }
+        .lf-submit:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
         .lf-submit[disabled] { opacity: .75; cursor: wait; transform: none; }
-        .lf-submit svg { width: 18px; height: 18px; fill: #d3141f; }
-        .lf-privacy { margin: 12px 0 0; font-size: 12.5px; color: rgba(255, 255, 255, .8); }
+        .lf-submit svg { width: 18px; height: 18px; fill: #fff; }
+        .lf-privacy { margin: 12px 0 0; font-size: 12.5px; color: var(--muted); }
 
         .lf-done { display: none; text-align: center; padding: 40px 18px 26px; }
         .sent .lf-done { display: block; animation: lf-in .4s ease; }
         .sent .lf-scene, .sent form, .sent h1, .sent .lf-sub, .sent .lf-rule, .sent .lf-foot { display: none; }
         .lf-tick { width: 84px; height: 84px; margin: 0 auto 18px; border-radius: 50%; display: grid; place-items: center;
-            background: linear-gradient(145deg, #ff4650, #b80d17); box-shadow: 0 16px 34px rgba(220, 20, 30, .45), inset 0 1px 0 rgba(255, 255, 255, .4); }
+            background: linear-gradient(145deg, #ee3a45, var(--red-dark)); box-shadow: 0 16px 34px rgba(211, 20, 31, .3), inset 0 1px 0 rgba(255, 255, 255, .4); }
         .lf-done h2 { font-size: 26px; margin: 0 0 8px; }
         .lf-done p { color: var(--muted); font-size: 14.5px; line-height: 1.5; margin: 0 auto; max-width: 320px; }
-        .lf-done-btn { display: inline-block; margin-top: 22px; border: 1px solid var(--edge); background: rgba(0, 0, 0, .3); color: #fff; font: 600 14px 'Poppins', 'Hind Siliguri', sans-serif;
+        .lf-done-btn { display: inline-block; margin-top: 22px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 600 14px 'Poppins', 'Hind Siliguri', sans-serif;
             padding: 11px 24px; border-radius: 999px; cursor: pointer; text-decoration: none; }
 
         @media (prefers-reduced-motion: reduce) { .lf-card, .lf-bubble .g, .lf-eq i, .lf-caption { animation: none !important; transition: none !important; } }
@@ -214,7 +224,7 @@
         {{-- Honeypot: real people never see or fill this --}}
         <div class="lf-hp" aria-hidden="true"><label for="lf-website">Website</label><input type="text" id="lf-website" name="website" tabindex="-1" autocomplete="off"></div>
         <input type="hidden" name="t" value="{{ $token }}">
-        @if ($turnstile)<div class="cf-turnstile" data-sitekey="{{ $turnstile }}" data-theme="dark"></div>@endif
+        @if ($turnstile)<div class="cf-turnstile" data-sitekey="{{ $turnstile }}" data-theme="light"></div>@endif
 
         <div class="lf-foot">
             <button type="submit" class="lf-submit" id="lf-submit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.2 15.2 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg><span data-t="cta"></span></button>
