@@ -1,35 +1,41 @@
-# Hearing test post – captions
-
-## English
-
-"Dad, dinner is ready."
-Or did you hear "Da_, _inner i_ rea_y"? 👂
-
-Hearing loss rarely starts with silence. It starts with the high-pitched sounds (s, d, t) slipping away, so people seem to mumble and you find yourself guessing.
-
-A hearing test at Hearing Store shows exactly which sounds you're missing, in our sound booth with a hearing specialist.
-
-✅ Free hearing check
-✅ Clear results explained to you
-✅ Advice on what to do next
-
-📅 Book your hearing test: link in bio, or send us a message.
-
-#HearingStore #HearingTest #FreeHearingCheck #HearingLoss #HearingAid #Dhaka #Bangladesh
+# Online hearing test post – captions
 
 ## বাংলা
 
-"আব্বু, খাবার রেডি।"
-নাকি শুনলেন "আব্বু, খা_র রে_"? 👂
+👂 অনলাইনে কানের পরীক্ষা, মাত্র ৫ মিনিটে!
 
-শ্রবণশক্তি কমা সাধারণত হঠাৎ নীরবতা দিয়ে শুরু হয় না। শুরু হয় উঁচু সুরের শব্দগুলো হারিয়ে যাওয়া দিয়ে, তখন মনে হয় সবাই অস্পষ্ট কথা বলছে আর আপনি আন্দাজ করে নিচ্ছেন।
+টিভির আওয়াজ বাড়াতে হয়? কথা বারবার জিজ্ঞেস করতে হয়? ঘরে বসেই হেডফোন দিয়ে জেনে নিন আপনার শোনার ক্ষমতা।
 
-হিয়ারিং স্টোরের সাউন্ড বুথে একজন হিয়ারিং বিশেষজ্ঞের সাথে একটি হিয়ারিং টেস্টে বোঝা যায় আপনি ঠিক কোন শব্দগুলো মিস করছেন।
+✅ সম্পূর্ণ ফ্রি
+✅ রেজিস্ট্রেশন লাগবে না
+✅ ফলাফল সাথে সাথে
 
-✅ ফ্রি হিয়ারিং চেক
-✅ ফলাফল সহজ ভাষায় বুঝিয়ে বলা হয়
-✅ এরপর কী করবেন, সেই পরামর্শ
+🎧 যা লাগবে: হেডফোন ও শান্ত একটি ঘর
 
-📅 হিয়ারিং টেস্ট বুক করুন: বায়োতে লিংক, অথবা আমাদের মেসেজ করুন।
+👉 এখনই পরীক্ষা শুরু করুন: hearingstore.com.bd/hearing-test
 
-#HearingStore #হিয়ারিংটেস্ট #HearingTest #FreeHearingCheck #শ্রবণশক্তি #Bangladesh
+ℹ️ এটি প্রাথমিক স্ক্রিনিং; নিশ্চিত হতে আমাদের অডিওলজিস্টের পরামর্শ নিন।
+
+পরিবারের বয়স্ক সদস্যদের সাথে শেয়ার করুন ❤️
+
+#HearingStore #হিয়ারিংটেস্ট #কানেরপরীক্ষা #OnlineHearingTest #FreeHearingTest #Bangladesh
+
+## English
+
+👂 Check your hearing online in just 5 minutes!
+
+Turning the TV up? Asking people to repeat themselves? Find out how well you hear, from home, with just a pair of headphones.
+
+✅ Completely free
+✅ No registration
+✅ Instant results
+
+🎧 You need: headphones and a quiet room
+
+👉 Start the test now: hearingstore.com.bd/hearing-test
+
+ℹ️ This is an initial screening. For a confirmed result, talk to our audiologist.
+
+Share it with the older members of your family ❤️
+
+#HearingStore #HearingTest #OnlineHearingTest #FreeHearingTest #HearingLoss #Bangladesh
