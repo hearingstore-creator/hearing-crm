@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -230,7 +230,7 @@
             <a href="https://hearingstore.com.bd" class="lf-icon-btn js-lf-back" id="lf-back" aria-label="Back to website"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></a>
         @endunless
         <span class="lf-brand"><span class="bars" aria-hidden="true"><i style="height:8px"></i><i style="height:14px"></i><i style="height:18px"></i><i style="height:11px"></i><i style="height:16px"></i><i style="height:7px"></i></span>{{ $company }}</span>
-        <div class="lf-lang" role="group" aria-label="Language"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="bn" aria-pressed="false">বাংলা</button></div>
+        <div class="lf-lang" role="group" aria-label="Language"><button type="button" data-lang="en" aria-pressed="false">EN</button><button type="button" data-lang="bn" aria-pressed="true">বাংলা</button></div>
     </div>
 
     <section class="lf-scene" id="lf-scene" aria-label="How hearing loss can sound">
@@ -420,7 +420,7 @@
     var qs = new URLSearchParams(location.search);
     var embedded = {{ $embedded ? 'true' : 'false' }};
     var post = function (type) { if (embedded && window.parent !== window) { window.parent.postMessage({ crmLeadForm: type }, '*'); } };
-    var lang = qs.get('lang') === 'bn' ? 'bn' : 'en';
+    var lang = qs.get('lang') === 'en' ? 'en' : 'bn';   // Bangla first; ?lang=en or the visitor's own choice switches
     var sentName = '', sentPhone = '';
     try { lang = localStorage.getItem('crmlf-lang') || lang; } catch (e) {}
 
