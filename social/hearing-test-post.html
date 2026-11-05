@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hearing Test Post</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  :root { --red: #ff3b47; --deep: #1a0204; --muted: rgba(255,255,255,.76); --edge: rgba(255,255,255,.2); }
+  body { width: 1080px; height: 1080px; overflow: hidden; background: #2b0306; color: #fff;
+    font-family: 'Poppins', 'Hind Siliguri', sans-serif; -webkit-font-smoothing: antialiased; }
+  html[lang=bn] body { font-family: 'Hind Siliguri', 'Poppins', sans-serif; }
+  .bg { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(160deg, #120102 0%, #3d0509 45%, #7a0911 100%); }
+  .bg::before { content: ''; position: absolute; width: 1500px; height: 1500px; left: -210px; top: -1080px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 80%, #8d0a13 0%, #3a0408 35%, #070001 70%); box-shadow: 0 40px 120px rgba(0,0,0,.5); }
+  .bg::after { content: ''; position: absolute; width: 1600px; height: 1600px; left: -260px; top: 820px; border-radius: 50%;
+    background: radial-gradient(circle at 55% 20%, #ff3a45 0%, #e0161f 22%, #a50b14 48%, #5c050a 75%); box-shadow: 0 -30px 120px rgba(0,0,0,.45); }
+  .wrap { position: relative; height: 100%; padding: 64px 72px 60px; display: flex; flex-direction: column; }
+  .top { display: flex; justify-content: space-between; align-items: center; }
+  .logo { background: #fff; border-radius: 999px; padding: 14px 28px; box-shadow: 0 14px 34px rgba(0,0,0,.35); }
+  .logo img { display: block; height: 40px; }
+  .tag { border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.3); border-radius: 999px; padding: 12px 24px;
+    font-size: 20px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
+  html[lang=bn] .tag { letter-spacing: 0; font-size: 24px; }
+  h1 { font-size: 76px; font-weight: 700; letter-spacing: -2px; line-height: 1.04; margin: 54px 0 34px; }
+  html[lang=bn] h1 { font-size: 72px; letter-spacing: 0; line-height: 1.2; }
+  h1 em { font-style: normal; color: #ff6b74; }
+  .card { border-radius: 40px; padding: 34px 38px 30px;
+    background: linear-gradient(180deg, rgba(18,6,8,.62), rgba(60,10,14,.34));
+    border: 1px solid rgba(255,255,255,.18); box-shadow: 0 40px 90px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22); }
+  .rows { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+  .label { font-size: 19px; font-weight: 600; color: var(--muted); letter-spacing: .4px; margin-bottom: 14px; }
+  .bubble { display: inline-block; background: #fff; color: var(--deep); border-radius: 28px 28px 28px 8px; padding: 18px 26px;
+    font-size: 34px; font-weight: 600; box-shadow: 0 14px 30px rgba(0,0,0,.3); white-space: nowrap; }
+  .bubble .who { display: block; font-size: 14px; font-weight: 700; color: #d3141f; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+  html[lang=bn] .bubble .who { letter-spacing: 0; font-size: 17px; }
+  .lost { opacity: .08; filter: blur(3px); }
+  .eq { display: flex; align-items: flex-end; gap: 6px; height: 54px; margin-top: 22px; }
+  .eq i { flex: 1; border-radius: 4px; background: linear-gradient(180deg, #fff, #ff7a82); }
+  .muffled .eq i.hi { opacity: .16; }
+  .eql { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); margin-top: 8px; letter-spacing: .4px; }
+  .note { margin-top: 26px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.14); font-size: 24px; line-height: 1.45; color: var(--muted); }
+  html[lang=bn] .note { font-size: 27px; }
+  .note b { color: #fff; font-weight: 600; }
+  .foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
+  .cta { background: #fff; color: var(--deep); border-radius: 999px; padding: 24px 44px; font-size: 30px; font-weight: 700;
+    box-shadow: 0 18px 40px rgba(0,0,0,.4); display: inline-flex; align-items: center; gap: 14px; }
+  .cta svg { width: 30px; height: 30px; fill: #d3141f; }
+  .side { text-align: right; font-size: 22px; font-weight: 500; line-height: 1.4; text-shadow: 0 2px 12px rgba(0,0,0,.35); }
+  .side b { display: block; font-size: 26px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+  <div class="top">
+    <div class="logo"><img src="logo.png" alt="Hearing Store"></div>
+    <div class="tag" data-t="tag"></div>
+  </div>
+  <h1 data-t="h1"></h1>
+  <div class="card">
+    <div class="rows">
+      <div>
+        <div class="label" data-t="said"></div>
+        <div class="bubble"><span class="who" data-t="who"></span><span class="line" data-clear></span></div>
+        <div class="eq" data-eq></div>
+        <div class="eql"><span data-t="low"></span><span data-t="high"></span></div>
+      </div>
+      <div class="muffled">
+        <div class="label" data-t="heard"></div>
+        <div class="bubble"><span class="who" data-t="who"></span><span class="line" data-muffled></span></div>
+        <div class="eq" data-eq></div>
+        <div class="eql"><span data-t="low"></span><span data-t="high"></span></div>
+      </div>
+    </div>
+    <p class="note" data-t="note"></p>
+  </div>
+  <div class="foot">
+    <div class="cta"><svg viewBox="0 0 24 24"><path d="M6.6 10.8a15.2 15.2 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg><span data-t="cta"></span></div>
+    <div class="side" data-t="side"></div>
+  </div>
+</div>
+<script>
+const T = {
+  en: {
+    tag: 'Free hearing check', h1: 'Hearing the words,<br>or <em>guessing</em> them?',
+    said: 'What she said', heard: 'What you may hear', who: 'Your daughter', low: 'LOW', high: 'HIGH PITCH',
+    line: 'Dad, dinner is ready.', lost: [2, 5, 13, 18],
+    note: 'Hearing loss usually takes the <b>high-pitched sounds first</b>, like s, d and t, so speech sounds mumbled. A quick hearing test in our sound booth shows exactly what you are missing.',
+    cta: 'Book your hearing test', side: '<b>Link in bio</b>or send us a message'
+  },
+  bn: {
+    tag: 'ফ্রি হিয়ারিং চেক', h1: 'কথা শুনছেন,<br>নাকি <em>আন্দাজ</em> করছেন?',
+    said: 'সে যা বলল', heard: 'আপনি যা শুনতে পারেন', who: 'আপনার মেয়ে', low: 'নিচু', high: 'উঁচু সুর',
+    line: 'আব্বু, খাবার রেডি।', lostChars: ['ব্ব', 'বা', 'ডি'],
+    note: 'শ্রবণশক্তি কমলে সাধারণত <b>উঁচু সুরের শব্দ আগে হারায়</b>, তাই কথা অস্পষ্ট শোনায়। আমাদের সাউন্ড বুথে একটি ছোট হিয়ারিং টেস্টে বোঝা যায় আপনি ঠিক কী মিস করছেন।',
+    cta: 'হিয়ারিং টেস্ট বুক করুন', side: '<b>বায়োতে লিংক</b>অথবা আমাদের মেসেজ করুন'
+  }
+};
+const lang = new URLSearchParams(location.search).get('lang') === 'bn' ? 'bn' : 'en';
+const t = T[lang];
+document.documentElement.lang = lang;
+document.querySelectorAll('[data-t]').forEach(e => e.innerHTML = t[e.dataset.t]);
+const glyphs = s => (window.Intl && Intl.Segmenter) ? [...new Intl.Segmenter(lang, { granularity: 'grapheme' }).segment(s)].map(x => x.segment) : [...s];
+function line(el, muffle) {
+  let g = glyphs(t.line);
+  if (lang === 'bn') { // merge so the lost clusters match whole
+    const out = []; for (let i = 0; i < g.length; i++) { const two = g[i] + (g[i+1] || ''); if (t.lostChars.includes(two)) { out.push(two); i++; } else out.push(g[i]); } g = out;
+  }
+  g.forEach((c, i) => { const s = document.createElement('span'); s.textContent = c; s.style.whiteSpace = 'pre';
+    if (muffle && (t.lost ? t.lost.includes(i) : t.lostChars.includes(c))) s.className = 'lost'; el.appendChild(s); });
+}
+line(document.querySelector('[data-clear]'), false);
+line(document.querySelector('[data-muffled]'), true);
+const H = [34, 52, 70, 88, 100, 92, 80, 68, 58, 48, 40, 32, 26, 20];
+document.querySelectorAll('[data-eq]').forEach(eq => H.forEach((h, i) => { const b = document.createElement('i'); b.style.height = h + '%'; if (i >= 8) b.className = 'hi'; eq.appendChild(b); }));
+</script>
+</body>
+</html>
