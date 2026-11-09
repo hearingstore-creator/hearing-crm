@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
     <meta name="theme-color" content="#f8f6f9">
-    <title>Free Hearing Check – {{ $company }}</title>
+    <title>Free Consultation – {{ $company }}</title>
     <meta name="description" content="Missing parts of words? Leave your number and a hearing specialist will call you back.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -398,7 +398,7 @@
         en: {
             line: 'Dad, dinner is ready.', lost: [2, 5, 13, 18],
             capSoft: 'Normal voice: Dad misses the words.', capLoud: 'Only hears when she shouts? <b>A free check tells you why.</b>',
-            title: 'Free hearing check', sub: 'Leave your number. A hearing specialist will call you back.',
+            title: 'Free consultation', sub: 'Leave your number. A hearing specialist will call you back.',
             name: 'Your name', namePh: 'e.g. Rahim Uddin', phone: 'Mobile number', about: 'What is it about?',
             iq_hearing_test: 'Hearing test', iq_hearing_aid: 'Hearing aid', iq_repair: 'Repair', iq_other: 'Other',
             addNote: '+ Add a note (optional)', noteLabel: 'Anything we should know?', notePh: 'e.g. My father struggles on phone calls',
@@ -414,7 +414,7 @@
         bn: {
             line: 'আব্বু, খাবার রেডি।', lostChars: ['ব্ব', 'বা', 'ডি'],
             capSoft: 'স্বাভাবিক স্বরে বাবা কথা বুঝতে পারেন না।', capLoud: 'জোরে না বললে শোনেন না? <b>বিনামূল্যে পরীক্ষা করে দেখুন।</b>',
-            title: 'বিনামূল্যে শ্রবণ পরীক্ষা', sub: 'আপনার নম্বর দিন, আমাদের বিশেষজ্ঞ আপনাকে কল করবেন।',
+            title: 'বিনামূল্যে পরামর্শ', sub: 'আপনার নম্বর দিন, আমাদের বিশেষজ্ঞ আপনাকে কল করবেন।',
             name: 'আপনার নাম', namePh: 'যেমন: রহিম উদ্দিন', phone: 'মোবাইল নম্বর', about: 'কী বিষয়ে?',
             iq_hearing_test: 'শ্রবণ পরীক্ষা', iq_hearing_aid: 'হিয়ারিং এইড', iq_repair: 'মেরামত', iq_other: 'অন্যান্য',
             addNote: '+ কিছু লিখতে চাইলে', noteLabel: 'আমাদের কিছু জানাতে চান?', notePh: 'যেমন: বাবা ফোনে কথা বুঝতে পারেন না',

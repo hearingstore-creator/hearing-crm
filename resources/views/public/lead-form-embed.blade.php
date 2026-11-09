@@ -2,7 +2,7 @@
 /* CRM lead form popup.
  * Options on the <script> tag:
  *   data-button="false"     hide the floating button (use your own links instead)
- *   data-label="Free hearing check"  floating button text
+ *   data-label="Free consultation"  floating button text
  *   data-auto-open="20"     open once per visit after N seconds
  * Any link or button with class "crm-lead-popup" or href="#crm-lead-form" opens the popup. JS: CRMLeadForm.open()
  */
@@ -109,7 +109,7 @@
             b.className = 'crmlf-btn';
             b.id = 'crmlf-open';
             b.innerHTML = '<i>&#9742;</i><span></span>';
-            b.lastChild.textContent = opt('label', 'Free hearing check');
+            b.lastChild.textContent = opt('label', 'Free consultation');
             b.addEventListener('click', open);
             document.body.appendChild(b);
         }

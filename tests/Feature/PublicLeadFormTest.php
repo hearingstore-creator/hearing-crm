@@ -51,7 +51,7 @@ class PublicLeadFormTest extends TestCase
         $this->get('/f/consultation?embed=1')->assertOk()->assertSee('id="lf-close"', false)->assertDontSee('id="lf-back"', false);
         $this->get('/f/consultation/embed.js')->assertOk()
             ->assertHeader('Content-Type', 'application/javascript; charset=utf-8')
-            ->assertSee('CRMLeadForm', false)->assertSee('Free hearing check', false);
+            ->assertSee('CRMLeadForm', false)->assertSee('Free consultation', false);
     }
 
     public function test_a_submission_without_email_is_accepted(): void
