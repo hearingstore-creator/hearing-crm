@@ -215,7 +215,22 @@
         }
         @media (max-height: 660px) { .lf-stage { max-width: 250px; } .lf-sub { display: none; } h1 { margin-bottom: 8px; } }
         @media (max-height: 580px) { .lf-stage { max-width: 210px; } .lf-caption { display: none; } }
+        /* Kept hidden (not just transparent) until the web fonts are in, so the swap from the fallback font cannot move anything */
+        html.lf-wait .lf-card { visibility: hidden; }
     </style>
+    <script>
+    // Hind Siliguri / Poppins have different line heights from the fallback font. Swapping them in after the first paint made the
+    // whole form jump twice (CLS 0.13 on the website's Appointment page, 09 Nov 2026). Show the card once the fonts are ready, or after 1.2 s at most.
+    (function () {
+        var root = document.documentElement;
+        if (!document.fonts || !document.fonts.load) { return; }
+        root.classList.add('lf-wait');
+        var show = function () { root.classList.remove('lf-wait'); };
+        setTimeout(show, 1200);
+        Promise.all(['400 15px "Hind Siliguri"', '500 15px "Hind Siliguri"', '600 15px "Hind Siliguri"', '500 15px Poppins', '600 15px Poppins']
+            .map(function (f) { return document.fonts.load(f, 'আব্বু Aa'); })).then(show, show);
+    })();
+    </script>
 </head>
 @php($needsConsent = \App\Support\Region::needsConsent())
 <body class="{{ $embedded ? 'is-embed' : '' }}">
