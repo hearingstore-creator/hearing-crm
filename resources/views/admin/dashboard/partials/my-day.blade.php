@@ -7,7 +7,7 @@
         $over = $at->lt(today());
         $phone = $a->lead?->phone_number;
         $name = $a->lead?->full_name ?? ('Lead #' . $a->lead_id);
-        $waMsg = "Assalamu Alaikum {$name}. This is Zenhear Hearing Care Centre following up regarding your enquiry. How may we assist you with your hearing health today?";
+        $waMsg = "Assalamu Alaikum {$name}. This is Hearing Store following up regarding your enquiry. How may we assist you with your hearing health today?";
         $sub = $a->type?->label() ?? 'Follow-up';
         if ($a->deal?->stage) {
             $sub .= ' · ' . $a->deal->stage->name;
@@ -41,7 +41,7 @@
         $timeStr = $slot ? \Illuminate\Support\Carbon::parse($slot->start_time)->format('h:i A') : 'Today';
         $phone = $ap->lead?->phone_number;
         $name = $ap->lead?->full_name ?? 'Appointment';
-        $waMsg = "Assalamu Alaikum {$name}. Gentle reminder from Zenhear Hearing Care Centre regarding your appointment today at {$timeStr}. Please let us know if you need directions.";
+        $waMsg = "Assalamu Alaikum {$name}. Gentle reminder from Hearing Store regarding your appointment today at {$timeStr}. Please let us know if you need directions.";
 
         $rows->push([
             'id'          => $ap->id,

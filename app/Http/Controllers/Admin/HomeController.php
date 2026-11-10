@@ -93,7 +93,7 @@ class HomeController extends Controller
             $custName = $s['name'] ?? 'Customer';
             $model = $s['model'] ?? 'Hearing Aid';
             $phone = $s['phone'] ?? '';
-            $waMsg = "Assalamu Alaikum {$custName}. This is Zenhear Hearing Care Centre. Your hearing aid ({$model}) is due for a 6-month checkup and complimentary cleaning service. Please let us know your preferred time to visit our branch.";
+            $waMsg = "Assalamu Alaikum {$custName}. This is Hearing Store. Your hearing aid ({$model}) is due for a 6-month checkup and complimentary cleaning service. Please let us know your preferred time to visit our branch.";
 
             return [
                 'type'           => 'service_due',
@@ -128,7 +128,7 @@ class HomeController extends Controller
             $prod = $w['product'] ?? 'Hearing Aid';
             $phone = $w['phone'] ?? '';
             $expDate = $w['expiry_date'] ?? '';
-            $waMsg = "Assalamu Alaikum {$custName}. This is Zenhear Hearing Care Centre. The warranty for your {$prod} will expire on {$expDate}. We invite you for a complimentary end-of-warranty inspection before it expires. Contact us to schedule.";
+            $waMsg = "Assalamu Alaikum {$custName}. This is Hearing Store. The warranty for your {$prod} will expire on {$expDate}. We invite you for a complimentary end-of-warranty inspection before it expires. Contact us to schedule.";
 
             return [
                 'type'           => 'warranty_expiry',
@@ -153,7 +153,7 @@ class HomeController extends Controller
         $birthdayItems = collect($rawBirthdays)->where('in_days', 0)->take(10)->map(function ($b) {
             $name = $b['name'] ?? 'Customer';
             $phone = $b['phone'] ?? '';
-            $waMsg = "Happy Birthday {$name}! Wishing you good health, joy, and wonderful hearing moments today and throughout the year. Warm wishes from Zenhear Hearing Care Centre.";
+            $waMsg = "Happy Birthday {$name}! Wishing you good health, joy, and wonderful hearing moments today and throughout the year. Warm wishes from Hearing Store.";
 
             return [
                 'type'           => 'birthday',
@@ -191,7 +191,7 @@ class HomeController extends Controller
             $expDate = $b['expiry_date'] ?? '';
             $daysLeft = $b['days_left'] ?? 0;
             $isUrgent = $daysLeft <= 3;
-            $waMsg = "Assalamu Alaikum {$custName}. This is Zenhear Hearing Care Centre. Your {$prod} battery supply{$batSize} is estimated to run out around {$expDate} ({$daysLeft} days left). We recommend stocking up fresh batteries now to prevent any hearing interruption. Contact us to collect or order refills.";
+            $waMsg = "Assalamu Alaikum {$custName}. This is Hearing Store. Your {$prod} battery supply{$batSize} is estimated to run out around {$expDate} ({$daysLeft} days left). We recommend stocking up fresh batteries now to prevent any hearing interruption. Contact us to collect or order refills.";
 
             return [
                 'type'           => 'battery_expiry',

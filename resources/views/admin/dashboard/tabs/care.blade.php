@@ -67,7 +67,7 @@
             <div class="td-note">{{ $d['count_6m'] }} quiet for 6+ months ({{ $d['count_12m'] }} for 12+) · {{ $m($d['value']) }} lifetime spend</div>
             @forelse (array_slice($d['list'], 0, 8) as $p)
                 @php
-                    $waMsg = "Assalamu Alaikum " . ($p['name'] ?? 'Sir/Madam') . ". Zenhear Hearing Care Centre misses you! We invite you for a complimentary hearing checkup & cleaning this month. Let us know when you can visit.";
+                    $waMsg = "Assalamu Alaikum " . ($p['name'] ?? 'Sir/Madam') . ". Hearing Store misses you! We invite you for a complimentary hearing checkup & cleaning this month. Let us know when you can visit.";
                 @endphp
                 <div class="td-row">
                     <a class="td-name" href="{{ url('admin/customers/' . $p['id']) }}">{{ $p['name'] }}</a>
@@ -91,7 +91,7 @@
             <div class="td-note">{{ $u['due_count'] }} due now · {{ $u['upcoming_count'] }} coming up · {{ $u['owners'] }} device owners</div>
             @forelse (array_slice($u['list'], 0, 8) as $p)
                 @php
-                    $waMsg = "Assalamu Alaikum " . ($p['name'] ?? 'Sir/Madam') . ". This is Zenhear Hearing Care Centre. Your hearing aid (" . ($p['model'] ?? '') . ") may be eligible for our latest technology upgrade benefits. Let us know if you would like details.";
+                    $waMsg = "Assalamu Alaikum " . ($p['name'] ?? 'Sir/Madam') . ". This is Hearing Store. Your hearing aid (" . ($p['model'] ?? '') . ") may be eligible for our latest technology upgrade benefits. Let us know if you would like details.";
                 @endphp
                 <div class="td-row">
                     <a class="td-name" href="{{ url('admin/customers/' . $p['customer_id']) }}">
@@ -117,7 +117,7 @@
             <div class="td-note">{{ $b['count'] }} single-device owners of {{ $b['owners'] }} ({{ $b['share'] }}%)</div>
             @forelse (array_slice($b['list'], 0, 8) as $p)
                 @php
-                    $waMsg = "Assalamu Alaikum " . ($p['name'] ?? 'Sir/Madam') . ". Zenhear Hearing Care Centre is currently offering a special binaural second-ear discount to ensure balanced hearing. Let us know if you'd like a trial.";
+                    $waMsg = "Assalamu Alaikum " . ($p['name'] ?? 'Sir/Madam') . ". Hearing Store is currently offering a special binaural second-ear discount to ensure balanced hearing. Let us know if you'd like a trial.";
                 @endphp
                 <div class="td-row">
                     <a class="td-name" href="{{ url('admin/customers/' . $p['customer_id']) }}">
@@ -161,7 +161,7 @@
             <div class="td-note">{{ number_format($p['outstanding']) }} outstanding · {{ number_format($p['expiring_30']) }} expire within 30 days · {{ $p['redeem_rate'] }}% redeemed</div>
             @forelse ($p['top_holders'] as $h)
                 @php
-                    $waMsg = "Assalamu Alaikum " . ($h['name'] ?? 'Sir/Madam') . ". You have reward points at Zenhear Hearing Care Centre available to redeem on hearing aid batteries or accessories.";
+                    $waMsg = "Assalamu Alaikum " . ($h['name'] ?? 'Sir/Madam') . ". You have reward points at Hearing Store available to redeem on hearing aid batteries or accessories.";
                 @endphp
                 <div class="td-row">
                     <a class="td-name" href="{{ url('admin/customers/' . $h['id']) }}">{{ $h['name'] }}</a>
@@ -185,7 +185,7 @@
             <div class="td-note">{{ $s['overdue'] }} overdue · {{ $s['due'] }} due in the next 30 days</div>
             @forelse (array_slice($s['list'], 0, 8) as $p)
                 @php
-                    $waMsg = "Assalamu Alaikum " . ($p['name'] ?? 'Sir/Madam') . ". Your hearing device (" . ($p['model'] ?? '') . ") is due for regular maintenance & cleaning checkup at Zenhear Hearing Care Centre. Please contact us to schedule.";
+                    $waMsg = "Assalamu Alaikum " . ($p['name'] ?? 'Sir/Madam') . ". Your hearing device (" . ($p['model'] ?? '') . ") is due for regular maintenance & cleaning checkup at Hearing Store. Please contact us to schedule.";
                 @endphp
                 <div class="td-row">
                     <a class="td-name" href="{{ url('admin/customers/' . $p['customer_id']) }}">

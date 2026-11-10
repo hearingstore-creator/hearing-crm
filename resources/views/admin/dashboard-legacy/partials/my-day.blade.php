@@ -136,7 +136,7 @@
                 @php 
                     $slot = $ap->professionalTimeSlot?->timeSlot;
                     $phone = $ap->lead?->phone_number;
-                    $waMsg = "Assalamu Alaikum " . ($ap->lead->full_name ?? 'Sir/Madam') . ". This is a reminder from Zenhear Hearing Care Centre regarding your appointment today with " . (Auth::user()->name ?? 'our specialist') . ". Please contact us if you need directions.";
+                    $waMsg = "Assalamu Alaikum " . ($ap->lead->full_name ?? 'Sir/Madam') . ". This is a reminder from Hearing Store regarding your appointment today with " . (Auth::user()->name ?? 'our specialist') . ". Please contact us if you need directions.";
                 @endphp
                 <div class="md-row is-appt" id="md-appt-{{ $ap->id }}" data-cat="appointment">
                     <span class="md-time">{{ $slot ? $slot->start_time->format('h:i A') : 'Today' }}</span>
@@ -161,7 +161,7 @@
                     $at = \Illuminate\Support\Carbon::parse($a->follow_up_date);
                     $over = $at->lt(today());
                     $phone = $a->lead?->phone_number;
-                    $waMsg = "Assalamu Alaikum " . ($a->lead->full_name ?? 'Sir/Madam') . ". This is Zenhear Hearing Care Centre following up regarding your enquiry. How may we assist you with your hearing health today?";
+                    $waMsg = "Assalamu Alaikum " . ($a->lead->full_name ?? 'Sir/Madam') . ". This is Hearing Store following up regarding your enquiry. How may we assist you with your hearing health today?";
                 @endphp
                 <div class="md-row {{ $over ? 'is-over' : '' }}" id="md-act-{{ $a->id }}" data-cat="deal" data-deal="{{ $a->deal_id }}">
                     <span class="md-time">{{ $over ? $at->format('d M') : $at->format('h:i A') }}</span>

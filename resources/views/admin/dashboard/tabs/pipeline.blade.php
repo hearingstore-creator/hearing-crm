@@ -164,7 +164,7 @@
             <div class="td-note">{{ $d['inactive'] }} silent for 90+ days · {{ $d['active'] }} active · {{ $d['never'] }} never referred</div>
             @forelse (array_slice($d['list'], 0, 8) as $x)
                 @php
-                    $waMsg = "Assalamu Alaikum Dr. " . ($x['name'] ?? '') . ". Warm greetings from Zenhear Hearing Care Centre. We would love to share our updated patient audiology reports and service catalog with your clinic.";
+                    $waMsg = "Assalamu Alaikum Dr. " . ($x['name'] ?? '') . ". Warm greetings from Hearing Store. We would love to share our updated patient audiology reports and service catalog with your clinic.";
                 @endphp
                 <div class="td-row">
                     <span class="td-name">
